@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-009 · dealsStore + machine spawning
-**Commit `_pending_`**
+**Commit `f8e993d`**
 
 - TDD red→green: 5 specified `dealsStore.test.ts` behavioural cases (addDeal creates an entry in initial state, removeDeal stops the actor and subsequent forwardEvent is a safe no-op, forwardEvent advances the SI machine through `PickUpSent → PickedUp`, active/historic split works, two addDeal calls produce independent actors) plus 8 `it.each` cases on the pure `isHistoric(siState)` helper covering all five reachable + three terminal SI state names, plus 2 `dealsBootstrap.test.ts` cases that verify `dealFeed.inject('HAPPY_PATH_ESP')` and `dealFeed.inject('CREDIT_BREACH')` actually land entries in the store with the right deal payload.
 - `src/state/stores/dealsStore.ts` is a Zustand `create()` store with a `Map<dealId, DealEntry>` per `docs/06 §5`. `DealEntry` holds `{ deal, actor, siState, rfsState, dealable }`. The store subscribes to each spawned child actor's snapshots and replaces the cached state name immutably on every transition, so React selectors stay reactive without anyone calling `getSnapshot()` from a component.
