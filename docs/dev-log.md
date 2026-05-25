@@ -32,6 +32,30 @@ Most recent first.
 
 ---
 
+## FXSW-007 · PricingFeed with seeded RNG
+**Commit `_pending_`**
+
+- TDD red→green: all 6 specified `pricingFeed.test.ts` cases — first subscriber receives a tick within one tick of `start()`, two subscribers to the same pair both receive identical ticks, unsubscribe stops one callback without affecting others, seed-42 produces a recorded EURUSD mid sequence `[1.1715, 1.1714, 1.1714, 1.1714, 1.1714]`, `stop()` halts emissions for the original subscriber even across a re-`start()`, and `getLatest(pair)` returns null until the first tick then the latest cached tick.
+- `pricingFeed.ts` is a module-scoped singleton conforming to the `PricingFeed` interface from `04 §3.4`. Mulberry32 PRNG + Box-Muller normal sampling drive the random walk; per-pair `sigmaPips` / `spreadPips` / `pipSize` / display `precision` live in a `CONFIG: Record<Pair, PairConfig>` table populated from `04 §2` and `04 §3.1`. Tick interval is 300ms (`04 §3.2`), mean reversion is 10% pull per tick toward `referenceMids.json` anchors (`04 §3.1`).
+- `types.ts` defines a closed `Pair` union (`'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR'`) plus a `PAIRS` `as const satisfies readonly Pair[]` array — the two stay in lockstep at compile time. `PriceTick` and `PricingFeed` are the only other exports.
+- Seeded via `window.__seedFeed` per `04 §7` ("Playwright pins the seed via `window.__seedFeed = 42`"). Read at `start()` time so each fresh start can pick up a new seed. Fallback when unset is `Date.now() & 0xFFFFFFFF`.
+- Display rounding per `04 §7` ("no floating-point sin; round to the pair's pip precision for display"): mid/bid/ask are all rounded to the pair's `precision` (4dp for the dollar majors, 2dp for the JPY/INR pairs) at the tick boundary, not at the consumer.
+
+**User-directed decisions:**
+- **Which ticket comes after the Phase 1 merge?** Options offered: (a) FXSW-007 `PricingFeed` per backlog order — pure service, no UI change; (b) skip ahead to FXSW-008 + FXSW-009 to make the hardcoded blotter row become a live injected scenario; (c) bundle FXSW-007 + FXSW-008 together since they're conceptually paired. **Chosen:** (a). Backlog order respected; the seed-deterministic feed is independently testable and FXSW-008/9 build on it cleanly.
+
+**Agent-directed decisions:**
+- **`Pair` as a closed union** (`'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR'`) rather than the `pair: string` shape from the `04 §3.4` interface sketch. Spec is illustrative; the four pairs in `04 §2` are the closed set for v1. Closed unions catch typos (`subscribe('EURSUD', ...)` becomes a compile error) and mirror the `PillColor` pattern already established in FXSW-006. The spec's looser `string` was a typing-convenience artifact, not a requirement.
+- **`stop()` clears subscriptions** in addition to halting the interval and resetting all state. The AC test phrasing — "after `stop()`, no further callbacks fire even if `start()` is called again with the same seed" — only holds if subscriptions die with `stop`. Dev-injector "Reset session" flow (`04 §3.4` + §7) calls `stop()` then `start()`; UI components re-subscribe on mount, so the harsher semantics don't break the reset path.
+- **Mulberry32 + Box-Muller** for PRNG + normal sampling. Both are standard, deterministic, zero-dependency, and small enough to inline. Mulberry32 has good statistical properties for non-cryptographic use; Box-Muller is the textbook way to turn uniforms into standard normals without a math library. Tested only via the seed-42 golden sequence — the seed-determinism guarantee is what the consumer cares about, not the underlying statistical quality.
+- **Test for `bid >= ask` uses `>=` on EURUSD, `>` on USDJPY**. EURUSD's 0.5-pip spread is below 4dp display precision so `bid == ask == mid` after rounding — that's correct per spec, not a bug. USDJPY's 1.0-pip spread at 2dp always shows, so it's the cleaner pair to assert strict ordering on. Both assertions land in the same test for completeness.
+- **Reference sequence captured empirically.** Wrote the seed-42 test with a placeholder expectation, ran it once, locked in the produced `[1.1715, 1.1714, 1.1714, 1.1714, 1.1714]` as the golden. Standard golden-fixture practice — the test now guards against any RNG / iteration-order / Box-Muller change.
+- **Module-scoped state, not a class.** AC says "exports a singleton conforming to the `PricingFeed` interface". Module-scoped `Map`s + a frozen object literal satisfy it with less ceremony than a class + `new` + an exported instance. Test isolation works via `afterEach(() => pricingFeed.stop())` because `stop()` clears everything.
+- **Mean reversion as `MEAN_REVERSION * (ref - cur)`** added to the random-walk delta, per the spec's "10% pull per tick" wording (`04 §3.1`). The alternative — multiplicative pull, e.g. `cur + (ref - cur) * 0.1` then add noise separately — gives the same expected steady-state behaviour at this scale; the additive form is what the spec describes literally.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**119 pass / 7 todo**, up from 113 / 8 — the 6 new pricingFeed tests replaced 1 placeholder), e2e ✓ (smoke), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-034 · GitHub Pages deploy workflow (out of order, pulled from Phase 5)
 **Commit `0762c4e`**
 
