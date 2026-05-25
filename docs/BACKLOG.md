@@ -22,8 +22,8 @@
 
 | ID | Title | Phase | Effort | TDD | Status |
 |---|---|---|---|---|---|
-| FXSW-001 | Project scaffolding | 1 | M | 🟡 | ☐ |
-| FXSW-002 | Design tokens + Tailwind config | 1 | S | 🟡 | ☐ |
+| FXSW-001 | Project scaffolding | 1 | M | 🟡 | ◐ |
+| FXSW-002 | Design tokens + Tailwind config | 1 | S | 🟡 | ☑ |
 | FXSW-003 | Folder structure | 1 | S | — | ☐ |
 | FXSW-004 | prebuild reference-mids script | 1 | S | 🔴 | ☐ |
 | FXSW-005 | State machine skeletons | 1 | M | 🔴 | ☐ |
@@ -81,6 +81,8 @@ Effort key: S ≈ ≤1h, M ≈ 1–3h, L ≈ 3–6h.
 - A throwaway Playwright test `tests/e2e/smoke.spec.ts` that loads `/` and asserts `<body>` exists (proves Playwright + webServer wiring).
 
 **Done when:** `pnpm typecheck && pnpm lint && pnpm test:run && pnpm test:e2e` all green on a fresh clone.
+
+**Status note (Phase 0 build):** typecheck / lint / test:run green locally; `test:e2e` deferred — the cloud session's network policy blocks Playwright's browser-download CDN (`*.azureedge.net`). The Playwright **config** and the smoke spec are in place; only the browser binary install is blocked. Validated path forward: GitHub Actions CI (FXSW-032) installs Playwright cleanly and runs the smoke. Local validation possible after widening the cloud env's network policy or running once on a desktop dev machine. Status flipped from ◐ → ☑ when E2E confirms green in CI.
 
 ---
 
@@ -745,7 +747,7 @@ Effort key: S ≈ ≤1h, M ≈ 1–3h, L ≈ 3–6h.
 - `vite.config.ts` reads `base` from `process.env.VITE_BASE_PATH || '/'`.
 - `.github/workflows/deploy.yml` exists per `06 §7.1.b`, triggers on push to `main` and `workflow_dispatch`.
 - Permissions block grants `pages: write` and `id-token: write` only (least privilege).
-- `VITE_BASE_PATH` set to `/fx-sales-workstation/` in the build step (or whatever the actual repo name is).
+- `VITE_BASE_PATH` set to `/fx-sales-intervention/` in the build step.
 - Repo Settings → Pages → Source: GitHub Actions (manual one-time setup; document in README).
 - First deploy successful; live URL accessible.
 - README updated with the live demo URL.

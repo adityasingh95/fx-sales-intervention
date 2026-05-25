@@ -49,6 +49,31 @@ type ClientProfile = {
 };
 ```
 
+### 3.1 How market inputs are derived (v1 prototype)
+
+`market.currentBid` / `currentAsk` come from the live `PricingFeed.getLatest(pair)` snapshot at compute time.
+
+`market.pairVolatility` and `market.sessionLiquidity` are **not** computed from the feed in v1 — they're looked up from static tables. This keeps the engine deterministic for tests and keeps the documented per-scenario expected outputs (§8) stable.
+
+```typescript
+// src/services/suggestion/marketContext.ts
+const PAIR_VOLATILITY: Record<string, number> = {
+  EURUSD: 0.5,
+  GBPUSD: 0.8,
+  USDJPY: 1.0,
+  USDINR: 1.2,
+};
+
+export function getMarketContext(pair: string): Pick<SuggestionInput['market'], 'pairVolatility' | 'sessionLiquidity'> {
+  return {
+    pairVolatility: PAIR_VOLATILITY[pair] ?? 0.5,
+    sessionLiquidity: 'normal',  // v1: never thin; threshold rule (§5) stays as v2 hook
+  };
+}
+```
+
+All four v1 pair vol values are ≤ 1.5, so the engine's `pairVolatility > 1.5` branch never fires in v1. The rule lives in the engine for v2 (when vol may come from a real feed).
+
 ## 4. Output
 
 ```typescript
@@ -191,7 +216,7 @@ The Apply button is replaced with a **Reject** shortcut button that triggers the
 
 The one-line rationale composes 2–3 of the largest-magnitude factors into a natural sentence. Examples (real outputs from the rule engine, given the seed scenarios):
 
-- Scenario 2 (Globex / USDJPY / Off-Hours): **"Standard-tier client, off-hours USDJPY with thin liquidity — suggesting 5 pips."**
+- Scenario 2 (Globex / USDJPY / Off-Hours): **"Standard-tier client, off-hours USDJPY — suggesting 5 pips."**
 - Scenario 4 (Northwind / 12M EURUSD / Size Limit): **"Gold-tier client with 12M EURUSD above auto-pricer band — suggesting 4 pips."**
 - Scenario for a platinum client during normal hours on 2M EURUSD: **"Platinum client with strong recent acceptance — suggesting 2 pips."**
 

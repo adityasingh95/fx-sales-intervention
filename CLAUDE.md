@@ -4,7 +4,7 @@ Operational instructions for Claude Code. Auto-loaded at every session start. Ke
 
 ## What this is
 
-A frontend prototype of a **sales-trader workstation for FX manual pricing intervention**. Product name: **FX Sales Workstation** (repo: `fx-sales-workstation`). Single-page React app, in-memory state, simulated pricing feed, no backend.
+A frontend prototype of a **sales-trader workstation for FX manual pricing intervention**. Product name: **FX Sales Workstation** (repo: `fx-sales-intervention`). Single-page React app, in-memory state, simulated pricing feed, no backend.
 
 **The build must not reference Caplin anywhere.** No "Caplin" in UI strings, package metadata, comments, the deployed README, code identifiers, or any user-visible text. The internal spec docs under `/docs` reference Caplin URLs for research grounding only — those are not shipped with the build. If anything in the final bundle (including source maps) mentions Caplin, that is a defect.
 
@@ -99,7 +99,9 @@ CI must pass `lint`, `typecheck`, `test:run`, `test:e2e` before merge.
 
 ## Hand-off contract with the Wiki Agent
 
-At the end of each phase, after the E2E gate passes, produce your end-of-phase summary in the format defined by `KICKOFF-PROMPT.md`. Save it to `raw/prs/FXSW-{phase-last-ticket-id}-summary.md` (e.g., `raw/prs/FXSW-013-summary.md`). This is the source of truth the Wiki Agent will ingest. After saving, your phase is done — the Wiki Agent runs in a separate session and the human invokes it.
+At the end of each phase, after the E2E gate passes, produce your end-of-phase summary in the format defined by `KICKOFF-PROMPT.md`. Save it to `docs/phase-summaries/FXSW-{phase-last-ticket-id}-summary.md` (e.g., `docs/phase-summaries/FXSW-013-summary.md`). This is the source of truth the Wiki Agent will ingest. After saving, your phase is done — the Wiki Agent runs in a separate session and the human invokes it.
+
+(Per-project decision recorded in Phase 0: summaries live in `docs/phase-summaries/` rather than `raw/prs/` so rule §10's write boundary stays strict. The Wiki Agent setup must be told to ingest from this path.)
 
 ## Before editing X, read Y
 
@@ -120,6 +122,11 @@ At the end of each phase, after the E2E gate passes, produce your end-of-phase s
 - If the change is in a scenario path, the relevant Playwright test still passes.
 - `data-testid` and `data-deal-status` attributes preserved on testable elements.
 - No console errors or warnings in dev mode.
+- **Append a new entry to `docs/dev-log.md`** in the same in-chat-summary voice as existing entries: terse bullets, code in backticks, gate counts as the last bullet. Split the decisions taken into two clearly-labelled sub-lists:
+  - **User-directed decisions** — decisions where the agent surfaced options via `AskUserQuestion` (or equivalent) and the user picked. Name the options offered and the choice. If there were none in this ticket, write "None — all decisions within doc-pack guidance" so the absence is visible.
+  - **Agent-directed decisions** — decisions the agent took autonomously: architecture trade-offs, spec-vs-toolchain reality reconciliations, idiomatic-pattern picks, anything a future reader would want to see.
+
+  This split is what makes the dev-log presentation material: it shows where the agent had autonomy under doc-pack guidance vs where it correctly escalated to the human. Treat as a per-ticket deliverable, not optional documentation. **Separate from** `docs/phase-summaries/` (Wiki Agent hand-off, see above).
 
 ## When in doubt
 

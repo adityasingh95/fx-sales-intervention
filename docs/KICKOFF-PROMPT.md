@@ -69,7 +69,7 @@ When you finish each phase, reply with exactly:
 3. **What surprised you** — design decisions you reconsidered, doc gaps you patched.
 4. **Recommended next slice** OR "ready for Phase N+1."
 
-Then save the same content (with a brief frontmatter — date, phase number, ticket range) to `raw/prs/FXSW-{last-ticket-id}-summary.md`. This is the source the **Wiki Agent** (separate session — see `docs/WIKI-SETUP.md`) will ingest. You do not invoke the wiki agent yourself; the human does that in its own session after reviewing your summary.
+Then save the same content (with a brief frontmatter — date, phase number, ticket range) to `docs/phase-summaries/FXSW-{last-ticket-id}-summary.md`. This is the source the **Wiki Agent** (separate session — see `docs/WIKI-SETUP.md`) will ingest. You do not invoke the wiki agent yourself; the human does that in its own session after reviewing your summary.
 
 Then wait for "go."
 
