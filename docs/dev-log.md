@@ -32,6 +32,23 @@ Most recent first.
 
 ---
 
+## FXSW-011 · statusFromMachines derivation
+**Commit `_pending_`**
+
+- TDD red→green: 13 `it.each` cases covering every row of the `docs/03 §6` mapping table (12 documented rows + an extra `RejectSent from Quoted` row, since the spec calls out `PickedUp/Executable` as the two possible RFS states underneath that label).
+- `src/features/blotter/statusFromMachines.ts` exports `DisplayStatus` (the closed union of the 12 labels) and `derivedStatus(rfsState, siState, dealable): DisplayStatus`. Predicate order is **terminals → in-flight `*Sent` states → live (RFS, SI) tuples → fallback**, so REJECTED/DECLINED/DONE/EXPIRED override whatever the partner machine is doing during the 5-second blotter-removal window.
+
+**User-directed decisions:** None — `docs/03 §6` is a literal table; the function is the table in code form.
+
+**Agent-directed decisions:**
+- **Returns `'INTERVENE'` as the fallback** for undocumented (RFS, SI) tuples. The `docs/03 §6` table doesn't enumerate every possible combination because the FXSW-010 cross-model coordination prevents most of them at runtime — but the function's return type is the closed `DisplayStatus` union so it can't return `null`. The "awaiting trader attention" label is the safest visible state if we somehow land in an unmapped tuple; it surfaces the deal to the operator instead of hiding it. Documented with an inline comment so future maintainers know why the fallback exists.
+- **`RejectSent` resolves to `REJECTING` regardless of RFS state.** The `docs/03 §6` row reads `PickedUp/Executable` for RFS — either underlying RFS state maps to the same display label. The function checks `siState === 'RejectSent'` first and ignores RFS for that branch. Both RFS variants get an explicit `it.each` case so the spec's "either RFS state" intent is locked in by tests.
+- **Predicate order is terminal-first, then in-flight, then live.** Without that ordering, a deal that's `TraderRejected` (terminal SI) but still showing `PickedUp` on RFS during the 5-second removal window would map to `PICKED UP` instead of `REJECTED`. Terminals winning preserves the user-facing finality of the action.
+- **No `dealable` check in the `Executable + Initial → AUTO` row.** ESP deals don't have a Sales Intervention machine in the Caplin sense — they bypass intervention. `dealable` is meaningful for SI deals only; an ESP deal stays at `siState === 'Initial'` indefinitely, and the dealable flag is whatever the store derived (which would be `true` per the FXSW-010 `siState === 'Initial'` rule, but that's irrelevant to ESP). The check is omitted because it would add a false invariant.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**169 pass / 5 todo**, up from 156 / 5 — 13 new `statusFromMachines.test.ts` cases), e2e ✓ (smoke), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-010 · dealMachine cross-model coordination
 **Commit `0e04da3`**
 
