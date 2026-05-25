@@ -2,7 +2,11 @@ name: deploy
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      # Temporary: lets the WIP showcase branch auto-deploy until the
+      # work merges to main. Remove this line in the merge commit.
+      - claude/vigilant-einstein-Dtads
   workflow_dispatch:
 
 permissions:
