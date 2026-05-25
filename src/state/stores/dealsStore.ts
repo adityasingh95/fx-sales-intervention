@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { createActor, type Actor } from 'xstate';
 import { dealFeed } from '@/services/feed/dealFeed';
-import { dealMachine } from '@/state/machines/dealMachine';
-import type { SiEvent } from '@/state/machines/siMachine';
+import { dealMachine, type DealEvent as ParentDealEvent } from '@/state/machines/dealMachine';
 import type { Deal } from '@/types/deal';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
@@ -28,7 +27,7 @@ interface DealsState {
   deals: Map<string, DealEntry>;
   addDeal: (deal: Deal) => void;
   removeDeal: (dealId: string) => void;
-  forwardEvent: (dealId: string, event: SiEvent) => void;
+  forwardEvent: (dealId: string, event: ParentDealEvent) => void;
 }
 
 const replaceEntry = (
@@ -57,10 +56,22 @@ export const useDealsStore = create<DealsState>((set, get) => ({
 
     ctx.si.subscribe((snap) => {
       const stateName = String(snap.value);
+      if (stateName === 'Removed') {
+        // The 5-second blotter rule has elapsed inside siMachine; drop
+        // the entry. queueMicrotask so we don't stop the actor from
+        // inside its own subscription callback.
+        queueMicrotask(() => useDealsStore.getState().removeDeal(deal.dealId));
+        return;
+      }
       set((state) => {
         const cur = state.deals.get(deal.dealId);
         if (!cur || cur.siState === stateName) return state;
-        return { deals: replaceEntry(state.deals, deal.dealId, { siState: stateName }) };
+        return {
+          deals: replaceEntry(state.deals, deal.dealId, {
+            siState: stateName,
+            dealable: stateName === 'Initial',
+          }),
+        };
       });
       dealFeed.notifyDealState(deal.dealId, stateName);
     });
@@ -81,7 +92,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
         actor,
         siState: initialSi,
         rfsState: initialRfs,
-        dealable: true,
+        dealable: initialSi === 'Initial',
       });
       return { deals: next };
     });
@@ -101,14 +112,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
   forwardEvent: (dealId, event) => {
     const entry = get().deals.get(dealId);
     if (!entry) return;
-    // Interim until FXSW-010: the parent dealMachine's event handlers are
-    // still the no-op placeholders from FXSW-005, so sending `event` to
-    // `entry.actor` would be silently dropped. We route SI events to the
-    // SI child directly. forwardEvent is currently typed `SiEvent` (only
-    // `PickUp` per FXSW-005); FXSW-010 expands the SI event union and
-    // swaps this to parent-level routing with the full RFS↔SI
-    // coordination from docs/03 §3.
-    entry.actor.getSnapshot().context.si.send(event);
+    entry.actor.send(event);
   },
 }));
 

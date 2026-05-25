@@ -1,32 +1,22 @@
-import { setup, type ActorRefFrom, type SnapshotFrom } from 'xstate';
+import { sendTo, setup, type ActorRefFrom, type SnapshotFrom } from 'xstate';
 import { rfsMachine } from './rfsMachine';
 import { siMachine } from './siMachine';
 
-// All SI events from docs/03-trade-state-model.md §2.
-// FXSW-005 declares them as placeholder no-op handlers on the parent so
-// downstream code can already send them; the real RFS↔SI cross-model
-// coordination (docs/03 §3, CLAUDE.md rule §7) lands in FXSW-010.
-const SI_EVENT_TYPES = [
-  'PickUp',
-  'PickUpAck',
-  'PickUpRejected',
-  'PriceUnavailable',
-  'PriceUpdate',
-  'Accept',
-  'Hold',
-  'HoldAck',
-  'Reject',
-  'RejectAck',
-  'ClientReject',
-  'Quote',
-  'QuoteAck',
-  'Withdraw',
-  'WithdrawAck',
-  'TradeConfirmed',
-] as const;
+// Parent-level events the dealMachine accepts from the dealsStore.
+// Per docs/03 §3, each one triggers a cross-model coordination — the
+// parent sends the right event to each child so the RFS and SI
+// machines stay in sync without the store having to know about the
+// dual-machine model.
+export type DealEvent =
+  | { type: 'PickUp' }
+  | { type: 'Quote' }
+  | { type: 'Withdraw' }
+  | { type: 'Hold' }
+  | { type: 'Reject' }
+  | { type: 'ClientReject' }
+  | { type: 'TradeConfirmed' };
 
-export type DealEventType = (typeof SI_EVENT_TYPES)[number];
-export type DealEvent = { type: DealEventType };
+export type DealEventType = DealEvent['type'];
 
 export interface DealContext {
   dealId: string;
@@ -37,10 +27,6 @@ export interface DealContext {
 export interface DealInput {
   dealId: string;
 }
-
-const noopHandlers: Record<DealEventType, Record<string, never>> = Object.fromEntries(
-  SI_EVENT_TYPES.map((type) => [type, {}]),
-) as Record<DealEventType, Record<string, never>>;
 
 export const dealMachine = setup({
   types: {
@@ -62,7 +48,52 @@ export const dealMachine = setup({
   initial: 'Running',
   states: {
     Running: {
-      on: noopHandlers,
+      // Each trader-driven event below maps onto the cross-model rows
+      // in docs/03 §3. The parent fans the event into both children;
+      // each child's local on-handlers determine whether the event
+      // actually advances that machine. (Sending an event a child
+      // doesn't accept is a no-op under XState v5.)
+      on: {
+        PickUp: {
+          actions: [
+            sendTo(({ context }) => context.si, { type: 'PickUp' }),
+            sendTo(({ context }) => context.rfs, { type: 'PickUp' }),
+          ],
+        },
+        Quote: {
+          actions: [
+            sendTo(({ context }) => context.si, { type: 'Quote' }),
+            sendTo(({ context }) => context.rfs, { type: 'PriceUpdate' }),
+          ],
+        },
+        Withdraw: {
+          actions: [
+            sendTo(({ context }) => context.si, { type: 'Withdraw' }),
+            sendTo(({ context }) => context.rfs, { type: 'Withdraw' }),
+          ],
+        },
+        Hold: {
+          actions: [
+            sendTo(({ context }) => context.si, { type: 'Hold' }),
+            sendTo(({ context }) => context.rfs, { type: 'Hold' }),
+          ],
+        },
+        Reject: {
+          // RFS has no `Reject` event in docs/03 §1; the prototype
+          // leaves the RFS side alone on trader-reject. The blotter
+          // pulls the row out of Active via SI's terminal state.
+          actions: [sendTo(({ context }) => context.si, { type: 'Reject' })],
+        },
+        ClientReject: {
+          actions: [sendTo(({ context }) => context.si, { type: 'ClientReject' })],
+        },
+        TradeConfirmed: {
+          actions: [
+            sendTo(({ context }) => context.si, { type: 'TradeConfirmed' }),
+            sendTo(({ context }) => context.rfs, { type: 'TradeConfirmed' }),
+          ],
+        },
+      },
     },
   },
 });
