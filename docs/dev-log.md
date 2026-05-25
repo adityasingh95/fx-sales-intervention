@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-013 · DevInjector + HAPPY_PATH_ESP E2E
-**Commit `_pending_`**
+**Commit `ef01b92`**
 
 - TDD red→green: full Playwright spec `tests/e2e/happy-path-esp.spec.ts` covering `docs/07-scenario-pack.md` Scenario 1 — inject button click, AUTO row appears within 500ms with the right client/pair/amount, status flips to DONE after 2s (the scripted `CLIENT_ACCEPT`), row leaves Active and lands in Historic with `outcome=Executed` after a further 5s. Assertions hit `data-display-status` and `data-outcome` per the `07 Notes on test fidelity` rules. The test pins `window.__seedFeed = 42` and `window.__zeroAckDelay = true` via `addInitScript` before navigation.
 - `src/features/dev-injector/DevInjector.tsx` real: one `data-testid="inject-{ScenarioId}"` button per scenario from `SCENARIO_IDS` plus a separate `Reset` button. Reset calls `dealFeed.reset()`, stops every live actor, and wipes both `deals` and `historic` in the store. Renders inside the header's `dev-injector-slot` (only when `?dev=1`), replacing the FXSW-006 placeholder chip.
