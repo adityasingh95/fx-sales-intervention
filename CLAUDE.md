@@ -122,7 +122,11 @@ At the end of each phase, after the E2E gate passes, produce your end-of-phase s
 - If the change is in a scenario path, the relevant Playwright test still passes.
 - `data-testid` and `data-deal-status` attributes preserved on testable elements.
 - No console errors or warnings in dev mode.
-- **Append a new entry to `docs/dev-log.md`** in the same in-chat-summary voice as existing entries: terse bullets, code in backticks, **call out the decisions taken explicitly** (architecture trade-offs, spec-vs-toolchain reality reconciliations, anything a future reader or presentation viewer would want to see), gate counts as the last bullet. This file is presentation material that showcases the AI-native development pipeline; treat it as a per-ticket deliverable, not optional documentation. The dev-log is **separate from** `docs/phase-summaries/` (Wiki Agent hand-off, see above).
+- **Append a new entry to `docs/dev-log.md`** in the same in-chat-summary voice as existing entries: terse bullets, code in backticks, gate counts as the last bullet. Split the decisions taken into two clearly-labelled sub-lists:
+  - **User-directed decisions** — decisions where the agent surfaced options via `AskUserQuestion` (or equivalent) and the user picked. Name the options offered and the choice. If there were none in this ticket, write "None — all decisions within doc-pack guidance" so the absence is visible.
+  - **Agent-directed decisions** — decisions the agent took autonomously: architecture trade-offs, spec-vs-toolchain reality reconciliations, idiomatic-pattern picks, anything a future reader would want to see.
+
+  This split is what makes the dev-log presentation material: it shows where the agent had autonomy under doc-pack guidance vs where it correctly escalated to the human. Treat as a per-ticket deliverable, not optional documentation. **Separate from** `docs/phase-summaries/` (Wiki Agent hand-off, see above).
 
 ## When in doubt
 

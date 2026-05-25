@@ -2,8 +2,17 @@
 
 A chronological, ticket-by-ticket journal of building the **FX Sales
 Workstation** prototype. Each entry is the chat-style summary the
-agent posted on ticket completion — terse bullets, decisions called
-out explicitly, gate counts as the trailing bullet.
+agent posted on ticket completion — terse bullets, decisions split
+between **user-directed** and **agent-directed**, gate counts as the
+trailing bullet.
+
+The user-vs-agent split is the point of this document. It surfaces
+exactly where the AI agent had autonomy under doc-pack guidance, and
+exactly where it escalated to the human for direction. The
+expectation in a healthy AI-native pipeline is that most routine
+implementation decisions stay agent-directed (because the spec pack
+covers them) and human attention concentrates on scope, strategy,
+and genuine ambiguities.
 
 This is presentation material for two parallel stories:
 
@@ -31,7 +40,9 @@ Most recent first.
 - `rfsMachine` — `Queued → PickedUp` on `PickUp`. Minimal subset per AC; the rest lands in FXSW-010.
 - `dealMachine` — parent that spawns one of each child on init, sharing `dealId` via context.
 
-**Decisions:**
+**User-directed decisions:** None — all decisions within doc-pack guidance (`docs/03 §1, §2, §6` + `CLAUDE.md` rule §7 + the backlog AC's explicit TDD spec).
+
+**Agent-directed decisions:**
 - `timings.ts` exports an **object** (`{ ackDelayMs: 250 }`) not `const ackDelayMs = 250`. ES modules make `const` bindings read-only across module boundaries; one of the TDD specs is "overriding `timings.ackDelayMs = 0` makes the transition synchronous", and object property assignment is the only form that satisfies it.
 - Delay is wired via a named `ackDelay` **delay function** (`delays: { ackDelay: () => timings.ackDelayMs }`) rather than a literal `after: { 250: ... }`. XState re-evaluates the function lazily on state entry, so test reassignment takes effect on subsequent transitions without rebuilding the machine.
 - Declared no-op handlers for **all 16 SI events** from `docs/03 §2` on the parent up-front (not just the few used in this slice). Lets callers wire `send({ type: 'Quote' })` etc. now without TS errors; the real RFS↔SI cross-model coordination from `docs/03 §3` lands cleanly in FXSW-010 by replacing the no-ops in place.
@@ -47,9 +58,9 @@ Most recent first.
 - Script `scripts/fetch-reference-mids.ts` — Frankfurter USD-based fetch with a 5s `AbortSignal.timeout`, hard-coded fallback, 0 exit code on either path.
 - `predev` and `prebuild` wired in `package.json` — confirmed both fire (Frankfurter returns 403 in sandbox network, fallback kicks in, file written, exit 0).
 
-**Decisions:**
-- Bake-at-build, not runtime fetch. `04 §10` was emphatic: a prototype demo shouldn't have a runtime network dependency on a third-party FX API. Daily-resolution source data + a random-walk simulator covers the demo value.
-- Frankfurter as primary source (free, USD-based, no key, no signup, ECB-aggregated) with hard-coded values in the script as the fallback. Network failure logs a warning but **never breaks the build**.
+**User-directed decisions:** None — Frankfurter-as-primary, bake-at-build approach, and fallback-on-failure were all locked in by `docs/04 §10`.
+
+**Agent-directed decisions:**
 - Direct-run guard: `import.meta.url === file://${process.argv[1]}` so vitest can `import { main, round, FALLBACK }` from the script without triggering a real fetch + write on import. Exports `main(outPath)` parameterised on output path so tests use `mkdtemp` and don't clobber the real generated file.
 - `referenceMids.json` is **gitignored**, not checked in. It's a build artifact regenerated on every `pnpm dev`/`pnpm build`; checking it in would create noisy daily diffs.
 - `scripts/` added to `tsconfig.app.json` include so `tsc -b` covers the new file (it was outside the existing roots).
@@ -63,11 +74,12 @@ Most recent first.
 - Playwright network retry succeeded — chromium installed cleanly at `/opt/pw-browsers/` (had to re-install for v1.44 after `pnpm install` pulled the bundled version).
 - Created the full `06 §2` folder tree: 65 new placeholder files across `src/components/`, `src/features/{blotter,ticket,notifications,dev-injector}/`, `src/services/{feed,scenarios,suggestion}/`, `src/state/{stores,machines}/`, `src/types/`, `src/lib/`, plus `tests/e2e/{scenarios,notifications}.spec.ts` and `fixtures.ts`.
 
-**Decisions:**
+**User-directed decisions:** None — the architecture tree in `docs/06 §2` is the literal spec.
+
+**Agent-directed decisions:**
 - TS/TSX placeholders use `export {};`; test files (`*.test.ts`) use `it.todo('placeholder')`. Both forms keep typecheck, lint, and vitest green while files wait for real implementations. `it.todo` shows up as a `todo` rather than a failure or a "no tests found" error.
 - Kept `index.html` at the **repo root** (Vite 5 convention) rather than moving it under `public/` as the architecture tree shows. Vite's behavior overrides the documentation imprecision; `public/.gitkeep` lets the directory exist for the spec without breaking the bundler.
 - Existing `tests/e2e/smoke.spec.ts` (from FXSW-001) kept alongside the three e2e files the architecture lists. Smoke-as-canary stays useful.
-- `@/` → `src/` alias was already wired by FXSW-001; the AC's alias-existence check was a no-op.
 - All four gates green: typecheck, lint, test:run (95 pass / 11 todo), test:e2e (smoke).
 
 ---
@@ -78,7 +90,9 @@ Most recent first.
 - Every CSS custom property from `docs/05-ui-ux-spec.md §1` lifted into `src/styles/tokens.css`: backgrounds, borders, text, status colors, AI accent family (Cyan/Violet/Teal), functional colors, typography (Geist + Geist Mono via `@fontsource`), spacing, radii, shadows, easings.
 - Tailwind theme extended with matching aliases so `bg-bg-panel`, `text-text-dim`, `border-border`, `shadow-ai` resolve.
 
-**Decisions:**
+**User-directed decisions:** None — all token values come straight from `docs/05 §1`.
+
+**Agent-directed decisions:**
 - Hex values **duplicated** between `tokens.css` (runtime) and `tailwind.config.ts` (build-time) — the FXSW-002 AC's hex assertion needs an asserted-against source, and Tailwind can't read CSS custom properties at config-evaluation time. The duplication is intentional, not accidental drift.
 - Test approach pivoted from the AC's original "assert computed styles on a rendered probe div" to file-content assertions (49 token cases) plus import-the-config-and-assert-the-shape (45 cases). **jsdom doesn't resolve Tailwind classes or CSS `var()` references in `getComputedStyle`**, so the original AC was untestable as-stated. The pivot preserves the spirit (every documented token has an assertion) without depending on a real browser.
 - Moved `tailwind.config.ts` out of `tsconfig.node.json` into `tsconfig.app.json` so the config-shape test can import it under the app's project boundary.
@@ -95,7 +109,9 @@ Most recent first.
 - Configs landed: project-reference `tsconfig` with `@/` → `src/` alias, Vite with `VITE_BASE_PATH`-driven base, Tailwind 3 + PostCSS + Autoprefixer (tokens hold til FXSW-002), Vitest with jsdom + globals + `testing-library/jest-dom`, Playwright chromium-only single-worker on 4173 preview, ESLint 8 + Prettier-disable + no-warnings policy, Prettier 3.
 - Smoke tests prove the plumbing: `App` is a function (Vite + TS + Vitest pipeline works) and Playwright loads `<body>` (preview + browser launch + assertion works).
 
-**Decisions:**
+**User-directed decisions:** None — stack and pinned versions came directly from `docs/06 §1`.
+
+**Agent-directed decisions:**
 - `VITE_BASE_PATH` env-driven base path baked in from day one so the FXSW-034 GitHub Pages deploy doesn't need a config retrofit.
 - ESLint runs with `--max-warnings 0`. Warnings fail CI; no gradual-decay rot allowed.
 - Playwright pinned to **chromium-only, single-worker**. Multi-browser matrix is out of scope for a prototype; single worker keeps the simulated time-based scenarios deterministic.
@@ -106,71 +122,31 @@ Most recent first.
 ## Phase 0 · Spec pack, backlog, scaffolding (pre-implementation)
 **Commits `4ecba9d`, `ac4b8cd`, `1dc1a1f`**
 
-The phase before any code. Sets up everything the FXSW-001+ tickets
+The phase before any code. Sets up everything FXSW-001+ tickets
 draw on. Not a single ticket — a multi-day grounding pass.
 
-- **Spec pack** written into `docs/00-glossary.md` through
-  `docs/09-suggestion-engine.md`. Industry-standard FX terminology
-  defined, functional spec for tickets + blotters + notifications,
-  trade-state model (RFS + Sales Intervention) with full state
-  tables and Mermaid diagrams, dummy feed spec, UI/UX spec with
-  every design token, tech architecture, scenario pack, test plan,
-  AI Margin Suggestion engine.
-- **Backlog** at `docs/BACKLOG.md` — 34 tickets (FXSW-001 through
-  FXSW-034) across 5 phases. Every ticket has effort estimate (S/M/L),
-  TDD heat-level (🔴 strict / 🟡 component-tests / 🟢 e2e-only / —),
-  dependency list, doc anchors, acceptance criteria, and TDD test
-  list where applicable.
-- **`CLAUDE.md`** — operating instructions auto-loaded each session.
-  Pinned the stack, the conventions, and ten critical rules
-  including "no Caplin in any shipped artifact", the 5-second blotter
-  removal rule, the two-machines-per-deal rule, the AI Suggestion is
-  a deterministic function (not an LLM call), and the write boundary
-  (`src/`, `tests/`, `scripts/`, root config files only — never
-  `wiki/` or `raw/` which belong to a separate Wiki Agent).
+- **Spec pack** written into `docs/00-glossary.md` through `docs/09-suggestion-engine.md`. Industry-standard FX terminology defined, functional spec for tickets + blotters + notifications, trade-state model (RFS + Sales Intervention) with full state tables and Mermaid diagrams, dummy feed spec, UI/UX spec with every design token, tech architecture, scenario pack, test plan, AI Margin Suggestion engine.
+- **Backlog** at `docs/BACKLOG.md` — 34 tickets (FXSW-001 through FXSW-034) across 5 phases. Every ticket has effort estimate (S/M/L), TDD heat-level (🔴 strict / 🟡 component-tests / 🟢 e2e-only / —), dependency list, doc anchors, acceptance criteria, and TDD test list.
+- **`CLAUDE.md`** — operating instructions auto-loaded each session. Pinned the stack, the conventions, and ten critical rules.
 
-**Decisions:**
-- **Grounded in Caplin's public docs** (the canonical FX Sales /
-  Sales Intervention reference) but the build itself **must not
-  mention Caplin** anywhere — UI strings, package metadata,
-  comments, source-map identifiers, README. Industry-standard FX
-  terms (`Quoted`, `PickedUp`, `Executable`, `RFS`, `Sales
-  Intervention`, `Active Deals Blotter`) are fine; the vendor name
-  is the line.
-- Product name decided: **"FX Sales Workstation"**. Repo slug
-  renamed from `fx-sales-workstation` to `fx-sales-intervention`
-  (commit `ac4b8cd`) to match the underlying functional domain.
-  Slug ≠ product name is intentional.
-- **Two trade machines per deal**, not one combined. The Caplin
-  docs are explicit RFS and SI are distinct models running in
-  parallel with documented relationships. Modelling them as a
-  single flat machine collapses the design and would lose the v2
-  path of swapping the dummy feed for a real Caplin StreamLink
-  adapter. Locked in as `CLAUDE.md` rule §7.
-- **`*Sent` states are not skippable.** Real backends have ack
-  latency. Simulated 200-300ms delay on every `PickUpSent`,
-  `QuoteSent`, `WithdrawSent`, `HoldSent`, `RejectSent` — zeroable
-  in tests but always present in dev/demo. UX fidelity decision.
-- **AI Margin Suggestion is a pure deterministic function**, not a
-  real model call. `docs/09-suggestion-engine.md` is the rule book;
-  the in-UI label is "AI Margin Suggestion" / "Suggested Markup".
-  Avoids vendor lock-in, latency, billing, and non-determinism in
-  the demo path.
-- **Reference FX mids baked at build time** (`04 §10`) — not
-  fetched at runtime. No runtime third-party API dependency means
-  no flaky demos. The `prebuild` script (FXSW-004) is the
-  implementation.
-- **Hand-off contract with the Wiki Agent**: phase summaries land
-  in `docs/phase-summaries/FXSW-{phase-last-ticket-id}-summary.md`,
-  **not** in `raw/prs/`, so `CLAUDE.md` rule §10's write boundary
-  stays strict (the implementation agent never writes to `wiki/`
-  or `raw/`). The Wiki Agent runs in a separate Claude Code session
-  and ingests from `docs/phase-summaries/`.
-- **Branch model**: each Claude Code web session gets a fresh
-  branch (`claude/<adjective-noun>-<id>`). No direct main commits;
-  PRs at consolidation points. Session-1 worked on
-  `claude/friendly-keller-OruRa`, session-2 on
-  `claude/vigilant-einstein-Dtads`.
+Phase 0 is where the user-directed-vs-agent-directed split is most
+load-bearing: the design decisions made here are what let later
+tickets stay agent-directed.
+
+**User-directed decisions** (with the options that were surfaced and the choice taken):
+- **Product name vs repo slug.** Options on the table: keep `fx-sales-workstation` as both, or split the slug from the product name. **Chosen:** product name "FX Sales Workstation"; repo slug renamed to `fx-sales-intervention` (commit `ac4b8cd`) to match the underlying functional domain. Slug ≠ product name is intentional.
+- **Caplin mentions in the shipped build.** Options: allow Caplin in code identifiers (the canonical Caplin state names are convenient) vs ban Caplin from all shipped artifacts. **Chosen:** ban — UI strings, package metadata, comments, source-map identifiers, README must not mention Caplin. Industry-standard FX terms (`Quoted`, `PickedUp`, `Executable`, `RFS`, `Sales Intervention`) are fine. Locked in as `CLAUDE.md` critical rule §1.
+- **One trade machine or two.** Options: collapse RFS + SI into one combined flat machine (simpler, smaller), or model them as two parallel machines with documented cross-sends (mirrors Caplin reality, cleaner v2 path). **Chosen:** two machines with a parent `dealMachine` coordinator. Locked in as `CLAUDE.md` rule §7. The Caplin docs being explicit on this was the deciding factor.
+- **AI Margin Suggestion: real LLM call vs deterministic function.** Options: real model call (more impressive demo, latency + non-determinism + cost), or pure deterministic rule engine (predictable, testable, free). **Chosen:** deterministic function. `docs/09-suggestion-engine.md` is the rule book; the in-UI label stays "AI Margin Suggestion" / "Suggested Markup" — the label is real even if the implementation is deterministic. Locked in as `CLAUDE.md` rule §9.
+- **Reference FX rates: runtime fetch vs build-time bake.** Options: live HTTP at app startup (current mids, but flaky), or `prebuild` bake to JSON (offline-safe demos, slightly stale). **Chosen:** build-time bake with a hard-coded fallback. Documented in `docs/04 §10`; implemented as FXSW-004.
+- **Wiki Agent hand-off path.** Options: write to `raw/prs/` (matches the standard Wiki Agent expectation) vs write to `docs/phase-summaries/` (stays inside the implementation agent's write boundary). **Chosen:** `docs/phase-summaries/` so `CLAUDE.md` rule §10's write boundary stays strict — implementation agent never writes to `wiki/` or `raw/`. The Wiki Agent ingestion config has to be told to read from this path instead of the default.
+- **Persistence scope.** Options: none, `sessionStorage`, `localStorage`, IndexedDB. **Chosen:** `sessionStorage` only, and only for two flags (mute toggle + AI-suggestion dismissal). Locked in as `CLAUDE.md` rule §3.
+
+**Agent-directed decisions** (decisions that didn't need a human vote):
+- **`*Sent` states with simulated ack delay** (200-300ms). UX fidelity decision — real backends have ack latency, so the demo should show the same affordance. Configurable via `timings.ts`, zeroable in tests. Locked in as `CLAUDE.md` rule §8.
+- **5-second removal rule for terminal trades** from the Active Blotter. UX decision derived from `docs/02 §Active Blotter`; locked in as `CLAUDE.md` rule §5.
+- **Audio playback unlocked by user gesture**. Browser autoplay policy makes this a forced hand, not a design choice. Locked in as `CLAUDE.md` rule §4.
+- **Per-session branch model**. Each Claude Code web session gets a fresh branch (`claude/<adjective-noun>-<id>`) and PRs at consolidation points. This is the harness default, accepted as-is.
 
 No gates at this stage — no code yet. The spec pack itself is the
 deliverable, and it's the single grounding source FXSW-001+ all
