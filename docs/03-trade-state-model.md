@@ -234,7 +234,8 @@ Playwright tests assert on `data-si-state` (the most informative) and `data-disp
 - `TradeConfirmationHeld` state.
 - The Warning / AcceptWarning sub-flow on the RFS side.
 - The `Submitted` → `Queued` hop (we synthesise `Queued` directly).
-- `Hold` from `Quoted` state (Release after a quote is out) — only `Hold` from `PickedUp` is supported.
+
+`Hold` is supported from both `PickedUp` and `Quoted` (the §4 SI diagram is the canonical source). Releasing from `Quoted` withdraws the live quote on the RFS side as part of returning to `Queued` / `Initial`.
 
 ## 10. Anti-patterns
 
@@ -242,3 +243,7 @@ Playwright tests assert on `data-si-state` (the most informative) and `data-disp
 - **Do not skip** the `*Sent` → `*Ack` transitions even though they could compile away — the simulated delay is part of the UX fidelity.
 - **Do not derive status labels** anywhere except `statusFromMachines.ts`.
 - **Do not mutate** `dealable` directly — it is set as an entry action on the appropriate SI states.
+
+### ESP terminal-state coordination (v1 prototype)
+
+ESP (auto-priced) deals never enter the SI workflow — they have an SI machine sitting in `Initial` for the lifetime of the deal. When the RFS side reaches `TradeConfirmed` on an ESP deal, the parent `dealMachine` raises a synthetic `TradeConfirmed` on the SI machine via a **guarded `Initial → TradeConfirmed` transition** (guard: `ctx.isESP === true`). This keeps the two-machine symmetry — every deal has both machines, both reach a terminal state — and means `statusFromMachines.ts` can derive `DONE` from `(RFS=TradeConfirmed, SI=TradeConfirmed)` without an ESP special case.

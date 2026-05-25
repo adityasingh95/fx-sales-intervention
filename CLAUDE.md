@@ -99,7 +99,9 @@ CI must pass `lint`, `typecheck`, `test:run`, `test:e2e` before merge.
 
 ## Hand-off contract with the Wiki Agent
 
-At the end of each phase, after the E2E gate passes, produce your end-of-phase summary in the format defined by `KICKOFF-PROMPT.md`. Save it to `raw/prs/FXSW-{phase-last-ticket-id}-summary.md` (e.g., `raw/prs/FXSW-013-summary.md`). This is the source of truth the Wiki Agent will ingest. After saving, your phase is done — the Wiki Agent runs in a separate session and the human invokes it.
+At the end of each phase, after the E2E gate passes, produce your end-of-phase summary in the format defined by `KICKOFF-PROMPT.md`. Save it to `docs/phase-summaries/FXSW-{phase-last-ticket-id}-summary.md` (e.g., `docs/phase-summaries/FXSW-013-summary.md`). This is the source of truth the Wiki Agent will ingest. After saving, your phase is done — the Wiki Agent runs in a separate session and the human invokes it.
+
+(Per-project decision recorded in Phase 0: summaries live in `docs/phase-summaries/` rather than `raw/prs/` so rule §10's write boundary stays strict. The Wiki Agent setup must be told to ingest from this path.)
 
 ## Before editing X, read Y
 

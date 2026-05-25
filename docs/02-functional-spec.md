@@ -186,7 +186,7 @@ Five buttons. Visibility gated on the SI machine's current state (see `03-trade-
 | Button | Visible when SI state ∈ | Effect (Caplin event) |
 |---|---|---|
 | **Reject** (`Reject`) | `PickedUp`, `Quoted` | Sends `Reject` → `RejectSent` → `TraderRejected`. Hold-to-confirm. |
-| **Release** (`Hold`) | `PickedUp` | Sends `Hold` → `HoldSent` → back to `Initial` with `Dealable=true`. |
+| **Release** (`Hold`) | `PickedUp`, `Quoted` | Sends `Hold` → `HoldSent` → back to `Initial` with `Dealable=true`. From `Quoted`, the live quote is withdrawn on the RFS side as part of the release. |
 | **Send Stream** (`Quote` in streaming mode) | `PickedUp` (streaming mode) | Sends `Quote` → `QuoteSent` → `Quoted`. Hold-to-confirm. |
 | **Send Quote** (`Quote` in fixed mode) | `PickedUp` (fixed mode) | Sends `Quote` with captured rate → `QuoteSent` → `Quoted`. |
 | **Withdraw** (`Withdraw`) | `Quoted` | Sends `Withdraw` → `WithdrawSent` → back to `PickedUp`. |
