@@ -23,7 +23,7 @@
 | ID | Title | Phase | Effort | TDD | Status |
 |---|---|---|---|---|---|
 | FXSW-001 | Project scaffolding | 1 | M | 🟡 | ◐ |
-| FXSW-002 | Design tokens + Tailwind config | 1 | S | 🟡 | ☐ |
+| FXSW-002 | Design tokens + Tailwind config | 1 | S | 🟡 | ☑ |
 | FXSW-003 | Folder structure | 1 | S | — | ☐ |
 | FXSW-004 | prebuild reference-mids script | 1 | S | 🔴 | ☐ |
 | FXSW-005 | State machine skeletons | 1 | M | 🔴 | ☐ |

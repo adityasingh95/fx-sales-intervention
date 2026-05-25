@@ -1,0 +1,88 @@
+:root {
+  /* Backgrounds */
+  --color-bg-app: #0a0a0f;
+  --color-bg-panel: #111118;
+  --color-bg-panel-2: #16161f;
+  --color-bg-elevated: #1c1c27;
+  --color-bg-row-hover: #1f1f2b;
+  --color-bg-overlay: rgba(6, 6, 10, 0.72);
+  --color-bg-glass: rgba(22, 22, 31, 0.78);
+
+  /* Borders & dividers */
+  --color-border: #23232f;
+  --color-border-strong: #2e2e3d;
+  --color-border-focus: #6366f1;
+
+  /* Text */
+  --color-text: #f1f1f5;
+  --color-text-dim: #a1a1ab;
+  --color-text-mute: #62626f;
+
+  /* Status colors */
+  --color-amber: #fbbf24;
+  --color-blue-soft: #7aa7ff;
+  --color-blue: #3b82f6;
+  --color-teal: #14c4a8;
+  --color-teal-dim: #2e8073;
+  --color-green: #22c55e;
+  --color-red: #ef4444;
+  --color-grey-500: #62626f;
+  --color-grey-700: #3e3e4d;
+
+  /* AI panel — distinct indigo-violet family */
+  --color-ai-accent: #818cf8;
+  --color-ai-accent-2: #a78bfa;
+  --color-ai-bg: rgba(99, 102, 241, 0.08);
+  --color-ai-border: rgba(129, 140, 248, 0.22);
+
+  /* Functional */
+  --color-tick-up: #22c55e;
+  --color-tick-down: #ef4444;
+  --color-focus-ring: #6366f1;
+
+  /* Typography */
+  --font-sans: "Geist", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 18px;
+  --text-xl: 26px;
+  --text-2xl: 32px;
+
+  --line-tight: 1.2;
+  --line-base: 1.45;
+
+  --tracking-tight: -0.01em;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* Shadows & elevation */
+  --shadow-panel: 0 0 0 1px var(--color-border);
+  --shadow-ticket:
+    0 0 0 1px var(--color-border-strong),
+    -16px 0 48px -8px rgba(0, 0, 0, 0.5);
+  --shadow-ai:
+    0 0 0 1px var(--color-ai-border),
+    0 1px 24px -4px rgba(99, 102, 241, 0.12);
+
+  /* Easings */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}

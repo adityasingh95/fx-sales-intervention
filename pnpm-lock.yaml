@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/geist-mono':
+        specifier: 5.0.3
+        version: 5.0.3
+      '@fontsource/geist-sans':
+        specifier: 5.0.3
+        version: 5.0.3
       '@xstate/react':
         specifier: 4.1.1
         version: 4.1.1(@types/react@18.3.2)(react@18.3.1)(xstate@5.13.0)
@@ -388,6 +394,12 @@ packages:
   '@eslint/js@8.57.0':
     resolution: {integrity: sha512-Ys+3g2TaW7gADOJzPt83SJtCDhMjndcDMFVQ/Tj9iA1BfJzFKD9mAUXT3OenpuPHbI6P/myECxRJrofUsDx/5g==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@fontsource/geist-mono@5.0.3':
+    resolution: {integrity: sha512-ekY5FNiK7aMxan/c6lgVQa/rIwQ/AMEJZJWY7768jBrLVdkrCxfEfCe1ePpe7C3JnySy7c9R6HC4Xh4ksfjTaw==}
+
+  '@fontsource/geist-sans@5.0.3':
+    resolution: {integrity: sha512-oGwoSIqNPMvjtCwj1lZaEr47MeiG27XPhypwkF643u1TQduvwbm3V3hYB01JekeaT34SAGP4I1h+WCdRpJkcwA==}
 
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -2680,6 +2692,10 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.0': {}
+
+  '@fontsource/geist-mono@5.0.3': {}
+
+  '@fontsource/geist-sans@5.0.3': {}
 
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
