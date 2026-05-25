@@ -7,7 +7,7 @@ const resetStore = (): void => {
   for (const entry of useDealsStore.getState().deals.values()) {
     entry.actor.stop();
   }
-  useDealsStore.setState({ deals: new Map() });
+  useDealsStore.setState({ deals: new Map(), historic: [] });
 };
 
 describe('wireDealFeedToStore', () => {

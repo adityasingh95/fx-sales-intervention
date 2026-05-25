@@ -20,7 +20,7 @@ const resetStore = (): void => {
   for (const entry of useDealsStore.getState().deals.values()) {
     entry.actor.stop();
   }
-  useDealsStore.setState({ deals: new Map() });
+  useDealsStore.setState({ deals: new Map(), historic: [] });
 };
 
 describe('dealsStore', () => {
@@ -62,14 +62,35 @@ describe('dealsStore', () => {
     expect(useDealsStore.getState().deals.get('d_test')?.siState).toBe('PickedUp');
   });
 
-  it('useActiveDeals returns non-terminal deals; useHistoricDeals returns terminals', () => {
+  it('addDeal lands the entry in the active map, not historic', () => {
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_a' }));
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_b' }));
-    const all = [...useDealsStore.getState().deals.values()];
-    const active = all.filter((e) => !isHistoric(e.siState));
-    const historic = all.filter((e) => isHistoric(e.siState));
-    expect(active.map((e) => e.deal.dealId).sort()).toEqual(['d_a', 'd_b']);
-    expect(historic).toHaveLength(0);
+    const state = useDealsStore.getState();
+    expect([...state.deals.keys()].sort()).toEqual(['d_a', 'd_b']);
+    expect(state.historic).toHaveLength(0);
+  });
+
+  it('a deal driven through TradeConfirmed → Removed migrates to historic with the right outcome', async () => {
+    vi.useFakeTimers();
+    useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_done' }), ['OFF_HOURS']);
+    useDealsStore.getState().forwardEvent('d_done', { type: 'PickUp' });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    useDealsStore.getState().forwardEvent('d_done', { type: 'Quote' });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    useDealsStore.getState().forwardEvent('d_done', { type: 'TradeConfirmed' });
+    // 5-second active window: entry still in deals, still in terminal SI state.
+    expect(useDealsStore.getState().deals.get('d_done')?.siState).toBe('TradeConfirmed');
+    expect(useDealsStore.getState().historic).toHaveLength(0);
+    vi.advanceTimersByTime(timings.removalDelayMs);
+    // queueMicrotask defers the archival; flush microtasks before asserting.
+    await Promise.resolve();
+    expect(useDealsStore.getState().deals.has('d_done')).toBe(false);
+    expect(useDealsStore.getState().historic).toHaveLength(1);
+    const h = useDealsStore.getState().historic[0];
+    expect(h.deal.dealId).toBe('d_done');
+    expect(h.outcome).toBe('Executed');
+    expect(h.finalSiState).toBe('TradeConfirmed');
+    expect(h.rejectionReasons).toEqual(['OFF_HOURS']);
   });
 
   it('addDeal for two deals creates two independent actors', () => {

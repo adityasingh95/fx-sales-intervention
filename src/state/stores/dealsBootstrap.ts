@@ -9,8 +9,10 @@ let unsubscribe: (() => void) | null = null;
 export const wireDealFeedToStore = (): (() => void) => {
   if (unsubscribe) return unsubscribe;
   const off = dealFeed.subscribe((event) => {
-    if (event.type === 'NEW_ESP_DEAL' || event.type === 'NEW_SI_DEAL') {
+    if (event.type === 'NEW_ESP_DEAL') {
       useDealsStore.getState().addDeal(event.deal);
+    } else if (event.type === 'NEW_SI_DEAL') {
+      useDealsStore.getState().addDeal(event.deal, event.rejectionReasons);
     }
   });
   unsubscribe = () => {
