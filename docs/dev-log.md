@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-034 · GitHub Pages deploy workflow (out of order, pulled from Phase 5)
-**Commit pending**
+**Commit `0762c4e`**
 
 - TDD red→green: 3 cases in `tests/unit/vite.config.test.ts` covering `resolveBasePath` — env-set returns env value, undefined returns `/`, empty string returns `/`.
 - `.github/workflows/deploy.yml` matches `docs/06 §7.1.b` verbatim: triggers on push to `main` + `workflow_dispatch`, least-privilege permissions (`contents: read`, `pages: write`, `id-token: write`), pnpm cached, `VITE_BASE_PATH=/fx-sales-intervention/` set on the build step, `actions/upload-pages-artifact` + `actions/deploy-pages` for the deploy.
