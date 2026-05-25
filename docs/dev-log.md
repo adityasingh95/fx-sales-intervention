@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-012 · Active Blotter live + 5s removal + Historic Blotter
-**Commit `_pending_`**
+**Commit `96490b3`**
 
 - TDD red→green: 5 specified `ActiveBlotter.test.tsx` cases (empty-state, two rows render with `data-deal-id`, `data-si-state`/`data-display-status`/`data-dealable` reflect the underlying machine through a PickUp transition, row click calls `uiStore.openTicket`, terminal-state row gets `data-removing="true"` and unmounts after `timings.removalDelayMs`); plus 2 `HistoricBlotter.test.tsx` cases (empty-state + outcome-labelled rows); plus 6 `lib/format.test.ts` cases (`formatTime`, `formatAmount`, `formatRate` for the four pairs at both precisions). The 5-second removal rule is verified via the existing `dealMachine.test.ts` case from FXSW-010 and a new `dealsStore.test.ts` end-to-end case that drives a deal through `TradeConfirmed → Removed` and asserts it archives to `historic` with `outcome: 'Executed'`.
 - **Store restructure.** `dealsStore` now keeps a parallel `historic: HistoricEntry[]` list alongside the live `deals` Map. When the SI machine reaches `Removed`, the subscriber moves the entry from `deals` to `historic` (via `queueMicrotask`, since stopping the actor inside its own subscription callback is unsafe). `useActiveDeals()` returns every entry in `deals` (including the 5-second post-terminal window), `useHistoricDeals()` returns `historic`. The previous `isHistoric`-based filter on `useActiveDeals` was wrong by the spec — terminal rows must stay in Active for 5s, dimmed.
