@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-006 · AppShell + Header + first hardcoded blotter row
-**Commit pending**
+**Commit `31e6762`**
 
 - TDD red→green: 4 specified `App.test.tsx` cases — renders without error, contains "FX Sales Workstation", does **not** contain "Caplin" (CLAUDE.md rule §1 assertion), dev-injector slot visible with `?dev=1` and hidden without.
 - `App.tsx` is now the real workstation shell: 2px gradient top-strip (`from-blue to-ai-accent` per `05 §2`), 56px header with title left + mute icon + session clock right + conditional dev-injector slot, then 55%/45% Active/Historic blotter regions stacked vertically.
