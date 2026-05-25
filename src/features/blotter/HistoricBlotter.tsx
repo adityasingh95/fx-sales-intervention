@@ -47,7 +47,7 @@ function Row({ entry }: { entry: HistoricEntry }) {
         {entry.deal.notional.toLocaleString('en-US')}{' '}
         <span className="text-text-mute">{entry.deal.pair.slice(0, 3)}</span>
       </div>
-      <div className="w-[60px] font-mono text-xs uppercase">{entry.deal.tenor}</div>
+      <div className="w-[60px] pl-2 font-mono text-xs uppercase">{entry.deal.tenor}</div>
       <div className={clsx('flex flex-1 min-w-[160px] items-center', OUTCOME_COLOR[entry.outcome])}>
         {entry.outcome}
       </div>

@@ -32,6 +32,34 @@ Most recent first.
 
 ---
 
+## FXSW-013 · DevInjector + HAPPY_PATH_ESP E2E
+**Commit `_pending_`**
+
+- TDD red→green: full Playwright spec `tests/e2e/happy-path-esp.spec.ts` covering `docs/07-scenario-pack.md` Scenario 1 — inject button click, AUTO row appears within 500ms with the right client/pair/amount, status flips to DONE after 2s (the scripted `CLIENT_ACCEPT`), row leaves Active and lands in Historic with `outcome=Executed` after a further 5s. Assertions hit `data-display-status` and `data-outcome` per the `07 Notes on test fidelity` rules. The test pins `window.__seedFeed = 42` and `window.__zeroAckDelay = true` via `addInitScript` before navigation.
+- `src/features/dev-injector/DevInjector.tsx` real: one `data-testid="inject-{ScenarioId}"` button per scenario from `SCENARIO_IDS` plus a separate `Reset` button. Reset calls `dealFeed.reset()`, stops every live actor, and wipes both `deals` and `historic` in the store. Renders inside the header's `dev-injector-slot` (only when `?dev=1`), replacing the FXSW-006 placeholder chip.
+- **ESP-channel wiring.** `dealsStore.addDeal(deal, reasons, channel)` now takes a `'ESP' | 'SI'` channel (default `'SI'` for backwards compat). For ESP, the store immediately fires a new `AutoPrice` event on the parent dealMachine, which fans `PriceUpdate` to RFS only — RFS goes Queued → Executable, SI stays at `Initial`, derivedStatus reads as `AUTO`. The bootstrap passes the channel from the dealFeed event type.
+- **Bootstrap extended for client events.** `dealsBootstrap` now forwards `CLIENT_ACCEPT` → `forwardEvent(TradeConfirmed)`, `CLIENT_REJECT` / `CLIENT_CANCEL` → `forwardEvent(ClientReject)`. `EXPIRE` is intentionally a no-op for now — no scenario uses it, and RFS's `Expire` event would need parent-level routing that's not in scope.
+- **rfsMachine gains a `Removed` cleanup state** mirroring siMachine's pattern. `TradeConfirmed` / `ClientClosed` / `Expired` each `after: removalDelay → Removed`. The dealsStore RFS subscriber observes `Removed` and runs the same archival path as SI. This is required for the ESP flow (SI never transitions to Removed because it stays at `Initial`) and is fine for SI flows too — the archival call is idempotent.
+- **Shared `archive()` helper** in `dealsStore.addDeal` — both SI and RFS subscribers route through it on `Removed`. Whichever side archives first wins; the second call is a no-op via the `if (!cur) return` guard.
+- **derivedStatus tightened**: `rfsState === 'TradeConfirmed'` alone now resolves to `DONE`, so ESP deals (where SI stays at `Initial`) display correctly. The previous "both must be TradeConfirmed" rule was over-restrictive.
+- **outcomeFromFinalStates broadened**: either machine reaching `TradeConfirmed` resolves to `Executed`. Caught by the failing E2E (it reported `Cancelled` from the fallback branch) on the first run; the fix is one extra `||` clause.
+- **main.tsx zero-ack-delay hook**: reads `window.__zeroAckDelay` at boot and sets `timings.ackDelayMs = 0` if true. `removalDelayMs` is left intact — the 5-second blotter rule is real wall-clock time per `07-scenario-pack.md` notes.
+- **Visual polish**: 2px left-padding on the Tenor cell in both blotters so the SPOT/etc. label doesn't visually butt against the amount column's CCY suffix.
+
+**User-directed decisions:** None — `02 §6`, `07 Scenario 1`, and `08 §3` were prescriptive enough on the dev-injector shape and the E2E assertions.
+
+**Agent-directed decisions:**
+- **DevInjector buttons are flat, not modal.** AC says "Six buttons (one per scenario + Reset session) with `data-testid='inject-{id}'`." The header strip has room for them inline; a fly-out menu / modal would add interaction friction and animation cost for no benefit. Reset gets a distinct red border to signal destructiveness.
+- **Pulled forward an ESP-flow piece (AutoPrice event + rfsMachine RFS-Removed transitions) that wasn't strictly in the FXSW-013 AC** because Scenario 1's "row appears with status AUTO" assertion would otherwise fail. The pull-forward is small and self-contained; both pieces match the spec model in `03 §3 §4` (the Mermaid explicitly shows `[*] → Executable : NEW_ESP_DEAL`). Cleaner here than as a half-fix that satisfies the E2E with hacks.
+- **`AutoPrice` parent event** rather than wiring the dealsStore to talk to RFS directly. Keeps the single-channel-into-the-machine contract (`forwardEvent → parent.send`) intact. The new event is named for what it does (auto-priced bootstrap), not what it forwards (`PriceUpdate`), so the parent's coordination logic stays the source of truth for cross-model sends.
+- **`__zeroAckDelay` zeroes `ackDelayMs` only, not `removalDelayMs`.** The 5-second blotter rule is real wall-clock behaviour the demo + tests rely on per `07 Notes on test fidelity`. Zeroing it would make the test flaky and break the "watch the row dim and disappear" demo beat.
+- **DevInjector reset wipes both `deals` and `historic`** in addition to `dealFeed.reset()`. The store carries historic across `dealFeed.reset()`s (the feed doesn't know about archived deals), so the demo operator clicking Reset would otherwise see stale historic rows. Wiping both gives a true session reset.
+- **One E2E spec for Scenario 1 in this ticket.** The other four scenarios (`OFF_HOURS_INTERVENTION`, `CREDIT_BREACH`, `SIZE_LIMIT_MARGIN_TUNE`, `RELEASE_PATH`) are unblocked at the data + feed level but need the TicketPanel (FXSW-014+) to actually drive `Send Stream` / `Reject` / `Release`. Those E2Es land alongside the panel work.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**183 pass / 4 todo**, unchanged — the E2E spec is in Playwright not Vitest), e2e ✓ (smoke + happy-path-esp, **2 tests in 8.0s**), build ✓, dist/ Caplin-free ✓.
+- **End of Phase 2.** This ticket closes the phase per `docs/BACKLOG.md` ("End of Phase 2 — Wiki Agent trigger"). Per the README hand-off note, the phase summary lives at `docs/phase-summaries/FXSW-013-summary.md` once the human triggers the Wiki Agent — that's separate from this per-ticket dev-log entry and is the source of truth for the Wiki Agent's downstream ingestion.
+
+---
+
 ## FXSW-012 · Active Blotter live + 5s removal + Historic Blotter
 **Commit `96490b3`**
 

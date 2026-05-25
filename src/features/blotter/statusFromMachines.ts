@@ -25,7 +25,11 @@ export const derivedStatus = (
   if (rfsState === 'Expired') return 'EXPIRED';
   if (siState === 'TraderRejected') return 'REJECTED';
   if (siState === 'ClientRejected') return 'DECLINED';
-  if (siState === 'TradeConfirmed' && rfsState === 'TradeConfirmed') return 'DONE';
+  // DONE matches whenever RFS is TradeConfirmed. SI matches it too for
+  // the SI-channel flow; for the ESP-channel flow SI stays at `Initial`
+  // because there's no Sales Intervention involvement, so we shouldn't
+  // require SI to also be TradeConfirmed.
+  if (rfsState === 'TradeConfirmed') return 'DONE';
 
   // *Sent in-flight states next; the trader-facing status reflects the
   // in-flight action regardless of which RFS state the cross-send moved

@@ -2,6 +2,7 @@ import { Volume2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
+import DevInjector from '@/features/dev-injector/DevInjector';
 
 function formatClock(d: Date): string {
   return d.toLocaleTimeString('en-GB', { hour12: false });
@@ -36,11 +37,8 @@ export default function App() {
         </h1>
         <div className="flex items-center gap-4 text-text-dim">
           {dev && (
-            <div
-              data-testid="dev-injector-slot"
-              className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs text-text-dim"
-            >
-              Dev injector
+            <div data-testid="dev-injector-slot">
+              <DevInjector />
             </div>
           )}
           <button

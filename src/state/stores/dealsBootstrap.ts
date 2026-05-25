@@ -9,10 +9,27 @@ let unsubscribe: (() => void) | null = null;
 export const wireDealFeedToStore = (): (() => void) => {
   if (unsubscribe) return unsubscribe;
   const off = dealFeed.subscribe((event) => {
-    if (event.type === 'NEW_ESP_DEAL') {
-      useDealsStore.getState().addDeal(event.deal);
-    } else if (event.type === 'NEW_SI_DEAL') {
-      useDealsStore.getState().addDeal(event.deal, event.rejectionReasons);
+    const store = useDealsStore.getState();
+    switch (event.type) {
+      case 'NEW_ESP_DEAL':
+        store.addDeal(event.deal, [], 'ESP');
+        return;
+      case 'NEW_SI_DEAL':
+        store.addDeal(event.deal, event.rejectionReasons, 'SI');
+        return;
+      case 'CLIENT_ACCEPT':
+        store.forwardEvent(event.dealId, { type: 'TradeConfirmed' });
+        return;
+      case 'CLIENT_REJECT':
+      case 'CLIENT_CANCEL':
+        store.forwardEvent(event.dealId, { type: 'ClientReject' });
+        return;
+      case 'EXPIRE':
+        // Expire is an RFS-side event in docs/03 §1; the dealMachine
+        // parent doesn't currently forward it. Out of scope for FXSW-013
+        // (no scenario in 07-scenario-pack.md uses it). Picked up by a
+        // later ticket if/when needed.
+        return;
     }
   });
   unsubscribe = () => {

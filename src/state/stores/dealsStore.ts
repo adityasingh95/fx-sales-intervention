@@ -3,6 +3,7 @@ import { createActor, type Actor } from 'xstate';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { dealMachine, type DealEvent as ParentDealEvent } from '@/state/machines/dealMachine';
 import type { Deal, RejectionReason } from '@/types/deal';
+import type { DealChannel } from '@/types/scenario';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
 // state graph lands in FXSW-010; the store only needs to know which
@@ -44,7 +45,10 @@ export type HistoricEntry = {
 };
 
 const outcomeFromFinalStates = (siState: string, rfsState: string): HistoricOutcome => {
-  if (siState === 'TradeConfirmed') return 'Executed';
+  // Either machine reaching TradeConfirmed counts as Executed — SI for
+  // the intervention flow, RFS for the ESP auto-priced flow (where SI
+  // stays at `Initial`).
+  if (siState === 'TradeConfirmed' || rfsState === 'TradeConfirmed') return 'Executed';
   if (siState === 'TraderRejected') return 'Rejected by Trader';
   if (siState === 'ClientRejected') return 'Rejected by Client';
   if (rfsState === 'Expired') return 'Expired';
@@ -55,7 +59,11 @@ const outcomeFromFinalStates = (siState: string, rfsState: string): HistoricOutc
 interface DealsState {
   deals: Map<string, DealEntry>;
   historic: HistoricEntry[];
-  addDeal: (deal: Deal, rejectionReasons?: RejectionReason[]) => void;
+  addDeal: (
+    deal: Deal,
+    rejectionReasons?: RejectionReason[],
+    channel?: DealChannel,
+  ) => void;
   removeDeal: (dealId: string) => void;
   forwardEvent: (dealId: string, event: ParentDealEvent) => void;
 }
@@ -76,7 +84,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
   deals: new Map<string, DealEntry>(),
   historic: [],
 
-  addDeal: (deal, rejectionReasons = []) => {
+  addDeal: (deal, rejectionReasons = [], channel = 'SI') => {
     if (get().deals.has(deal.dealId)) return;
 
     const actor = createActor(dealMachine, { input: { dealId: deal.dealId } });
@@ -85,31 +93,35 @@ export const useDealsStore = create<DealsState>((set, get) => ({
     const initialSi = String(ctx.si.getSnapshot().value);
     const initialRfs = String(ctx.rfs.getSnapshot().value);
 
+    // Shared archival path — invoked from either child subscriber when
+    // it transitions to its `Removed` cleanup state. Idempotent via the
+    // `if (!cur) return` guard: whichever side reaches Removed first
+    // archives; the second call is a no-op.
+    const archive = (): void => {
+      queueMicrotask(() => {
+        const cur = useDealsStore.getState().deals.get(deal.dealId);
+        if (!cur) return;
+        const historicEntry: HistoricEntry = {
+          deal: cur.deal,
+          rejectionReasons: cur.rejectionReasons,
+          finalSiState: cur.siState,
+          finalRfsState: cur.rfsState,
+          outcome: outcomeFromFinalStates(cur.siState, cur.rfsState),
+          archivedAt: Date.now(),
+        };
+        cur.actor.stop();
+        set((state) => {
+          const next = new Map(state.deals);
+          next.delete(deal.dealId);
+          return { deals: next, historic: [historicEntry, ...state.historic] };
+        });
+      });
+    };
+
     ctx.si.subscribe((snap) => {
       const stateName = String(snap.value);
       if (stateName === 'Removed') {
-        // The 5-second blotter rule has elapsed inside siMachine. Move
-        // the entry into the historic list, then drop the live entry +
-        // stop the actor. queueMicrotask so we don't stop the actor
-        // from inside its own subscription callback.
-        queueMicrotask(() => {
-          const cur = useDealsStore.getState().deals.get(deal.dealId);
-          if (!cur) return;
-          const historicEntry: HistoricEntry = {
-            deal: cur.deal,
-            rejectionReasons: cur.rejectionReasons,
-            finalSiState: cur.siState,
-            finalRfsState: cur.rfsState,
-            outcome: outcomeFromFinalStates(cur.siState, cur.rfsState),
-            archivedAt: Date.now(),
-          };
-          cur.actor.stop();
-          set((state) => {
-            const next = new Map(state.deals);
-            next.delete(deal.dealId);
-            return { deals: next, historic: [historicEntry, ...state.historic] };
-          });
-        });
+        archive();
         return;
       }
       set((state) => {
@@ -127,6 +139,10 @@ export const useDealsStore = create<DealsState>((set, get) => ({
 
     ctx.rfs.subscribe((snap) => {
       const stateName = String(snap.value);
+      if (stateName === 'Removed') {
+        archive();
+        return;
+      }
       set((state) => {
         const cur = state.deals.get(deal.dealId);
         if (!cur || cur.rfsState === stateName) return state;
@@ -146,6 +162,14 @@ export const useDealsStore = create<DealsState>((set, get) => ({
       });
       return { deals: next };
     });
+
+    // ESP deals are auto-priced — push RFS straight to Executable so the
+    // display label is AUTO (per docs/03 §6 + §4 Mermaid). SI stays at
+    // Initial. The subscriber catches the rfsState transition and
+    // updates the entry synchronously.
+    if (channel === 'ESP') {
+      actor.send({ type: 'AutoPrice' });
+    }
   },
 
   removeDeal: (dealId) => {

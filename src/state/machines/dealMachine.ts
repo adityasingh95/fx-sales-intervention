@@ -14,7 +14,13 @@ export type DealEvent =
   | { type: 'Hold' }
   | { type: 'Reject' }
   | { type: 'ClientReject' }
-  | { type: 'TradeConfirmed' };
+  | { type: 'TradeConfirmed' }
+  // ESP-only bootstrap: fans `PriceUpdate` to RFS so the deal lands in
+  // `Executable` immediately, without touching SI (which stays at
+  // `Initial` for the AUTO display label). Sent by dealsStore.addDeal
+  // when the channel is 'ESP'. See docs/03 §4 Mermaid + dev-log
+  // FXSW-013.
+  | { type: 'AutoPrice' };
 
 export type DealEventType = DealEvent['type'];
 
@@ -92,6 +98,9 @@ export const dealMachine = setup({
             sendTo(({ context }) => context.si, { type: 'TradeConfirmed' }),
             sendTo(({ context }) => context.rfs, { type: 'TradeConfirmed' }),
           ],
+        },
+        AutoPrice: {
+          actions: [sendTo(({ context }) => context.rfs, { type: 'PriceUpdate' })],
         },
       },
     },

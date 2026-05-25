@@ -1,4 +1,5 @@
 import { setup, type SnapshotFrom } from 'xstate';
+import { timings } from './timings';
 
 export interface RfsContext {
   dealId: string;
@@ -27,6 +28,9 @@ export const rfsMachine = setup({
     events: {} as RfsEvent,
     input: {} as RfsInput,
   },
+  delays: {
+    removalDelay: () => timings.removalDelayMs,
+  },
 }).createMachine({
   id: 'rfs',
   initial: 'Queued',
@@ -35,6 +39,12 @@ export const rfsMachine = setup({
     Queued: {
       on: {
         PickUp: 'PickedUp',
+        // ESP auto-priced path per docs/03 §4: NEW_ESP_DEAL deals enter
+        // Queued and are immediately advanced to Executable by the
+        // dealMachine's `AutoPrice` action. The transition is here (not
+        // an `always` guard on initial state) so that SI-channel deals
+        // never accidentally trip it.
+        PriceUpdate: 'Executable',
         Expire: 'Expired',
       },
     },
@@ -55,12 +65,20 @@ export const rfsMachine = setup({
       },
     },
     TradeConfirmed: {
-      type: 'final',
+      after: { removalDelay: 'Removed' },
     },
     ClientClosed: {
-      type: 'final',
+      after: { removalDelay: 'Removed' },
     },
     Expired: {
+      after: { removalDelay: 'Removed' },
+    },
+    // Hidden cleanup state — mirrors the siMachine pattern. The dealsStore
+    // observes the transition and archives the deal. Needed at the RFS
+    // level too so ESP-channel deals (which never advance the SI machine
+    // past `Initial`) still get archived from the active blotter after
+    // the 5-second rule elapses.
+    Removed: {
       type: 'final',
     },
   },

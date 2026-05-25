@@ -79,7 +79,7 @@ function Row({ entry }: { entry: DealEntry }) {
       <div className="w-[120px] text-right">
         <AmountCell notional={entry.deal.notional} pair={entry.deal.pair} />
       </div>
-      <div className="w-[60px] font-mono text-xs uppercase text-text-dim">
+      <div className="w-[60px] pl-2 font-mono text-xs uppercase text-text-dim">
         {entry.deal.tenor}
       </div>
       <div className="w-[120px]">
