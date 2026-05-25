@@ -239,7 +239,7 @@ See `03-trade-state-model.md` for the full state graph and the canonical RFS↔S
 The architecture was chosen with static hosting in mind, so GitHub Pages is a first-class target. The deployed demo URL is:
 
 ```
-https://<github-username>.github.io/fx-sales-workstation/?dev=1
+https://<github-username>.github.io/fx-sales-intervention/?dev=1
 ```
 
 The `?dev=1` keeps the dev injector visible — turning the live URL itself into a one-click demo artifact for screenshares, links in conversations, and async sharing.
@@ -290,7 +290,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
-      - run: VITE_BASE_PATH=/fx-sales-workstation/ pnpm build
+      - run: VITE_BASE_PATH=/fx-sales-intervention/ pnpm build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }

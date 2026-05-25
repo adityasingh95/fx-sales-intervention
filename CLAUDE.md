@@ -4,7 +4,7 @@ Operational instructions for Claude Code. Auto-loaded at every session start. Ke
 
 ## What this is
 
-A frontend prototype of a **sales-trader workstation for FX manual pricing intervention**. Product name: **FX Sales Workstation** (repo: `fx-sales-workstation`). Single-page React app, in-memory state, simulated pricing feed, no backend.
+A frontend prototype of a **sales-trader workstation for FX manual pricing intervention**. Product name: **FX Sales Workstation** (repo: `fx-sales-intervention`). Single-page React app, in-memory state, simulated pricing feed, no backend.
 
 **The build must not reference Caplin anywhere.** No "Caplin" in UI strings, package metadata, comments, the deployed README, code identifiers, or any user-visible text. The internal spec docs under `/docs` reference Caplin URLs for research grounding only — those are not shipped with the build. If anything in the final bundle (including source maps) mentions Caplin, that is a defect.
 

@@ -745,7 +745,7 @@ Effort key: S ≈ ≤1h, M ≈ 1–3h, L ≈ 3–6h.
 - `vite.config.ts` reads `base` from `process.env.VITE_BASE_PATH || '/'`.
 - `.github/workflows/deploy.yml` exists per `06 §7.1.b`, triggers on push to `main` and `workflow_dispatch`.
 - Permissions block grants `pages: write` and `id-token: write` only (least privilege).
-- `VITE_BASE_PATH` set to `/fx-sales-workstation/` in the build step (or whatever the actual repo name is).
+- `VITE_BASE_PATH` set to `/fx-sales-intervention/` in the build step.
 - Repo Settings → Pages → Source: GitHub Actions (manual one-time setup; document in README).
 - First deploy successful; live URL accessible.
 - README updated with the live demo URL.
