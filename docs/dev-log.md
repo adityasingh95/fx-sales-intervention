@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-011 · statusFromMachines derivation
-**Commit `_pending_`**
+**Commit `0abbba6`**
 
 - TDD red→green: 13 `it.each` cases covering every row of the `docs/03 §6` mapping table (12 documented rows + an extra `RejectSent from Quoted` row, since the spec calls out `PickedUp/Executable` as the two possible RFS states underneath that label).
 - `src/features/blotter/statusFromMachines.ts` exports `DisplayStatus` (the closed union of the 12 labels) and `derivedStatus(rfsState, siState, dealable): DisplayStatus`. Predicate order is **terminals → in-flight `*Sent` states → live (RFS, SI) tuples → fallback**, so REJECTED/DECLINED/DONE/EXPIRED override whatever the partner machine is doing during the 5-second blotter-removal window.
