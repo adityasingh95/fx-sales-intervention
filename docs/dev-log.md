@@ -32,6 +32,27 @@ Most recent first.
 
 ---
 
+## FXSW-034 · GitHub Pages deploy workflow (out of order, pulled from Phase 5)
+**Commit pending**
+
+- TDD red→green: 3 cases in `tests/unit/vite.config.test.ts` covering `resolveBasePath` — env-set returns env value, undefined returns `/`, empty string returns `/`.
+- `.github/workflows/deploy.yml` matches `docs/06 §7.1.b` verbatim: triggers on push to `main` + `workflow_dispatch`, least-privilege permissions (`contents: read`, `pages: write`, `id-token: write`), pnpm cached, `VITE_BASE_PATH=/fx-sales-intervention/` set on the build step, `actions/upload-pages-artifact` + `actions/deploy-pages` for the deploy.
+- `vite.config.ts` reads base via a new `scripts/resolveBasePath.ts` helper (extracted so vitest can import it under the app tsconfig without dragging `vite + esbuild + plugin-react` through jsdom).
+- Verified locally: `VITE_BASE_PATH=/fx-sales-intervention/ pnpm build` produces `dist/index.html` with asset URLs correctly prefixed (`/fx-sales-intervention/assets/index-*.js`). Built bundle stays Caplin-free.
+- Minimal `README.md` added at the repo root: project description, live demo URL placeholder pointing at `https://adityasingh95.github.io/fx-sales-intervention/?dev=1`, stack list, commands table, doc index, deploy note. FXSW-033 will polish this into the full shipped README later.
+
+**User-directed decisions:**
+- **Should the Pages deploy be wired up now (out of order) or wait for Phase 5?** Options offered: (a) skip ahead to FXSW-034 now to get the prototype on Pages from this branch, (b) commit a built `dist/` folder as a quick hack, (c) stay on plan and do FXSW-034 when Phase 5 lands. **Chosen:** (a). User had already flipped GitHub Pages on against this feature branch and wanted the prototype visible immediately; pulling the proper Actions workflow forward beats the quick-hack dist-commit path, and the dev-log just notes the phase-order skip rather than rewriting the backlog.
+
+**Agent-directed decisions:**
+- Followed the architecture spec's `branches: [main]` trigger exactly rather than adding the current feature branch. The trigger stays clean and `workflow_dispatch` lets the user manually deploy from any branch via the Actions UI for now. When the work merges to main later, auto-deploy kicks in. Adding `claude/vigilant-einstein-Dtads` to the trigger as a temporary entry would be debt to clean up later.
+- Extracted `resolveBasePath` to `scripts/resolveBasePath.ts` rather than testing it via `vi.resetModules()` + dynamic re-import of `vite.config.ts`. The dynamic-import path hit an esbuild-in-jsdom invariant error (vite-plugin-react ships native bindings that don't survive jsdom's TextEncoder shim) and would have needed `// @vitest-environment node` per file. The helper-extraction approach is more testable, doesn't require an env override, and keeps the helper available to other tooling later.
+- pnpm action pinned to `version: 10` to match the repo's `packageManager: pnpm@10.33.0` rather than the spec doc's `version: 9`. Spec doc was written against an older pnpm pin; the workflow has to match what's actually in `package.json` or `install --frozen-lockfile` fails.
+- README is intentionally minimal — FXSW-033 owns the polished shipped README. This commit puts in just enough that the live URL is discoverable from the repo root.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (113 pass / 8 todo), build with prod base path ✓, dist/ Caplin-free ✓. The workflow itself runs on GitHub, not locally — first execution is the human's responsibility (see next-step note in commit message).
+
+---
+
 ## FXSW-006 · AppShell + Header + first hardcoded blotter row
 **Commit `31e6762`**
 
