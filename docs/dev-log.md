@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-008 · DealFeed + scenario player
-**Commit `_pending_`**
+**Commit `9d979ba`**
 
 - TDD red→green: 4 specified `dealFeed.test.ts` cases (subscribe round-trips events, `inject('HAPPY_PATH_ESP')` emits `NEW_ESP_DEAL` synchronously and schedules `CLIENT_ACCEPT` at t+2000, `inject('OFF_HOURS_INTERVENTION')` emits `NEW_SI_DEAL` and gates `CLIENT_ACCEPT` on the SI machine reaching `Quoted`, `reset()` cancels both time-gated and state-gated pending events) plus 6 `definitions.test.ts` cases that round-trip every scenario's client/account/pair/side/notional/reasons against `07-scenario-pack.md`, plus 2 direct `player.test.ts` sanity checks that exercise the injectable `generateDealId` / `now` / `emit` seams.
 - `src/types/deal.ts` and `src/types/scenario.ts` now real: `Deal`, `Side`, `Tenor`, `RejectionReason`, `ScenarioId`, `SCENARIO_IDS`, `DealChannel`, `FollowUpEvent`, `FollowUpTrigger`, `ScenarioFollowUp`, `Scenario`. Closed unions throughout; `SCENARIO_IDS` mirrors `ScenarioId` with `as const satisfies readonly ScenarioId[]` so the two stay locked at compile time.
