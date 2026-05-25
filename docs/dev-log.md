@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## Mobile/responsive layout (out-of-scope, user-requested)
-**Commit `_pending_`**
+**Commit `e5195a7`**
 
 - The PRD (`docs/01-prd.md §4`) explicitly puts mobile/responsive design out of scope: "Desktop only, ≥1440px wide." During the FXSW-013 demo the user opened the live URL on mobile, couldn't reach the inject buttons (header overflowed the viewport), and asked for proper responsive support. This commit delivers it as a spec amendment.
 - Header (`App.tsx`): drops `justify-between`, uses `flex + gap`, gives the dev-injector slot `min-w-0 flex-1 overflow-x-auto` so the inject buttons scroll horizontally inside the header on narrow screens. Title font drops to `text-sm` below the `sm:` breakpoint, clock to `text-xs`. Right-side group (mute + clock) gets `ml-auto shrink-0` so it always stays on screen.
