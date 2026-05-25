@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-007 · PricingFeed with seeded RNG
-**Commit `_pending_`**
+**Commit `d66d885`**
 
 - TDD red→green: all 6 specified `pricingFeed.test.ts` cases — first subscriber receives a tick within one tick of `start()`, two subscribers to the same pair both receive identical ticks, unsubscribe stops one callback without affecting others, seed-42 produces a recorded EURUSD mid sequence `[1.1715, 1.1714, 1.1714, 1.1714, 1.1714]`, `stop()` halts emissions for the original subscriber even across a re-`start()`, and `getLatest(pair)` returns null until the first tick then the latest cached tick.
 - `pricingFeed.ts` is a module-scoped singleton conforming to the `PricingFeed` interface from `04 §3.4`. Mulberry32 PRNG + Box-Muller normal sampling drive the random walk; per-pair `sigmaPips` / `spreadPips` / `pipSize` / display `precision` live in a `CONFIG: Record<Pair, PairConfig>` table populated from `04 §2` and `04 §3.1`. Tick interval is 300ms (`04 §3.2`), mean reversion is 10% pull per tick toward `referenceMids.json` anchors (`04 §3.1`).
