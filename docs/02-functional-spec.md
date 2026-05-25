@@ -4,7 +4,7 @@ Detailed behavior of every screen, panel, and interaction. Where this doc refere
 
 ## 1. Layout
 
-The screen is a fixed full-window dark workstation, minimum width 1440px. The vertical division (top-to-bottom):
+The screen is a full-window dark workstation. Layout is optimised for desktop (≥1440px) where every column fits without scroll; below that, the header's dev-injector strip and each blotter scroll horizontally as a unit so the prototype stays usable on tablet and mobile viewports (see `01-prd.md §4` amendment + `05-ui-ux-spec.md §9`). The vertical division (top-to-bottom):
 
 1. **Header bar** (56px) — app title "FX Sales Workstation", mute toggle, dev injector trigger (when `?dev=1`), session clock.
 2. **Active Deals Blotter** (flexes to fill ~55% of remaining height) — primary work area.

@@ -689,7 +689,7 @@ Effort key: S ≈ ≤1h, M ≈ 1–3h, L ≈ 3–6h.
 - Hover states present on all interactive surfaces.
 - Focus rings visible (Tab through and check).
 - No console errors anywhere.
-- Below 1440px width, the "resize your window" notice renders.
+- Below 1440px width, the header inject-button strip and each blotter scroll horizontally as a unit (no "resize your window" notice — that notice was dropped by the responsive amendment; see `dev-log.md` "Mobile/responsive layout" + `05-ui-ux-spec.md §9`).
 
 **No automated tests.** Captured in a polish-pass commit.
 
