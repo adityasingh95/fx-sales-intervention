@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-010 · dealMachine cross-model coordination
-**Commit `_pending_`**
+**Commit `0e04da3`**
 
 - TDD red→green: 10 specified `dealMachine.test.ts` cases — context-and-spawn shape, each of the cross-model coordinations (`PickUp` / `Hold` / `Quote` / `Withdraw` / `Reject from PickedUp` / `Reject from Quoted` / `ClientReject in Quoted` / `TradeConfirmed`), the 5-second `removeFromActive` rule across all three terminal SI states, and the "terminal SI states reject all subsequent events" invariant. All run under `vi.useFakeTimers()` so the 250ms ack delays and 5000ms removal delay are instant under `vi.advanceTimersByTime()`.
 - **siMachine** now implements every state in `docs/03 §2` (the v1 subset): `Initial`, `PickUpSent`, `PickedUp`, `QuoteSent`, `Quoted`, `WithdrawSent`, `HoldSent`, `RejectSent`, `TraderRejected`, `ClientRejected`, `TradeConfirmed`, plus a hidden `Removed` final state that the terminals reach via `after: removalDelay`. External events are the seven trader-driven ones (`PickUp`, `Quote`, `Withdraw`, `Hold`, `Reject`, `ClientReject`, `TradeConfirmed`); `*Ack` events are modelled as `after` transitions per FXSW-005's convention.
