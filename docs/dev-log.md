@@ -32,6 +32,29 @@ Most recent first.
 
 ---
 
+## FXSW-006 · AppShell + Header + first hardcoded blotter row
+**Commit pending**
+
+- TDD red→green: 4 specified `App.test.tsx` cases — renders without error, contains "FX Sales Workstation", does **not** contain "Caplin" (CLAUDE.md rule §1 assertion), dev-injector slot visible with `?dev=1` and hidden without.
+- `App.tsx` is now the real workstation shell: 2px gradient top-strip (`from-blue to-ai-accent` per `05 §2`), 56px header with title left + mute icon + session clock right + conditional dev-injector slot, then 55%/45% Active/Historic blotter regions stacked vertically.
+- `useSessionClock` ticks `HH:mm:ss` every second via `setInterval`; cleared on unmount. `isDevMode()` reads `URLSearchParams(window.location.search).has('dev')` on every render so tests can flip URL via `window.history.replaceState`.
+- `ActiveBlotter` renders the spec's column header row plus one hardcoded "INTERVENE" demo row that exercises every visible token: status pill (`amber`), mono `tabular-nums` time + amount + rate, side-coloured `BUY` (green), two `Chip`s in Reasons. Amber 4px left-edge bar matches `02 §Row states` for the `INTERVENE` label.
+- `HistoricBlotter` shows "No historic deals yet." centred in `text-text-mute`.
+- Minimal real implementations for `Pill` (7-color variants keyed to the status palette) and `Chip` (border + elevated bg) — both shared components per `05 §3.1`.
+- Paranoia check: `grep -ri caplin dist/` after `pnpm build` returns no matches. The Caplin-free guarantee from CLAUDE.md rule §1 holds on the built bundle, not just the source.
+
+**User-directed decisions:** None — `02 §1` + `05 §2` were prescriptive enough. The only genuinely open inputs were the hardcoded row's demo content (client name, amount, etc.) and the empty-state wording, neither of which rises to ambiguity needing human input — they get replaced by live data in FXSW-012 anyway.
+
+**Agent-directed decisions:**
+- Did **not** introduce AG-Grid yet. AC says "one hardcoded row exercising every token", and `docs/06 §2` reserves the AG-Grid integration for the live-blotter ticket FXSW-012. A plain flex-row table is enough to validate the token palette in a real layout without dragging the grid library's bundle weight + setup into this ticket.
+- Implemented `Pill` and `Chip` as real shared components rather than inline JSX in `ActiveBlotter`. They're listed in the `05 §3.1` shared inventory, FXSW-012 and the ticket panels will need them, and the alternative (inline JSX now, extract later) creates a refactor debt for zero immediate benefit.
+- `Pill` API takes a `color` prop with a closed `PillColor` union (`amber | blue | teal | green | red | grey | ai`) rather than accepting an arbitrary color token name. Closed unions give consumers exhaustive checking and prevent typo-driven runtime mismatches.
+- `?dev=1` detection reads `URLSearchParams` on every render (not memoised, not module-scoped). Cheap, and means tests can swap the URL via `window.history.replaceState` without rebuilding the component tree. The trade-off (a few microseconds per render) is irrelevant at this scale.
+- Mute icon is a placeholder `<button>` with `aria-label` but no wired-up state — actual mute behaviour lands in FXSW-029 (audio chime + settingsStore). Keeping the affordance present from FXSW-006 means later tickets only need to wire state, not add the element.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (110 pass / 8 todo), build ✓, e2e ✓ (smoke). Built bundle `caplin`-free.
+
+---
+
 ## FXSW-005 · State machine skeletons
 **Commit `49bde9a`**
 
