@@ -32,6 +32,30 @@ Most recent first.
 
 ---
 
+## FXSW-008 · DealFeed + scenario player
+**Commit `_pending_`**
+
+- TDD red→green: 4 specified `dealFeed.test.ts` cases (subscribe round-trips events, `inject('HAPPY_PATH_ESP')` emits `NEW_ESP_DEAL` synchronously and schedules `CLIENT_ACCEPT` at t+2000, `inject('OFF_HOURS_INTERVENTION')` emits `NEW_SI_DEAL` and gates `CLIENT_ACCEPT` on the SI machine reaching `Quoted`, `reset()` cancels both time-gated and state-gated pending events) plus 6 `definitions.test.ts` cases that round-trip every scenario's client/account/pair/side/notional/reasons against `07-scenario-pack.md`, plus 2 direct `player.test.ts` sanity checks that exercise the injectable `generateDealId` / `now` / `emit` seams.
+- `src/types/deal.ts` and `src/types/scenario.ts` now real: `Deal`, `Side`, `Tenor`, `RejectionReason`, `ScenarioId`, `SCENARIO_IDS`, `DealChannel`, `FollowUpEvent`, `FollowUpTrigger`, `ScenarioFollowUp`, `Scenario`. Closed unions throughout; `SCENARIO_IDS` mirrors `ScenarioId` with `as const satisfies readonly ScenarioId[]` so the two stay locked at compile time.
+- `src/services/feed/types.ts` gets `DealEvent` (the discriminated union from `04 §4.2`) and a `DealFeed` interface that extends the `04 §4.4` sketch with one bridge method: `notifyDealState(dealId, siState)`. Rationale below.
+- `src/services/scenarios/definitions.ts` registers all five scenarios (`HAPPY_PATH_ESP`, `OFF_HOURS_INTERVENTION`, `CREDIT_BREACH`, `SIZE_LIMIT_MARGIN_TUNE`, `RELEASE_PATH`) with verbatim data from `07-scenario-pack.md`. Follow-ups use `{ kind: 'delay', ms }` for time-gated firings and `{ kind: 'after-si-state', state, delayMs }` for state-gated firings.
+- `src/services/scenarios/player.ts` exports a `createScenarioPlayer({ emit, now?, generateDealId? })` factory. Time-gated follow-ups use `setTimeout`; state-gated follow-ups register a `Gate` and wait for `notifyDealState(dealId, state)` to schedule the post-delay. `reset()` clears both pending timers and unarmed gates.
+- `src/services/feed/dealFeed.ts` is a thin singleton that fans `DealEvent`s out to subscribers and delegates `inject` / `reset` / `notifyDealState` to one internal player.
+
+**User-directed decisions:** None — `04 §4–5` and `07-scenario-pack.md` were prescriptive enough on every field. The only open implementation seams (where to put domain types, how to expose the SI-state gate to the deals store) didn't rise to genuine ambiguity.
+
+**Agent-directed decisions:**
+- **Extended the `DealFeed` interface with `notifyDealState(dealId, siState)`.** `04 §6` says "the DealFeed listens to deal status changes via the deal store and triggers the queued event when the precondition state is reached" — that requires a state-injection seam. The `04 §4.4` interface sketch doesn't include one. Two designs were possible: (a) the deals store imports a player module directly and calls a player API, or (b) all bridge traffic goes through `dealFeed` so the deals store has one coupling target. Picked (b): one surface, one obvious wiring point in FXSW-009, and the doc comment on the interface flags why the method is there. Documented with a comment on the interface itself so the next reader sees the rationale at the type definition.
+- **Player as a factory + injectable seams**, not a second module-scoped singleton. The factory takes `emit`, `now`, and `generateDealId` so tests can pin the dealId (`d_test1`, `d_test2`) and the `createdAt` timestamp without monkey-patching globals. The dealFeed instantiates one player at module load with `emit` wired to the fan-out — that's the only singleton anyone calls from app code.
+- **Inline 6-char ID generator** rather than adding `nanoid` to `package.json`. The spec's `'d_' + nanoid(6)` is illustrative; the prototype only needs in-memory uniqueness with no security or sort-order guarantees, so a `Math.random()`-backed alphanumeric is sufficient and dep-free.
+- **State-gate uses the SI state name as a string**, not a closed union. The full SI state set lands in FXSW-010 (`PickUpSent`, `PickedUp`, `QuoteSent`, `Quoted`, `WithdrawSent`, `HoldSent`, `RejectSent`, `TraderRejected`, `ClientRejected`, `TradeConfirmed`). Tying the gate to a not-yet-complete enum would create churn. The trade-off is no typo protection on the gate name; the `definitions.test.ts` round-trip is the practical guard. When FXSW-010 lands the full enum, the gate type can tighten in a 1-line change.
+- **Default `defaultMarginPips: 3`** across every scenario (`04 §4.3` says "typically 3"). The variation is in trader behavior at the ticket (FXSW-021+), not the initial deal payload.
+- **`Deal.pair` typed as the closed `Pair` union** from `src/services/feed/types.ts`, not `string`. Same rationale as the FXSW-007 `Pair` decision — typo protection at the call site, single source of truth for the four-pair set, the spec's looser `string` was a typing-convenience artifact.
+- **No `inject()` idempotency guard beyond per-deal one-shot timers.** AC reads "no double-firing if called twice mid-scenario for the same deal." Each `inject()` generates a fresh `dealId`, so two inject calls produce two independent deals with independent follow-up timers. Same-deal double-firing is structurally prevented by the one-shot timer model — when a `setTimeout` callback runs it removes itself from the active set. No additional guard added.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**131 pass / 5 todo**, up from 119 / 7 — 12 new tests, two `it.todo` placeholders retired), e2e ✓ (smoke), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-007 · PricingFeed with seeded RNG
 **Commit `d66d885`**
 
