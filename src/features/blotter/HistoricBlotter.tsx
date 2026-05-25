@@ -60,24 +60,28 @@ export function HistoricBlotter() {
   const visible = all.slice(0, HISTORIC_CAP);
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
+      <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
         <span className="mr-3 font-sans">Historic Deals</span>
       </div>
-      <div className="flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
-        {columns.map((col) => (
-          <div key={col.key} className={col.width}>
-            {col.label}
+      <div className="flex-1 overflow-auto">
+        <div className="min-w-[920px]">
+          <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
+            {columns.map((col) => (
+              <div key={col.key} className={col.width}>
+                {col.label}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="flex-1 overflow-auto" data-testid="historic-blotter-body">
-        {visible.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-4 py-8 text-sm text-text-mute">
-            No historic deals yet.
+          <div data-testid="historic-blotter-body">
+            {visible.length === 0 ? (
+              <div className="flex h-32 items-center justify-center px-4 py-8 text-sm text-text-mute">
+                No historic deals yet.
+              </div>
+            ) : (
+              visible.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
+            )}
           </div>
-        ) : (
-          visible.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
-        )}
+        </div>
       </div>
     </div>
   );

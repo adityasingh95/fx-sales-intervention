@@ -15,7 +15,7 @@ const LABEL: Record<ScenarioId, string> = {
 };
 
 function injectButtonClasses(): string {
-  return 'rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text';
+  return 'shrink-0 whitespace-nowrap rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text';
 }
 
 export default function DevInjector() {
@@ -31,9 +31,9 @@ export default function DevInjector() {
   return (
     <div
       data-testid="dev-injector"
-      className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1"
+      className="flex w-max items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1"
     >
-      <span className="mr-1 text-[10px] font-medium uppercase tracking-tight text-text-mute">
+      <span className="mr-1 shrink-0 text-[10px] font-medium uppercase tracking-tight text-text-mute">
         Dev
       </span>
       {SCENARIO_IDS.map((id) => (

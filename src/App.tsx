@@ -31,16 +31,19 @@ export default function App() {
         aria-hidden
         className="h-[2px] bg-gradient-to-r from-blue to-ai-accent"
       />
-      <header className="flex h-14 items-center justify-between border-b border-border bg-bg-panel px-4">
-        <h1 className="font-sans text-md font-medium tracking-tight text-text">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-bg-panel px-3 sm:px-4">
+        <h1 className="shrink-0 whitespace-nowrap font-sans text-sm font-medium tracking-tight text-text sm:text-md">
           FX Sales Workstation
         </h1>
-        <div className="flex items-center gap-4 text-text-dim">
-          {dev && (
-            <div data-testid="dev-injector-slot">
-              <DevInjector />
-            </div>
-          )}
+        {dev && (
+          <div
+            data-testid="dev-injector-slot"
+            className="min-w-0 flex-1 overflow-x-auto"
+          >
+            <DevInjector />
+          </div>
+        )}
+        <div className="ml-auto flex shrink-0 items-center gap-3 text-text-dim sm:gap-4">
           <button
             type="button"
             aria-label="Toggle mute"
@@ -50,7 +53,7 @@ export default function App() {
           </button>
           <time
             aria-label="Session clock"
-            className="font-mono text-sm tabular-nums text-text-dim"
+            className="font-mono text-xs tabular-nums text-text-dim sm:text-sm"
           >
             {clock}
           </time>
