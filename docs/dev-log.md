@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-032 · CI workflow
-**Commit `TBD`**
+**Commit `d1ed41a`**
 
 - `.github/workflows/ci.yml` per `docs/08 §6` — checkout → pnpm setup (v10 to match the existing `packageManager` field + the deploy workflow) → Node 20 with pnpm cache → install `--frozen-lockfile` → typecheck → lint → test:run → Playwright Chromium install → test:e2e. On any failure, uploads `test-results/` + `playwright-report/` as a `playwright-trace` artifact (7-day retention) so failed runs can be inspected.
 - Triggers: `push` to `main` or any `claude/**` branch + every `pull_request`. Gives the per-session feature branches CI coverage without flooding when the human is iterating locally.
