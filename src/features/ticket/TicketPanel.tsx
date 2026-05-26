@@ -7,6 +7,7 @@ import { formatTime } from '@/lib/format';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import DealSummaryPanel from './DealSummaryPanel';
+import PricingPanel from './PricingPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SummaryPanel from './SummaryPanel';
 
@@ -101,11 +102,12 @@ export default function TicketPanel() {
 
           <ReasonsPanel reasons={rejectionReasons} />
           <SummaryPanel deal={deal} />
+          <PricingPanel pair={deal.pair} />
           <DealSummaryPanel deal={deal} />
 
           <p className="mt-2 text-xs text-text-mute">
-            Pricing, AI Suggestion, Client Summary, and Footer panels land in FXSW-017
-            through FXSW-021.
+            AI Suggestion, Client Summary, Margin controls, and Footer panels land in
+            FXSW-018 through FXSW-021.
           </p>
         </div>
       </div>

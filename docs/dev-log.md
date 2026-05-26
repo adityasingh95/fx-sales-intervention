@@ -32,6 +32,31 @@ Most recent first.
 
 ---
 
+## FXSW-017 · PricingPanel streaming mode
+**Commit `_pending_`**
+
+- TDD red→green: **3 specified `PricingPanel.test.tsx` cases** plus 2 supporting `usePrice.test.tsx` cases.
+  - `usePrice` subscribes on mount and receives a tick within 600ms; unsubscribes on unmount (no further state updates after).
+  - `PricingPanel` with seeded feed renders the expected bid/mid/ask pair-precision values on tick 1; bid/ask cells get `data-flash="up"/"down"` on a value change and clear after 80ms; stale-feed (no tick for 3s) renders the em-dash placeholder in all three cells.
+- `src/services/feed/usePrice.ts` real: tiny hook wrapping `pricingFeed.subscribe(pair, setTick)` + cleanup via the returned unsubscribe. State seeded from `pricingFeed.getLatest(pair)` so consumers that mount after the feed has already ticked don't render `—` for a tick. Lives under `services/feed/` (not `features/ticket/`) so the FXSW-012 `RateCell` and future panels can share it without a cross-feature import.
+- `src/features/ticket/PricingPanel.tsx` real per `docs/02 §4.4` + `docs/05 §4` (streaming subset). Bid + Ask cells at `text-2xl font-mono tabular-nums` with the Mid between them at smaller dimmer text. Each cell carries `data-flash` (`up`/`down`/absent) for the 80ms direction-coloured border. Stale-feed watchdog: a 3-second `setTimeout` arms on every tick; if it fires the panel switches all three cells to the em-dash placeholder. Fixed mode + margin controls land in FXSW-018.
+- `TicketPanel` mounts `<PricingPanel pair={deal.pair} />` between SummaryPanel and DealSummaryPanel. Placeholder note drops FXSW-017 from the "panels coming" list.
+
+**User-directed decisions:**
+- **Keep digging on the off-by-one-pip test failure rather than loosen the assertions.** Options surfaced: (a) loosen the seed-42 test to assert behaviour not values; (b) keep debugging; (c) skip the panel; (d) discard. **Chosen:** (b). Worth understanding what was happening before papering over it. Turned out to be a real spec/test correctness issue (see below) — loosening would have hidden it.
+
+**Agent-directed decisions:**
+- **Captured the bid/ask asymmetry at the half-spread rounding boundary.** Debugging the seed-42 test failure (panel rendered `1.1714` for bid where the FXSW-007 mid-sequence said `1.1715`) showed the issue is real and consistent: for EURUSD's first tick the underlying `mid_float` sits in `[1.17145, 1.171475)`. Rounded mid is `1.1715`. But `bid_float = mid_float − 0.000025` lands below `1.17145` and rounds to `1.1714`. FXSW-007's golden sequence only locked the **mid**; the bid/ask asymmetry that emerges at the rounding boundary wasn't captured. The PricingPanel test now locks bid=`1.1714` / mid=`1.1715` / ask=`1.1715` for tick 1 + carries an explanatory comment.
+- **Switched the flash test to GBPUSD seed-42 tick 2** (clean both-cells-DOWN setup) after probing the seed-42 sequences for each pair. EURUSD's bid happens to be flat on tick 2 in the rounded value (1.1714 → 1.1714); USDJPY's bid + ask are both flat through ticks 1–3; GBPUSD's tick 1→2 drops both cells one pip, exactly the case the flash test needs.
+- **`data-flash` attribute** (string `"up"` / `"down"` / absent), not a `data-flashing` boolean + a separate `data-direction`. One attribute carries both signals, the test reads cleanly (`toHaveAttribute('data-flash', 'down')`), and the CSS in the component does the colour switch via clsx based on the same direction enum.
+- **`usePrice` lives at `src/services/feed/usePrice.ts`**, not `src/features/ticket/usePrice.ts`. The FXSW-012 RateCell already subscribes to the feed manually; a future small refactor can replace its inline subscription with the same hook. Hooks that wrap a service module belong near that service, per the `useNotificationSound.ts` precedent in `docs/05 §3.4`.
+- **Stale watchdog is a per-tick `setTimeout(3000)`** that resets on every tick, not a `setInterval(1000)` polling for staleness. Single timer, no busy-poll, fires exactly once when 3s elapse with no new tick.
+- **Cells render with `transition-colors duration-[80ms]` so the border colour eases in/out**, not a hard snap. Matches the docs/05 §5 animation budget (80ms tick flash = linear).
+- **Used a debug-test pattern to find the bug.** Wrote a throwaway `usePrice.debug.test.tsx` that logged the feed's subscriber callbacks alongside the panel's render values. Confirmed the feed correctly fired with mid=1.1715 but the panel's `tick.bid` was `1.1714` — pinned the cause to the half-spread rounding, not a React lifecycle issue. Debug test deleted before commit.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**208 pass / 4 todo**, up from 203 / 4 — 5 new tests across PricingPanel + usePrice), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-016 · Summary + DealSummary panels
 **Commit `096d645`**
 
