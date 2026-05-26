@@ -1,1 +1,41 @@
-export {};
+import type { Deal, RejectionReason } from '@/types/deal';
+import type { ScenarioId } from '@/types/scenario';
+
+export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR';
+
+export const PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDINR'] as const satisfies readonly Pair[];
+
+export type PriceTick = {
+  pair: Pair;
+  bid: number;
+  ask: number;
+  mid: number;
+  timestamp: number;
+};
+
+export interface PricingFeed {
+  subscribe(pair: Pair, cb: (tick: PriceTick) => void): () => void;
+  getLatest(pair: Pair): PriceTick | null;
+  start(): void;
+  stop(): void;
+}
+
+export type DealEvent =
+  | { type: 'NEW_SI_DEAL'; deal: Deal; rejectionReasons: RejectionReason[] }
+  | { type: 'NEW_ESP_DEAL'; deal: Deal }
+  | { type: 'CLIENT_ACCEPT'; dealId: string }
+  | { type: 'CLIENT_REJECT'; dealId: string }
+  | { type: 'CLIENT_CANCEL'; dealId: string }
+  | { type: 'EXPIRE'; dealId: string };
+
+export interface DealFeed {
+  subscribe(cb: (event: DealEvent) => void): () => void;
+  inject(scenarioId: ScenarioId): void;
+  reset(): void;
+  // Bridge: the deals store calls this when an SI machine state changes,
+  // so scenario follow-ups gated on an SI state (e.g. "fire CLIENT_ACCEPT
+  // 1500ms after SI reaches `Quoted`") can fire. Not in the spec sketch
+  // at 04 §4.4; added to keep dealFeed's coupling to the deals store
+  // explicit. See dev-log FXSW-008 for rationale.
+  notifyDealState(dealId: string, siState: string): void;
+}

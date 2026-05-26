@@ -361,7 +361,13 @@ No spring physics. No staggered choreography. No skeleton loaders elsewhere (oth
 
 ## 9. Browser zoom and resolution
 
-Designed for 1440×900 minimum, optimised for 1920×1080. Below 1440px wide, show a centered notice: "Resize your window — minimum width 1440px for this prototype."
+Optimised for 1440×900 and up (the full layout fits without horizontal scroll). Below 1440px the layout stays usable via horizontal scroll:
+
+- The header's dev-injector strip becomes a horizontally-scrollable region; mute toggle and clock stay pinned to the right.
+- Each blotter (Active + Historic) wraps its column-header row and body in a single horizontally-scrollable container at `min-w-[1100px]` / `min-w-[920px]` respectively. Column headers stick to the top, rows stay aligned.
+- Title and clock font sizes step down one tier below the Tailwind `sm:` breakpoint (640px).
+
+Card-stacked mobile redesign (each row as a tap-to-expand card with key fields above the fold) is explicitly out — the horizontal-scroll pattern preserves the trader-blotter aesthetic and keeps one layout in the codebase. See `dev-log.md` "Mobile/responsive layout" entry for the decision trail.
 
 ## 10. Things explicitly to avoid
 

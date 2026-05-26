@@ -29,7 +29,7 @@ Banks running Caplin's auto-pricer reject some client quote requests for reasons
 - **No persistence beyond session.** Page reload resets all state (except the mute setting).
 - **Not all six ticket types.** Spot only. Forward is a stretch goal; NDF, Flexible Forward, Swap, Block are explicitly out.
 - **Not all six Caplin rejection reasons.** Three only, chosen for visual distinctness in a demo.
-- **No mobile / responsive design.** Desktop only, ≥1440px wide.
+- **Optimised for desktop (≥1440px); responsive down to mobile.** Original PRD scoped desktop-only; in-flight amendment after the Phase 2 demo added a horizontal-scroll responsive layout so the prototype is reviewable on phones and tablets. Card-stacked mobile redesign is still out — the layout primitive on narrow screens is horizontal scroll, not column reflow. See `docs/dev-log.md` "Mobile/responsive layout" entry.
 - **No accessibility certification.** WCAG AA contrast is a build target; full a11y audit is out.
 - **No internationalization.** English, EN-GB number formatting.
 
