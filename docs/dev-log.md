@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## Post-Phase 5 cleanup
-**Commit `TBD`**
+**Commit `cfabbdd`**
 
 Project-wide sweep for unused stuff after the build landed. No new feature work, no scope shift, no breaking changes.
 
