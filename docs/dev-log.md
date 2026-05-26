@@ -32,6 +32,30 @@ Most recent first.
 
 ---
 
+## FXSW-024 · Rationale builder
+**Commit `TBD`**
+
+- TDD red→green: **7 `rationale.test.ts` cases** — the two `docs/09 §8` canonical scenarios (Globex/USDJPY/OFF_HOURS, Northwind/12M EURUSD/SIZE_LIMIT) asserted with regex tolerance + length ≤ 120; the 0-factor case (only tier) checks the line starts with the tier label, ends with `— suggesting N pips.`, and has no orphan-comma artifacts; the 5+ factor case asserts truncation keeps the line ≤ 120 while preserving the tier label and pip count; the credit-decline path asserts the engine wires `CREDIT_DECLINE_RATIONALE` exactly; direct `buildRationale` call asserts the trailing `— suggesting N pips.` shape.
+- `src/services/suggestion/rationale.ts` real per `docs/09 §8`:
+  - `CREDIT_DECLINE_RATIONALE` constant exported; engine now imports it (single source of truth — the panel will too).
+  - `buildClientPhrase` returns `"{Tier} client"` by default, enriched to `"{Tier} client with strong recent acceptance"` when the client is `high_engagement` AND acceptance ≥ 0.7 — surfaces the §8 "Platinum client with strong recent acceptance" phrase organically.
+  - `craftFactorPhrase` maps each factor name to a short natural-language phrase (`'off-hours USDJPY'`, `'above auto-pricer band'`, `'12M EURUSD'`, etc.) rather than concatenating raw factor notes — produces sentences that read like the §8 examples.
+  - Composition picks the top-`MAX_FACTOR_PARTS` (= 3) non-tier factors by `|delta|`, then drops from the end until the line fits `MAX_LEN` (= 120).
+  - Pluralisation: `1 pip` vs `N pips`. Trivial polish that the doc template happens not to encode.
+
+**User-directed decisions:** None — `docs/09 §8` template + the three quoted examples pinned the shape.
+
+**Agent-directed decisions:**
+- **`Pair class` factor → no phrase**. The factor still influences `suggestedPips`, but emitting `"USDJPY wider-spread"` alongside `"off-hours USDJPY"` (which already names the pair) reads as redundant. Confirmed against §8 — the Globex example is `"Standard-tier client, off-hours USDJPY — suggesting 5 pips."`, no second pair reference. The factor stays in the engine because it changes the math; only the rationale string drops the redundancy.
+- **`VIP volume` factor → no phrase**. Same reasoning — already folded into the enriched `"Platinum client with strong recent acceptance"` client phrase whenever the trigger conditions overlap. For a `high_engagement` client with acceptance < 0.7 the VIP signal goes unmentioned; acceptable since the impact is just -0.5 pips and the demo never highlights it as a distinct rationale element.
+- **`MAX_FACTOR_PARTS = 3` cap** rather than the doc pseudocode's stricter `|delta| >= 1` threshold. The Northwind example includes `"above auto-pricer band"` whose underlying delta is 0.5 — the strict threshold would drop it. Picking "top 3 by magnitude" reproduces the example output and matches the doc's other framing ("composes 2–3 of the largest-magnitude factors").
+- **Pluralisation handled at the compose-step**. `1 pip` reads correctly; `N pips` for N ≥ 2 follows. The doc template literal (`${suggestedPips} pips`) is a slip rather than a spec — fixing it cost two lines and removes a small wart from the demo.
+- **`CREDIT_DECLINE_RATIONALE` exported as a constant** (not just hard-coded in the engine). Lets `rationale.test.ts` assert the exact text without duplicating the literal, and lets the FXSW-025/026 panel reuse it for the Reject-shortcut affordance.
+- **Crafted phrases live in `rationale.ts`**, not on the `Factor` objects. The engine produces machine-readable factor records (with the formal `note` field, which the panel's "Why?" expansion will surface); the rationale composes a human sentence on top. Two audiences, two strings.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**282 pass / 1 todo**, up from 275 / 2 — 7 new rationale cases, 1 todo placeholder cleared). Build clean.
+
+---
+
 ## FXSW-023 · Suggestion engine
 **Commit `ca0cad8`**
 

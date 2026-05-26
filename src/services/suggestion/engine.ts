@@ -1,4 +1,4 @@
-import { buildRationale } from './rationale';
+import { CREDIT_DECLINE_RATIONALE, buildRationale } from './rationale';
 import type {
   ClientTier,
   Factor,
@@ -51,7 +51,7 @@ export function suggestMargin(input: SuggestionInput): MarginSuggestion {
   if (input.deal.rejectionReasons.includes('CREDIT_LIMIT')) {
     return {
       kind: 'credit-decline',
-      rationale: 'Credit limit breach — recommend declining. Suggested action: Reject.',
+      rationale: CREDIT_DECLINE_RATIONALE,
       computedAt: Date.now(),
     };
   }
