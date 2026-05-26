@@ -34,6 +34,17 @@ interface FrankfurterResponse {
 }
 
 export async function fetchReferenceMids(): Promise<ReferenceMidsPayload> {
+  // Pinned-fallback escape hatch for CI. The seed-42 golden sequence in
+  // pricingFeed.test.ts was recorded against the FALLBACK mids (EURUSD
+  // 1.1715); when Frankfurter responds with today's live rate the
+  // sequence shifts and the test fails. CI sets USE_FALLBACK_MIDS=true
+  // so the unit suite stays deterministic regardless of network state.
+  // Production builds (predev / prebuild + the deploy workflow) leave
+  // this unset so the live demo gets fresh mids.
+  if (process.env.USE_FALLBACK_MIDS === 'true') {
+    return FALLBACK;
+  }
+
   try {
     const url = `https://api.frankfurter.dev/v1/latest?base=USD&symbols=${PAIRS.join(',')}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
