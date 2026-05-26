@@ -56,9 +56,31 @@ This is **not** a re-implementation of any vendor product. It is a brand-neutral
 
 ## Current state
 
-Phase 4 closed (FXSW-022 → FXSW-027). The pricing feed, deal feed, scenario player, two-machine deal lifecycle, status derivation, live blotters, dev injector, full ticket panel with all seven sub-panels, footer actions with hold-to-confirm, the AI Margin Suggestion engine + panel (ready / applied / Undo / credit-decline / computing), and four passing Playwright E2Es (`happy-path-esp`, `off-hours-intervention`, `credit-breach`, `size-limit-margin-tune`) are all wired end-to-end. Total test suite: 296 unit pass / 4 E2E pass + smoke.
+**Phase 5 closed (FXSW-028 → FXSW-033). Build complete. Project shippable.**
 
-Remaining: Phase 5 (FXSW-028 → FXSW-034) — notifications visual layer + audio chime + mute, visual polish, RELEASE_PATH E2E, CI workflow, README + demo recording, GitHub Pages deploy.
+The full stack is live end-to-end:
+
+- Pricing feed (300ms tick, seeded random walk, baked reference mids).
+- Deal feed + scenario player driving five demo scenarios.
+- Two-machine deal lifecycle (RFS + SI) coordinated by `dealMachine`, with `*Sent` ack delays + 5-second blotter removal.
+- Live Active + Historic blotters with full status derivation.
+- SI ticket panel with all seven sub-panels: Reasons, Summary, AI Margin Suggestion (ready / applied / Undo / credit-decline / computing), Pricing (streaming + fixed mode + margin controls), Client Summary, Deal Summary, Footer (hold-to-confirm + double-click).
+- Deterministic AI margin engine + indigo-accented suggestion panel.
+- Notifications layer: toast + title-flash + row-flash + 880 Hz WebAudio chime + mute toggle (sessionStorage-persisted).
+- Dev injector for one-click scenario playback (`?dev=1`).
+- Shared `Button` + `HoldButton` primitives in `src/components/`.
+
+**Test suite:** 316 unit tests pass · 6 E2Es pass (smoke + happy-path-esp + off-hours-intervention + credit-breach + size-limit-margin-tune + release-path) in 35.9s.
+
+**CI workflow:** typecheck + lint + Vitest + Playwright Chromium on every push to `main` or `claude/**` and every PR; trace artifacts uploaded on failure with 7-day retention.
+
+**Deploy:** GitHub Pages workflow shipped at FXSW-034 (pulled forward in Phase 1). Live URL serves the production build with `?dev=1`-gated injector.
+
+**Two user-side follow-ups remain** before the project is fully done:
+1. Watch the CI workflow run on `main` post-merge land green; flip FXSW-032 ☑.
+2. Capture a 30-60s demo recording walking the five scenarios; drop at `docs/demo.mp4`; flip FXSW-033 ☑.
+
+There is no Phase 6.
 
 ## Where to go next
 

@@ -97,6 +97,15 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - Added ## Tests sections to 9 component pages (pricing-feed, deal-feed, scenario-player, deals-store, rfs-machine, si-machine, deal-machine, status-derivation, suggestion-engine) and 6 feature pages (active-blotter, historic-blotter, ticket, ai-margin-suggestion, notifications, dev-injector). Each section: file path + case count + 1-line category summary. Cross-references to test-patterns.md §N where a pattern is at play.
 ##   - onboarding.md §8 updated to point at test-patterns.md as required reading before first test.
 ##   - wiki/index.md: test-patterns.md added to Components category.
+## [2026-05-26] ingest | docs/phase-summaries/FXSW-033-summary.md + Phase 5 commits (FXSW-028 → FXSW-033). Final-sweep ingest. Affected pages:
+##   - wiki/features/notifications.md: in-progress → stable. Major rewrite covering toast/title-flash/row-flash/WebAudio-chime/mute, dispatcher dedupe via notifiedDealIds Set, audio unlock + lazy AudioContext + factory injection, per-deal one-shot chime via Set-size growth. Tests inventory across 5 test files (20 cases). Known interim + Phase-5-resolved items called out.
+##   - wiki/scenarios/release-path.md: in-progress → stable. Cited commit ad4cade. Documented Release-closes-ticket (one-line addition to TicketFooter handler) vs Esc/backdrop-don't (passive paths). Runtime 0.7s (fastest E2E).
+##   - wiki/features/ticket.md: HoldButton inline note replaced with shared src/components/Button.tsx primitive reference (FXSW-030 lift); cross-reference to AI suggestion panel.
+##   - wiki/features/ai-margin-suggestion.md: "Known interim" duplicate RejectHoldButton item moved to "Resolved during Phase 5" (FXSW-030 lift).
+##   - wiki/overview.md §Current state: Phase 4 closed → Phase 5 closed, full feature list, 316 unit + 6 E2E counts, CI/deploy status, two user-side follow-ups (CI green flip + demo recording).
+##   - wiki/index.md: status refresh — notifications stable, release-path passing E2E, onboarding stable.
+##   - wiki/onboarding.md: REWRITTEN FROM SCRATCH per user direction + schema mandate (FXSW-033 trigger). 15 sections: what this is, demo, architecture, stack, repo, commands, three-agent setup, where-to-start map, testing + patterns, five scenarios, cross-cutting rules, DoD, full build progression, 11 lessons-that-survived, glossary pointer. Status: stable.
+
 ## [2026-05-26] schema-update | Refresh stale-state synthesis pages post-merge. Spotted by user. Fixed:
 ##   - overview.md §Current state: "Phase 2 closed" → "Phase 4 closed" with current test suite counts (296 unit + 4 E2E + smoke) and remaining-Phase-5 list.
 ##   - onboarding.md §9 build-progression: Phases 3 + 4 flipped Not-started → Done; Phase 2 demoted from "(current state)" to plain Done.

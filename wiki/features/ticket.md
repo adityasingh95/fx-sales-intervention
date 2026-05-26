@@ -101,14 +101,14 @@ Six buttons per `docs/02-functional-spec.md` §4.7. Visibility gated on `siState
 
 ### Hold-to-confirm + double-click
 
-Reject and Send Stream require **600ms hold** OR **double-click** to fire. Implemented inline as a `HoldButton` primitive in `TicketFooter.tsx`:
+Reject and Send Stream require **600ms hold** OR **double-click** to fire. Implemented as `HoldButton` in `src/components/Button.tsx` (lifted to a shared primitive in FXSW-030 once a second consumer arrived — the same primitive is reused by the [AI suggestion panel](ai-margin-suggestion.md)'s credit-decline Reject shortcut):
 
 - 600ms `setTimeout` on `pointerDown`, cancels on `pointerUp` / `pointerLeave`.
 - `onDoubleClick` is the alternative confirm path. Two single clicks (each cancelled) still register as a `dblclick` at the DOM level.
 - Visual progress overlay via an inline-styled `<span>` driven by a `holdgrow` keyframe in `global.css`.
 - `aria-describedby` hint ("Hold for 600ms or double-click to confirm") per `docs/05` §7 accessibility note.
 
-`HoldButton` is **not** lifted to `src/components/Button.tsx` yet — only two consumers in Phase 3. FXSW-029 (polish) will lift when there's a third.
+Both `TicketFooter.tsx` and `SuggestionPanel.tsx` import from the shared `src/components/Button.tsx`. The footer aliases the import (`import { Button as ActionButton, HoldButton }`) so its existing JSX call sites stay unchanged.
 
 ### `*Sent` window UI
 

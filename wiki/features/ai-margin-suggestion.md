@@ -121,8 +121,11 @@ Harness pattern for the cross-component glow assertion: see [components/test-pat
 
 ## Known interim
 
-- `RejectHoldButton` (in `SuggestionPanel.tsx`) and `HoldButton` (in `TicketFooter.tsx`) are structural duplicates. The lift to a shared `src/components/Button.tsx` with a `holdToConfirm` prop is FXSW-029 polish scope (per `docs/05-ui-ux-spec.md` §3.1).
 - `marginPips` lives on TicketPanel state, not the dealMachine context. See [data-models/deal.md](../data-models/deal.md) §Related-fields-stored-elsewhere.
+
+## Resolved during Phase 5 (FXSW-030)
+
+The duplicate `RejectHoldButton` (in `SuggestionPanel.tsx`) and `HoldButton` (in `TicketFooter.tsx`) were lifted to a shared `src/components/Button.tsx` primitive with a `holdToConfirm` semantics, per `docs/05-ui-ux-spec.md` §3.1. The SuggestionPanel credit-decline branch now uses `<HoldButton variant="danger" ... />` from the shared module.
 
 ## Sources
 
