@@ -32,6 +32,26 @@ Most recent first.
 
 ---
 
+## FXSW-022 · clientProfiles seed data
+**Commit `TBD`**
+
+- TDD red→green: **6 `clientProfiles.test.ts` cases** — each of the five named clients from `docs/09 §11` (Acme Corp / Globex Industries / Halcyon Capital / Northwind FX / Polaris Holdings) returns the expected `tier`, `recent30dVolume`, `recent30dAcceptanceRate`, `recentBehaviorFlag`. Sixth case: unknown client name returns a defensive `'new'`-tier profile with neutral defaults rather than throwing.
+- `src/services/suggestion/clientProfiles.ts` real: lookup table keyed by `clientName` (matching the `Deal.clientName` field the engine receives), default fallback that preserves the requested name on the returned `ClientProfile`.
+- `src/services/suggestion/types.ts` real for the wider suggestion service: `ClientTier`, `ClientBehaviorFlag`, `ClientProfile`, `Factor`, `SuggestionInput`, and a discriminated union `MarginSuggestion = ReadySuggestion | CreditDeclineSuggestion` covering both the normal output and the §7 CREDIT_LIMIT special case.
+- `src/services/suggestion/marketContext.ts` head-start: tiny static `getMarketContext(pair)` returning `pairVolatility` per the `docs/09 §3.1` table + `sessionLiquidity: 'normal'`. Included here so the shared static data lives in one commit; the engine that consumes it lands in FXSW-023.
+
+**User-directed decisions:** None — `docs/09 §11` table pinned every named-client value; the few gaps were doc-pack guidance interpretations (see below).
+
+**Agent-directed decisions:**
+- **Halcyon Capital's `recent30dAcceptanceRate` encoded as `0.5`, not `0`.** `docs/09 §11` shows `—` for Halcyon (zero history). Encoded literally as `0`, Halcyon would trip the engine's `acceptanceRate < 0.4 → -0.5` rule in FXSW-023 — penalising a brand-new client for "low acceptance" they don't even have data for. `0.5` reads as a neutral prior ("no signal either way"). Comment in `clientProfiles.ts` documents the choice. The unknown-client fallback uses the same `0.5` for consistency.
+- **`averageMarginPaid` derived from tier defaults**, not specified per-client in `docs/09 §11`. Picked `1.5 / 2.5 / 3.0 / 0` for `platinum / gold / standard / new`. The field isn't consumed by the engine in v1 (`docs/09 §5` rules don't reference it); it's display-only context for an eventual "client history" panel.
+- **`MarginSuggestion` as a discriminated union** rather than the single flat shape `docs/09 §4` shows. The §7 credit-decline path doesn't have `suggestedPips`, `confidence`, or `factors` — making them optional on a single type would force every consumer to null-check. The `kind: 'ready' | 'credit-decline'` discriminator gives the FXSW-025/026 panel a clean exhaustiveness check.
+- **`marketContext.ts` bundled with FXSW-022** even though it's the engine's input source, because it's a 12-line static lookup and the suggestion/ directory benefits from having all the shared data land together. FXSW-023's engine consumes it.
+- **`clientId` derived from `clientName`** via lowercased-hyphenated form (`'acme-corp'`, `'globex-industries'`, etc.). The field exists on `ClientProfile` per the spec but no scenario keys off it yet; the slug form is the closest thing to a stable identifier that survives a copy-paste of the seed data.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**241 pass / 3 todo**, up from 235 / 3 — six new `clientProfiles` cases). E2E unchanged (3/3). Build clean.
+
+---
+
 ## FXSW-021 · OFF_HOURS_INTERVENTION E2E
 **Commit `65e2cbf`**
 
