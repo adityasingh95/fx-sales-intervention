@@ -32,6 +32,32 @@ Most recent first.
 
 ---
 
+## FXSW-014 · TicketPanel shell + glass overlay
+**Commit `_pending_`**
+
+- TDD red→green: 5 specified `TicketPanel.test.tsx` cases — not rendered when `uiStore.openDealId === null`, rendered when set with the deal's basic info (`data-deal-id`, client, account, pair, side, amount, reason label), Esc keypress calls `uiStore.closeTicket()`, opening fires SI `PickUp` (Initial → PickUpSent → PickedUp via `vi.advanceTimersByTime(ackDelayMs)`), closing does NOT fire `Hold` (deal stays in `PickedUp`).
+- `src/features/ticket/TicketPanel.tsx` real: right-side overlay rendered conditionally on `uiStore.openDealId`. Backdrop is `fixed inset-0 z-40` with an `onClick` that closes; panel itself is `absolute right-0 top-0 ... sm:w-[640px]` with `e.stopPropagation()` so clicks inside don't bubble to the backdrop.
+- Slide-in via two-pass mount: panel starts with `translate-x-full`, an effect schedules `requestAnimationFrame(() => setSlidIn(true))` and flips to `translate-x-0`. Transition is `transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)]` per `05 §2` / `05 §5`. Glass via `bg-bg-glass backdrop-blur-xl backdrop-saturate-150`.
+- Esc handler attached to `document` while open, cleaned up on close.
+- "Fires PickUp on open" is gated by `entry.siState === 'Initial'` — re-opening a deal that's already in `PickedUp` (e.g. user closed without releasing, clicked the row again) doesn't double-fire. Caught by reading the AC carefully: "Opens when the operator clicks a row in `Initial` (SI) state, firing the `PickUp` event."
+- `App.tsx` renders `<TicketPanel />` at the root and applies `opacity-75` + `transition-opacity duration-[240ms]` to the `<main>` (blotters) section when the ticket is open, per `05 §2` "blotters dimmed 25%".
+- Panel body shows status pill (via the existing `StatusCell`), time, client/account/pair/side/amount/tenor grid, and the rejection-reason labels. A small note at the bottom explicitly flags that Reasons / Summary / Pricing / AI Suggestion / Client Summary / Deal Summary / Footer panels land in FXSW-015 through FXSW-021 — so a manual reviewer doesn't think the empty space is a bug.
+
+**User-directed decisions:** None — `02 §1`, `02 §4.8`, `05 §2`, and `05 §5` were prescriptive enough on every aspect (size, slide easing, dim percentage, Esc behavior, no-auto-Hold-on-close).
+
+**Agent-directed decisions:**
+- **Conditional mount, not always-mounted-with-CSS-transform.** AC test "not rendered when `openDealId === null`" implies the testid is absent from DOM when closed. An always-mounted panel translated off-screen would fail that test. Conditional mount keeps the DOM clean at the cost of no slide-out animation (the panel just unmounts when the user closes). Slide-in still works via the two-pass `requestAnimationFrame` pattern.
+- **`PickUp` gated on `siState === 'Initial'`.** Spec language is explicit but easy to miss — the AC test verifies the happy-path firing but doesn't test the re-open-on-PickedUp case. Added the guard anyway because closing-then-reopening is a normal UX flow and double-firing would either be a no-op (siMachine's PickUpSent has no PickUp handler) or, worse, would reset state incorrectly when FXSW-010's full state graph runs.
+- **Stale state guard via `useDealsStore.getState()` inside the effect** rather than reading `entry` from the closure. Reads the live store value at effect-run time, so even if the React render closure is one tick stale, the side-effect uses fresh state. Same pattern used in `dealsBootstrap`.
+- **Panel uses `<div role="dialog" aria-label="Sales Intervention ticket">`** instead of a native `<dialog>` element. The native dialog doesn't compose cleanly with the right-slide-in + backdrop-click-to-close pattern (it has its own backdrop behaviour via `::backdrop`, and `.show()` vs `.showModal()` semantics get in the way). Going with role-based ARIA + manual focus-management hooks for FXSW-018+ when focus-trap-on-open lands.
+- **Responsive: `w-full max-w-full sm:w-[640px]`.** Below the 640px Tailwind breakpoint the ticket takes the full viewport width (mobile pattern). Carries the responsive amendment forward into the new panel without breaking the desktop 640px spec.
+- **Z-index `z-40`** for the backdrop. Tailwind's default scale leaves room for `z-50` on toasts (FXSW-028 territory) — keeping the ticket below toasts in case of overlap.
+- **`data-deal-id` on the panel** even though it's not in the AC's data-* list. Cheap addition that makes the (future) E2E tests for the OFF_HOURS scenario easier to write — they can scope assertions to "the ticket for THIS deal" instead of "the only ticket on the page."
+- **Body content is minimal — header strip + key-value grid + reasons list + "more panels coming" note.** AC says "contains the deal's basic info." The full panel structure from `02 §4.1–4.7` lands in FXSW-015 through FXSW-021. Adding placeholders for those now would invite drift.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**188 pass / 4 todo**, up from 183 / 4 — 5 new TicketPanel cases), e2e ✓ (smoke + happy-path-esp still green), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## Wiki Agent bootstrap (build-agent rule §10 override, user-authorized)
 **Commit `85c476b`**
 
