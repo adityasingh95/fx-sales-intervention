@@ -32,6 +32,28 @@ Most recent first.
 
 ---
 
+## FXSW-033 · README + demo recording
+**Commit `TBD`**
+
+- `README.md` rewritten for the shipped state. Adds:
+  - **CI + Deploy badges** on the masthead so a reader sees green at a glance.
+  - **"What it demonstrates"** section with a five-scenario table mapping each Inject button to what the reader should watch for. The third column tells the demo story in one sentence per scenario, which is what the deliverable's running-order spec wants ("the operator can sit through the demo and not flinch at any visual moment").
+  - **CI** section describing the workflow + Playwright trace upload.
+  - **Demo recording** placeholder pointing at `docs/demo.mp4` with an HTML-comment hint for the eventual GitHub Assets video URL. The recording itself is user-captured (no screen-record affordance in the cloud build environment) — flagging this as the one ticket deliverable that requires manual hand-off.
+  - **Docs** section linking each spec file rather than just the four highlights — gives a reader the full surface, including `phase-summaries/` and the scenario pack.
+- Verified the README contains no `Caplin` mentions per CLAUDE.md rule §1.
+
+**User-directed decisions:** None — the AC structure was pinned by `CLAUDE.md` rule §1 + the BACKLOG done-when.
+
+**Agent-directed decisions:**
+- **Scenario table in the README, not just a link to `07-scenario-pack.md`.** A reader landing on the repo wants a 30-second tour, not a click-through to a Gherkin file. The table doubles as the demo-recording outline.
+- **Demo recording placeholder rather than the recording itself.** The cloud build env has no screen-capture capability and uploading binary video without the actual file would be misleading. Comment in the README block tells the human exactly what to drop in.
+- **Pages-environment caveat explicit** under Deploy. The branch-allow-list step on the `github-pages` environment is the one thing that bit us repeatedly in Phase 1; documenting it here saves the next person the same diagnostic loop.
+- **Mute toggle + AI-suggestion ApplyUndo flow mentioned in the running-order column**. Not strictly required by `docs/07`, but the demo's "moment of delight" is the AI suggestion landing + Apply, and the mute affordance is otherwise discoverable only by clicking the bell icon. Both belong in a "what to look at" demo guide.
+- All gates green (unchanged): typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**), e2e ✓ (6/6 in 35.9s), build ✓. README changes are docs-only.
+
+---
+
 ## FXSW-032 · CI workflow
 **Commit `d1ed41a`**
 
