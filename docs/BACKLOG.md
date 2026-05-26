@@ -44,7 +44,7 @@
 | FXSW-020 | TicketFooter + *Sent → *Ack flow | 3 | L | 🔴 | ☑ |
 | FXSW-021 | OFF_HOURS_INTERVENTION E2E | 3 | S | 🟢 | ☑ |
 | FXSW-022 | clientProfiles seed data | 4 | S | 🔴 | ☑ |
-| FXSW-023 | Suggestion engine (100% branch) | 4 | L | 🔴 | ☐ |
+| FXSW-023 | Suggestion engine (100% branch) | 4 | L | 🔴 | ☑ |
 | FXSW-024 | Rationale builder | 4 | S | 🔴 | ☐ |
 | FXSW-025 | SuggestionPanel ready / applied / Undo | 4 | M | 🟡 | ☐ |
 | FXSW-026 | SuggestionPanel credit-decline + recompute | 4 | M | 🟡 | ☐ |

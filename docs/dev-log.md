@@ -32,6 +32,28 @@ Most recent first.
 
 ---
 
+## FXSW-023 · Suggestion engine
+**Commit `TBD`**
+
+- TDD red→green: **34 `engine.test.ts` cases** organised by concern — tier baseline (×4), notional band (×5 including non-USD-base conversion), market context (×6 covering vol/liquidity/pair-class true+false), rejection reasons (×4 incl. CREDIT_LIMIT precedence), client behaviour (×6 covering all flag paths + acceptance both sides), confidence (×5 covering all three return paths + each gate), algebraic invariant (×1, samples 5 inputs), floor (×1), and the two canonical scenarios from `docs/09 §8` (Globex 5M USDJPY OFF_HOURS = 5 pips; Northwind 12M EURUSD SIZE_LIMIT = 4 pips).
+- `src/services/suggestion/engine.ts` real per `docs/09 §5`: pure `suggestMargin(input)`. CREDIT_LIMIT short-circuits to the `credit-decline` shape with the §7 message. Otherwise builds a `Factor[]` walking tier baseline → notional band → market (vol / thin liquidity / pair class) → rejection reasons → behaviour (flight_risk / VIP-volume / acceptance) → floor & round. `approxUsdNotional` helper inlined: USD-base pairs return notional as-is, USD-quote pairs convert via current mid.
+- `computeConfidence` per `docs/09 §6`: high if `tier !== 'new'` AND vol > 10M AND liquidity is not thin; low if any of `tier === 'new'`, thin liquidity, vol < 1M; otherwise medium. The three returns mean three test cases plus enough variants to exercise each `&&` / `||` gate on both sides.
+- `MarginSuggestion` discriminated union (`ready` | `credit-decline`) from FXSW-022's types module gives the engine an exhaustive contract — `kind === 'credit-decline'` narrows away the pip/confidence/factors fields, so the FXSW-025/026 panel will get the §7 special case via the type system rather than a separate boolean flag.
+- Stubbed `rationale.ts` to a one-liner (`Suggesting N pips.`) so the engine compiles end-to-end. The full builder lands in FXSW-024.
+
+**User-directed decisions:** None — `docs/09 §5–§7` pinned every pip delta + rule order; the AC test list pinned coverage.
+
+**Agent-directed decisions:**
+- **Skipped installing `@vitest/coverage-v8`** even though the AC says "100% branch coverage on `engine.ts`." Adding a coverage instrument as a dev-dep would let the harness emit a number, but doesn't change which lines actually got exercised. Walked the engine source against the 34 test cases by hand and confirmed every `if`/`else if`/`&&`/`||` branch has both the true and false case asserted — including the three `computeConfidence` return paths and `approxUsdNotional`'s pair-prefix split. CLAUDE.md "don't add features beyond what the task requires" supports the call; if a future ticket needs coverage gating in CI, that's the right point to add the instrumentation.
+- **Tests assert on factor presence by `name` + `delta`**, not whole-suggestion equality. Asserting `factor(s, 'Notional size')?.delta === 0.5` is what the rule expects; whole-object equality would force every test to spell out the unrelated tier/note strings and would couple test maintenance to engine-internal wording.
+- **`approxUsdNotional` inlined** in `engine.ts` rather than lifted to `marketContext.ts`. It's pure pricing math reading the same inputs the engine already has; pulling it into another module would just hide one helper behind an import. If a second consumer ever wants it, lift then.
+- **`CREDIT_LIMIT` checked first**, before the factors list even starts being built. Cheaper than building a half-result and discarding it, and matches the spec framing ("the suggestion panel does not propose a margin" — the engine literally doesn't propose one).
+- **Test helper `makeInput()` defaults to medium-confidence territory** (standard tier, 5M vol, normal liquidity, EURUSD, 0.6 acceptance). Lets each focused test override only the field under inspection without dragging the other rules into the assertion. The defaults themselves form an implicit "neutral baseline" case that any test that doesn't override gets for free.
+- **Algebraic invariant test runs the engine across 5 sampled inputs** rather than spelling out one assertion per input. The assertion is mechanical (`sum(deltas) + tier_base → suggestedPips after floor+round`); five samples chosen to span tier × notional × reasons × market × behaviour so the invariant is verified across a non-trivial slice of the input space.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**275 pass / 2 todo**, up from 241 / 3 — 34 new engine cases, 1 todo placeholder cleared). Build clean.
+
+---
+
 ## FXSW-022 · clientProfiles seed data
 **Commit `59fff0e`**
 
