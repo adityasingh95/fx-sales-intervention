@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-033 · README + demo recording
-**Commit `TBD`**
+**Commit `ba88cca`**
 
 - `README.md` rewritten for the shipped state. Adds:
   - **CI + Deploy badges** on the masthead so a reader sees green at a glance.
