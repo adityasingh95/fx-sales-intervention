@@ -3,7 +3,8 @@ last_updated: 2026-05-26
 sources:
   - docs/07-scenario-pack.md
   - docs/09-suggestion-engine.md
-status: in-progress
+  - docs/phase-summaries/FXSW-027-summary.md
+status: stable
 ticket: FXSW-027
 ---
 
@@ -77,12 +78,20 @@ Scenario: 12M EURUSD priced via AI suggestion
 | t=0 (inject) | `NEW_SI_DEAL` — Northwind SELL 12M EURUSD, reasons `['SIZE_LIMIT']` |
 | 2000ms after SI reaches `Quoted` | `CLIENT_ACCEPT` (state-gated) |
 
-## Status
+## E2E implementation
 
-E2E spec is part of FXSW-027 (Phase 4). Not yet implemented.
+Spec: `tests/e2e/size-limit-margin-tune.spec.ts`. Commit `ab8cd30` (FXSW-027). Runtime: 9.2s.
+
+- Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true`.
+- Asserts `data-suggestion-state="ready"`, `suggestion-pips` text `"4"`, `suggestion-confidence` text `"high"`, rationale containing `"Gold-tier"` or `"12M EURUSD"`.
+- Click `suggestion-apply`; assert panel collapses to `data-suggestion-state="applied"` strip showing `"Applied 4 pips"`; assert margin-input animates to `4` (`data-margin-glow="true"` for 600ms).
+- Then hold Send Stream 600ms → `data-si-state="Quoted"` (STREAMING); 2s wait for state-gated `CLIENT_ACCEPT` → `TradeConfirmed` (DONE); 5s removal; Historic with `data-outcome="Executed"`.
+- Toast + document-title-prefix assertions deferred to FXSW-028.
 
 ## Sources
 
 - `docs/07-scenario-pack.md` Scenario 4
 - `docs/09-suggestion-engine.md` §5, §6, §8, §11 — rule engine, confidence, rationale, client profiles
+- `docs/phase-summaries/FXSW-027-summary.md`
+- `docs/dev-log.md` FXSW-027 — implementation notes
 - `docs/BACKLOG.md` FXSW-027

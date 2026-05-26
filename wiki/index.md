@@ -12,7 +12,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/active-blotter.md](features/active-blotter.md) — live deals view, status pills, row treatment, 5-second removal rule, dim-when-ticket-open.
 - [features/historic-blotter.md](features/historic-blotter.md) — terminal deals, outcome derivation, capacity cap.
 - [features/ticket.md](features/ticket.md) — **stable.** SI ticket panel, panel stack (Reasons/Summary/AI/Pricing/ClientSummary/DealSummary/Footer), streaming + fixed pricing modes, hold-to-confirm + double-click footer actions.
-- [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — AI suggestion panel, ready / applied / credit-decline / computing layouts. _Status: pending Phase 4 ingest (engine + panel landed on main)._
+- [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
 - [features/notifications.md](features/notifications.md) — toast / row flash / title flash / WebAudio chime, mute toggle.
 - [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1`.
 
@@ -26,15 +26,15 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/deal-feed.md](components/deal-feed.md) — scenario-driven event emitter, state-gate bridge to the store.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
-- [components/suggestion-engine.md](components/suggestion-engine.md) — deterministic rule engine, tier base + size + market + reason + behaviour deltas.
+- [components/suggestion-engine.md](components/suggestion-engine.md) — **stable.** Deterministic rule engine, tier base + size + market + reason + behaviour deltas. Rationale builder + CREDIT_DECLINE_RATIONALE constant.
 
 ## Data models
 
 - [data-models/deal.md](data-models/deal.md) — trade-economics payload.
 - [data-models/deal-event.md](data-models/deal-event.md) — discriminated union of feed events.
 - [data-models/price-tick.md](data-models/price-tick.md) — single price update shape.
-- [data-models/client-profile.md](data-models/client-profile.md) — per-client tier + behaviour metadata; five seed profiles.
-- [data-models/margin-suggestion.md](data-models/margin-suggestion.md) — `MarginSuggestion` shapes: ready / credit-decline / computing.
+- [data-models/client-profile.md](data-models/client-profile.md) — **stable.** Per-client tier + behaviour metadata; five seed profiles with Halcyon's neutral-prior acceptance rate.
+- [data-models/margin-suggestion.md](data-models/margin-suggestion.md) — **stable.** Discriminated union: `kind: 'ready'` vs `kind: 'credit-decline'`. Panel-local `applied` and `computing` states separate from engine output.
 
 ## Decisions (ADRs)
 
@@ -53,8 +53,8 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 
 - [scenarios/happy-path-esp.md](scenarios/happy-path-esp.md) — ESP flow-through. **Passing E2E (FXSW-013).**
 - [scenarios/off-hours-intervention.md](scenarios/off-hours-intervention.md) — canonical SI happy path. **Passing E2E (FXSW-021).**
-- [scenarios/credit-breach.md](scenarios/credit-breach.md) — AI credit-decline guardrail + trader reject. E2E landed on main (FXSW-027) — _pending Phase 4 ingest._
-- [scenarios/size-limit-margin-tune.md](scenarios/size-limit-margin-tune.md) — AI suggestion + Apply. E2E landed on main (FXSW-027) — _pending Phase 4 ingest._
+- [scenarios/credit-breach.md](scenarios/credit-breach.md) — AI credit-decline guardrail + trader reject. **Passing E2E (FXSW-027).**
+- [scenarios/size-limit-margin-tune.md](scenarios/size-limit-margin-tune.md) — AI suggestion + Apply. **Passing E2E (FXSW-027).**
 - [scenarios/release-path.md](scenarios/release-path.md) — release back to desk. E2E pending FXSW-031.
 
 ## Glossary

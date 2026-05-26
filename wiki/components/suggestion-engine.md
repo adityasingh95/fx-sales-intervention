@@ -2,8 +2,9 @@
 last_updated: 2026-05-26
 sources:
   - docs/09-suggestion-engine.md
-status: in-progress
-ticket: FXSW-023
+  - docs/phase-summaries/FXSW-027-summary.md
+status: stable
+ticket: FXSW-022..FXSW-024
 ---
 
 # Component — Suggestion engine
@@ -89,10 +90,16 @@ function computeConfidence(input): 'low' | 'medium' | 'high';
 When `rejectionReasons` includes `CREDIT_LIMIT`, the engine returns the credit-decline shape:
 
 ```typescript
-{ state: 'credit-decline', message: 'Credit limit breach — recommend declining.', ... }
+{
+  kind: 'credit-decline',
+  rationale: 'Credit limit breach — recommend declining. Suggested action: Reject.',
+  computedAt: Date.now(),
+}
 ```
 
-No `suggestedPips`. The [AI suggestion panel](../features/ai-margin-suggestion.md) shows a Reject shortcut button instead of Apply. Rationale: see [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md).
+No `suggestedPips`. The discriminator is `kind`, not `state` — `state` is the DOM-attribute name (`data-suggestion-state`) on the panel; the engine output's discriminator is `kind`. The string lives in `rationale.ts` as `CREDIT_DECLINE_RATIONALE`, a single exported constant so engine and panel share the exact text.
+
+The [AI suggestion panel](../features/ai-margin-suggestion.md) shows a Reject shortcut button instead of Apply. Rationale: see [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md).
 
 ## Algebraic invariant
 
@@ -100,7 +107,15 @@ For non-credit cases: `sum(factors.map(f => f.delta)) + tierBase === suggestedPi
 
 ## Rationale builder
 
-`buildRationale(factors, suggestedPips, input): string`. Composes 2-3 of the largest-magnitude factors into a natural sentence, capped at 120 chars; ends with `— suggesting {N} pips.` for non-credit cases. Drops the lowest-magnitude factor if the sentence exceeds the cap. See `docs/09-suggestion-engine.md` §8 for the worked examples.
+`buildRationale(factors, suggestedPips, input): string` (in `src/services/suggestion/rationale.ts`).
+
+- Starts from a **client phrase** — `"{Tier}-tier client"` or, when `recentBehaviorFlag === 'high_engagement' && recent30dAcceptanceRate >= 0.7`, the enriched form `"{Tier} client with strong recent acceptance"`.
+- Picks up to **3 non-tier factors** ranked by `|delta|` descending and crafts per-factor short phrases (`"off-hours USDJPY"`, `"above auto-pricer band"`, `"12M EURUSD"`, `"elevated volatility"`, `"thin session liquidity"`, `"flight risk — tightening"`, `"low recent acceptance"`).
+- **`Pair class` and `VIP volume` emit no phrase** to avoid redundancy with the enriched client phrase and the already-named pair.
+- Truncates by dropping the lowest-magnitude phrase until the result is ≤ 120 chars.
+- **Pluralisation:** `1 pip` vs `N pips`. The single-pip case appears once `Math.round(base + sum(deltas))` clamps below 1 pip in aggregate, defeated by the floor.
+
+See `docs/09-suggestion-engine.md` §8 for the canonical worked examples (`Globex 5M USDJPY OFF_HOURS = 5 pips`; `Northwind 12M EURUSD SIZE_LIMIT = 4 pips`).
 
 ## Reactivity
 
@@ -114,14 +129,19 @@ Updates are **debounced at 800ms** to avoid flicker. The suggestion does **not**
 
 ## Test contract
 
-Coverage targets per `docs/08-test-plan.md` §8: **100% branch coverage on `engine.ts`**, 90% line on `rationale.ts`. Per-named-client + per-scenario snapshot tests (5 × 5 = 25 cases minimum).
+Coverage targets per `docs/08-test-plan.md` §8: **100% branch coverage on `engine.ts`** (every `if`/`else if`/`&&`/`||` tested both true and false), 90% line on `rationale.ts`. Per-named-client + per-scenario snapshot tests across the five seed profiles. Total Phase 4 unit tests after FXSW-024: 47 across `engine.test.ts` (34), `rationale.test.ts` (7), `clientProfiles.test.ts` (6).
 
-## Status
+## Implementation commits
 
-Phase 4 work. Not yet implemented.
+| Ticket | Commit | What |
+|---|---|---|
+| FXSW-022 | `59fff0e` | `clientProfiles.ts` + shared `types.ts` (`ClientTier`, `Factor`, `SuggestionInput`, discriminated `MarginSuggestion`) + `marketContext.ts` static per-pair vol lookup |
+| FXSW-023 | `ca0cad8` | `engine.ts` `suggestMargin()` + `computeConfidence()` + `approxUsdNotional()` |
+| FXSW-024 | `8b12400` | `rationale.ts` `buildRationale()` + `CREDIT_DECLINE_RATIONALE` constant |
 
 ## Sources
 
 - `docs/09-suggestion-engine.md` §3, §5, §6, §7, §8, §9 — inputs, rule engine, confidence, credit-decline, rationale, reactivity
 - `docs/08-test-plan.md` §1, §8 — coverage targets
-- `docs/BACKLOG.md` FXSW-022, FXSW-023, FXSW-024
+- `docs/phase-summaries/FXSW-027-summary.md`
+- `docs/dev-log.md` FXSW-022, FXSW-023, FXSW-024 — implementation notes

@@ -3,7 +3,8 @@ last_updated: 2026-05-26
 sources:
   - docs/07-scenario-pack.md
   - docs/09-suggestion-engine.md
-status: in-progress
+  - docs/phase-summaries/FXSW-027-summary.md
+status: stable
 ticket: FXSW-027
 ---
 
@@ -71,12 +72,21 @@ The suggestion engine returns the credit-decline shape (`state === 'credit-decli
 
 with a **Reject** shortcut button replacing the usual Apply button. The Reject shortcut fires the same SI `Reject` event as the footer button.
 
-## Status
+## E2E implementation
 
-E2E spec is part of FXSW-027 (Phase 4, after the AI suggestion engine + panel). Not yet implemented.
+Spec: `tests/e2e/credit-breach.spec.ts`. Commit `ab8cd30` (FXSW-027). Runtime: 7.3s.
+
+- Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true` via `page.addInitScript`.
+- Hold via Playwright's `click({ delay: 700 })` — 700ms margin against the 600ms hold timer.
+- **Two reason-label assertions** — the blotter row's Reasons cell shows the short chip label (`"Credit limit breach"`); the ticket's Reasons Panel shows the long label (`"Client credit limit would be breached"`). Both are asserted, scoped to their respective DOM containers.
+- Asserts `data-suggestion-state="credit-decline"`, the `CREDIT_DECLINE_RATIONALE` text, `suggestion-reject` button present, `suggestion-apply` absent.
+- Asserts `data-si-state` cycles RejectSent → TraderRejected; `data-display-status="REJECTED"`; 5s removal; Historic with `data-outcome="Rejected by Trader"`.
+- Toast + document-title-prefix assertions intentionally deferred to FXSW-028 (notification layer).
 
 ## Sources
 
 - `docs/07-scenario-pack.md` Scenario 3
 - `docs/09-suggestion-engine.md` §7 — credit-decline special case
+- `docs/phase-summaries/FXSW-027-summary.md`
+- `docs/dev-log.md` FXSW-027 — implementation notes
 - `docs/BACKLOG.md` FXSW-027

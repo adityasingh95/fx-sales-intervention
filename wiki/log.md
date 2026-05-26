@@ -74,3 +74,13 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - LINT-303 (deferred): suggestion-factors, suggestion-recompute, suggestion-undo testids exist in Phase 4 src but absent from wiki/features/ai-margin-suggestion.md. Out of scope for Phase 3 ingest; will close with the Phase 4 ingest.
 ##   - Component naming drift: clean (every wiki-named component matches a src/ basename).
 ##   - Vendor-neutrality, state-machine, scenario, dep-version, cross-reference, orphan-page checks: all clean.
+
+## [2026-05-26] ingest | docs/phase-summaries/FXSW-027-summary.md + Phase 4 commits (FXSW-022 through FXSW-027). Affected pages:
+##   - wiki/components/suggestion-engine.md: in-progress → stable; fixed credit-decline shape discriminator (state→kind) and field name (message→rationale); added rationale-builder detail per rationale.ts; added per-ticket commit table
+##   - wiki/features/ai-margin-suggestion.md: in-progress → stable; full rewrite with real testid set (added suggestion-factors / suggestion-recompute / suggestion-undo per LINT-303); per-ticket commits; pips-span scoping note from FXSW-027 debug detour
+##   - wiki/data-models/client-profile.md: in-progress → stable; Halcyon acceptance rate "—" → 0.5 with neutral-prior rationale per clientProfiles.ts comment; averageMarginPaid added to seed table; unknown-client fallback documented
+##   - wiki/data-models/margin-suggestion.md: in-progress → stable; discriminator state → kind; ReadySuggestion + CreditDeclineSuggestion split per types.ts; panel-local applied/computing states distinguished from engine outputs
+##   - wiki/scenarios/credit-breach.md: in-progress → stable; cited commit ab8cd30; two-reason-label assertion note; deferred toast/title to FXSW-028
+##   - wiki/scenarios/size-limit-margin-tune.md: in-progress → stable; cited commit ab8cd30; concrete assertion details
+##   - wiki/index.md: status refresh — 4 AI pages promoted to stable; 2 scenarios promoted to passing-E2E
+##   - LINT-303 resolved (suggestion-* testids now documented).

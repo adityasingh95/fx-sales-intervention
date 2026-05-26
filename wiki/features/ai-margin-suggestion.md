@@ -4,13 +4,14 @@ sources:
   - docs/02-functional-spec.md
   - docs/05-ui-ux-spec.md
   - docs/09-suggestion-engine.md
-status: in-progress
-ticket: FXSW-025
+  - docs/phase-summaries/FXSW-027-summary.md
+status: stable
+ticket: FXSW-025..FXSW-026
 ---
 
 # Feature — AI Margin Suggestion
 
-The visual moment of the [ticket](ticket.md). Sits between the Reasons Panel and the Pricing Panel. A recommended margin in pips with a one-line rationale and an Apply button. Visible when SI state = `PickedUp`; hidden once a quote is sent or any terminal action is taken.
+The visual moment of the [ticket](ticket.md). Sits between the Reasons Panel and the Summary Panel (per `docs/09-suggestion-engine.md` §2). A recommended margin in pips with a one-line rationale and an Apply button. Visible when SI state = `PickedUp`; hidden in any other state.
 
 Powered by a **deterministic rule engine** — see [components/suggestion-engine.md](../components/suggestion-engine.md) and [decisions/ADR-0006-deterministic-suggestion-engine.md](../decisions/ADR-0006-deterministic-suggestion-engine.md). The "AI" label is real-trader vernacular; the implementation is a pure function. No external API calls.
 
@@ -26,10 +27,15 @@ Distinct from the trading chrome via:
 
 ## Layout — ready state
 
-- **Header row:** sparkle icon + "AI Margin Suggestion" + confidence badge (`Low` / `Medium` / `High`) + a small Recompute icon button.
-- **Body:** large number — the suggested pips at `--text-2xl` (32px) mono — plus short rationale (≤ 120 chars) at `--text-base`.
+- **Header row:** sparkle icon + "AI Margin Suggestion" + confidence badge (`Low` / `Medium` / `High`) + a Recompute icon button (`RotateCw`).
+- **Body:** large number — the suggested pips at `--text-2xl` (32px) mono — plus short rationale (≤ 120 chars) at `--text-base`. The number and the "pips" unit suffix live in **sibling spans** (not the same div) so `data-testid="suggestion-pips"` scopes to the number only — caught during FXSW-027 debug; see `docs/dev-log.md` entry.
 - **Footer:** **Apply** (primary CTA, indigo background) + **Why?** (ghost button).
-- **Expanded "Why?" state:** a small factors table showing each contributing factor, its delta in pips, and a brief note.
+- **Expanded "Why?" state:** a 3-column factors table (Factor / Δ pips / Note). The tier row shows `baseline` instead of `+0` — the tier is the starting point, not an adjustment.
+
+Confidence badge color-coding per `docs/05-ui-ux-spec.md` §4.5:
+- High → `ai-accent` text on `ai-bg`.
+- Medium → `text-dim` on `bg-elevated`.
+- Low → `amber` text with dotted border.
 
 ## Layout — applied state
 
@@ -37,61 +43,81 @@ Distinct from the trading chrome via:
 ✦  Applied 4 pips                                  [Undo]
 ```
 
-Collapses to a single-line confirmation strip. Undo restores the previous margin and re-expands the panel.
+Collapses to a single-line confirmation strip on the same indigo chrome. State held as `appliedFrom: number | null` — presence means "applied," and the stored value is what Undo restores (avoids an "applied but previousMargin missing" impossible state). Undo restores the previous margin and re-expands the panel.
 
 ## Layout — credit-decline state
 
 ```
 ✦  AI Recommendation                              ⚠
 ─────────────────────────────────────────────────
-Credit limit breach — recommend declining.
+Credit limit breach — recommend declining. Suggested action: Reject.
 
 [  Reject deal  ]
 ```
 
-Shown when `rejectionReasons` includes `CREDIT_LIMIT`. The Apply button is **replaced** with a Reject shortcut that fires the same SI `Reject` event as the [ticket footer](ticket.md). Apply is hidden. Rationale: [decisions/ADR-0007-credit-breach-recommend-decline.md](../decisions/ADR-0007-credit-breach-recommend-decline.md).
+Shown when `rejectionReasons` includes `CREDIT_LIMIT`. Red/40 chrome + amber `AlertTriangle` icon. The Apply button is **replaced** with a `RejectHoldButton` (600ms hold or double-click) that fires the same SI `Reject` event as the [ticket footer](ticket.md). Apply is hidden. Rationale: [decisions/ADR-0007-credit-breach-recommend-decline.md](../decisions/ADR-0007-credit-breach-recommend-decline.md).
+
+The rationale text comes from `CREDIT_DECLINE_RATIONALE` in `src/services/suggestion/rationale.ts` — same constant the [engine](../components/suggestion-engine.md) returns.
 
 ## Layout — computing state
 
-The suggested-pips number is replaced with a shimmer skeleton (`--color-bg-elevated`, 1.2s shimmer loop). The rationale shows "Recomputing…" in `--color-text-mute`. Apply is disabled. Shown during the 800ms debounce after a recompute trigger.
+The suggested-pips number is replaced with a `bg-elevated` pulse skeleton. The rationale shows "Recomputing…" in `--color-text-mute`. Apply + Why? are disabled. Shown during the 800ms debounce after a Recompute trigger.
 
 ## Behaviour
 
-- **Initial computation** happens within 800ms of `PickedUp`.
-- **Recomputes** trigger on: `pairVolatility` shift > 30% from last input; explicit Recompute button click. Debounced at 800ms.
-- **Apply** sets `marginPips` on the deal context to the suggested value. The Pricing Panel's margin field animates to the new value over 200ms with a brief indigo outline glow that fades over 600ms.
-- **Undo** restores the previous margin and re-expands the panel.
-
-## Apply propagation
-
-Apply does not just update the margin number — it propagates through the entire pricing chain:
-
-1. `marginPips` updates in the dealMachine context.
-2. The Pricing Panel margin field animates to the new value with the indigo outline animation.
-3. The Client Summary recalculates client bid / client ask / estimated profit live.
-4. The Apply event is recorded in `context.history` for the test contract.
+- **Initial computation** fires when SI reaches `PickedUp`. Computed exactly once per PickedUp visit, gated by a `useRef` flag in TicketPanel. Flag clears when SI leaves PickedUp so re-entry (after Withdraw) recomputes.
+- **Recompute triggers**: explicit Recompute icon click; `pairVolatility` prop change > 30% from the value used for the last computation.
+- Debounced at 800ms — rapid clicks / vol-shift events coalesce into one recompute.
+- **Vol-shift is dormant in v1.** `marketContext.ts` returns constants per pair — wiring exists for v2 per `docs/09 §3.1`.
+- **Apply** sets `marginPips` on TicketPanel state (interim) — to be lifted onto the dealMachine context in a future polish ticket. The Pricing Panel's margin field animates to the new value with a brief indigo outline glow that fades over 600ms (`data-margin-glow="true"` for 600ms on the margin input; the `MarginGlowHarness` integration test in `SuggestionPanel.test.tsx` verifies the wire).
 
 ## Test contract
 
 ```html
 <section data-testid="suggestion-panel" data-suggestion-state="ready">
-  <div data-testid="suggestion-pips">4</div>
+  <button data-testid="suggestion-recompute">…</button>
   <div data-testid="suggestion-confidence">high</div>
+  <span data-testid="suggestion-pips">4</span>
   <p data-testid="suggestion-rationale">Gold-tier client with 12M EURUSD…</p>
   <button data-testid="suggestion-apply">Apply</button>
   <button data-testid="suggestion-why">Why?</button>
+  <!-- Why? expanded: -->
+  <table data-testid="suggestion-factors">…</table>
+</section>
+
+<!-- applied state -->
+<section data-testid="suggestion-panel" data-suggestion-state="applied">
+  <button data-testid="suggestion-undo">Undo</button>
+</section>
+
+<!-- credit-decline state -->
+<section data-testid="suggestion-panel" data-suggestion-state="credit-decline">
+  <p data-testid="suggestion-rationale">Credit limit breach…</p>
+  <button data-testid="suggestion-reject">Reject deal</button>
 </section>
 ```
 
 `data-suggestion-state` values: `computing`, `ready`, `applied`, `credit-decline`.
 
-## Status
+The `suggestion-pips` testid scopes to the number-only span; the "pips" unit label is a sibling span outside that testid (so `toHaveText('4')` is unambiguous — the FXSW-027 debug detour fixed this).
 
-Phase 4 work. Engine + panel landing in FXSW-022 through FXSW-026. Not yet implemented. The [size-limit-margin-tune.md](../scenarios/size-limit-margin-tune.md) and [credit-breach.md](../scenarios/credit-breach.md) E2Es (FXSW-027) are the validation gates.
+## Implementation commits
+
+| Ticket | Commit | What |
+|---|---|---|
+| FXSW-025 | `301aac1` | `SuggestionPanel.tsx` ready / applied / Undo / Why? states; `MarginGlowHarness` integration test for Apply → margin glow wire |
+| FXSW-026 | `a7cd0fd` | credit-decline state with `RejectHoldButton`; Recompute icon + 800ms debounced computing state; vol-shift recompute hook (v2-dormant) |
+| FXSW-027 | `ab8cd30` | E2E specs — `tests/e2e/credit-breach.spec.ts` (7.3s) + `tests/e2e/size-limit-margin-tune.spec.ts` (9.2s) |
+
+## Known interim
+
+- `RejectHoldButton` (in `SuggestionPanel.tsx`) and `HoldButton` (in `TicketFooter.tsx`) are structural duplicates. The lift to a shared `src/components/Button.tsx` with a `holdToConfirm` prop is FXSW-029 polish scope (per `docs/05-ui-ux-spec.md` §3.1).
+- `marginPips` lives on TicketPanel state, not the dealMachine context. See [data-models/deal.md](../data-models/deal.md) §Related-fields-stored-elsewhere.
 
 ## Sources
 
 - `docs/02-functional-spec.md` §4.3 — panel position, visibility, apply behaviour
 - `docs/05-ui-ux-spec.md` §4.5 — visual treatment, layout sketches
 - `docs/09-suggestion-engine.md` (all sections) — engine, inputs, outputs, credit-decline, reactivity
-- `docs/BACKLOG.md` FXSW-025, FXSW-026 — implementation tickets
+- `docs/phase-summaries/FXSW-027-summary.md`
+- `docs/dev-log.md` FXSW-025, FXSW-026, FXSW-027 — implementation notes
