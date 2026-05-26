@@ -1,12 +1,12 @@
 import clsx from 'clsx';
 import { AlertTriangle, RotateCw, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { HoldButton } from '@/components/Button';
 import type { MarginSuggestion } from '@/services/suggestion/types';
 
 // FXSW-025 ready / applied / Undo · FXSW-026 credit-decline + Recompute.
 // Spec: docs/02 §4.3, docs/05 §4.5, docs/09 §7 + §9 + §10 + §13.
 
-const HOLD_MS = 600;
 const RECOMPUTE_DEBOUNCE_MS = 800;
 const VOL_SHIFT_THRESHOLD = 0.3; // 30% relative change triggers recompute
 
@@ -116,7 +116,15 @@ export default function SuggestionPanel({
           <AlertTriangle size={14} className="text-amber" aria-hidden />
         </header>
         <p className="text-sm leading-base text-text-dim">{suggestion.rationale}</p>
-        <RejectHoldButton onConfirm={() => onReject?.()} />
+        <div className="self-start">
+          <HoldButton
+            testId="suggestion-reject"
+            onConfirm={() => onReject?.()}
+            variant="danger"
+          >
+            Reject deal
+          </HoldButton>
+        </div>
       </section>
     );
   }
@@ -284,66 +292,5 @@ export default function SuggestionPanel({
         </button>
       </div>
     </section>
-  );
-}
-
-// Local hold-to-confirm primitive for the credit-decline Reject shortcut.
-// Mirrors the TicketFooter HoldButton (FXSW-020) inline rather than lifting
-// to a shared component — that lift is FXSW-029 polish scope.
-function RejectHoldButton({ onConfirm }: { onConfirm: () => void }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [holding, setHolding] = useState(false);
-
-  const cancel = (): void => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    setHolding(false);
-  };
-  const start = (): void => {
-    setHolding(true);
-    timerRef.current = setTimeout(() => {
-      onConfirm();
-      cancel();
-    }, HOLD_MS);
-  };
-  const onDoubleClick = (): void => onConfirm();
-
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  return (
-    <button
-      type="button"
-      data-testid="suggestion-reject"
-      data-holding={holding ? 'true' : undefined}
-      aria-describedby="suggestion-reject-hint"
-      onPointerDown={start}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onDoubleClick={onDoubleClick}
-      className="relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden self-start rounded-sm border border-red/40 bg-red/15 px-4 text-sm font-medium text-red transition-colors hover:bg-red/25"
-    >
-      {holding && (
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transformOrigin: 'left center',
-            background: 'currentColor',
-            opacity: 0.25,
-            animation: 'holdgrow 600ms linear forwards',
-          }}
-        />
-      )}
-      <span className="relative z-10">Reject deal</span>
-      <span id="suggestion-reject-hint" className="sr-only">
-        Hold for 600ms or double-click to confirm
-      </span>
-    </button>
   );
 }

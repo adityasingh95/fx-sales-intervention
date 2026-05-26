@@ -32,6 +32,27 @@ Most recent first.
 
 ---
 
+## FXSW-030 · Visual polish pass
+**Commit `TBD`**
+
+- **Button.tsx lift** — `src/components/Button.tsx` real, exporting `Button` (the simple variant) and `HoldButton` (the 600ms-hold-or-double-click variant) with a shared 4-variant style table (`primary` / `secondary` / `danger` / `ghost`) per `docs/05 §3.1`. Lifted from `TicketFooter.tsx` (FXSW-020 inline) and `SuggestionPanel.tsx` (FXSW-026 RejectHoldButton inline) — both consumers now import from the shared module. ~90 lines of duplicated primitive code removed; behavior contract preserved (testids, `data-in-flight`, `data-holding`, `aria-describedby` hint, `holdgrow` keyframe overlay all unchanged).
+- `TicketFooter.tsx` shed: the local `ActionButton`, the local `HoldButton`, the `Variant` type, the `VARIANT_CLASSES` record, and the `HOLD_MS` constant. Imports the shared primitives via aliased names (`Button as ActionButton`) so the existing JSX inside the footer stays unchanged.
+- `SuggestionPanel.tsx` shed: the `RejectHoldButton` helper component, the inline 600ms timer hook, the inline `holdgrow` `<span>` overlay, the `HOLD_MS` constant. The credit-decline branch now wraps the shared `HoldButton variant="danger"` in a `self-start` div to constrain the button width.
+- No new tests for the lift — the existing `TicketFooter.test.tsx` (7) + `SuggestionPanel.test.tsx` (14) cover both consumers' behavior, including the 600ms hold semantics and the credit-decline Reject path. Both green post-refactor.
+- **Eye-test polish (user-driven on the live URL):** glass blur on the ticket overlay, header gradient strip, AI panel indigo glow, animation durations, hover states, focus rings, console-error sweep. The responsive amendment (header inject-button strip + each blotter scrolls horizontally as a unit below 1440px) was already in place from Phase 2.
+
+**User-directed decisions:** None — the lift implements `docs/05 §3.1` literally and the previous FXSW-020 / FXSW-026 dev-log entries called out the "lift when a second consumer arrives" timing.
+
+**Agent-directed decisions:**
+- **Imported `Button as ActionButton` in `TicketFooter.tsx`** to keep the JSX inside the footer (which has six `<ActionButton ... />` call sites) unchanged. Renaming the prop alias is cheaper than renaming six call sites.
+- **`ButtonVariant` type + `VARIANT_CLASSES` record are file-local**, not exported. Consumers reference the variant as a string-literal union via the component's prop type (`variant="primary"`). Avoids the `react-refresh/only-export-components` lint warning that fires when a component file co-exports non-component values, and keeps the public surface of `Button.tsx` strictly the two components.
+- **Credit-decline button gets a `<div className="self-start">` wrapper** rather than fighting the shared `HoldButton`'s default-stretch behaviour inside the SuggestionPanel's `flex-col` container. The pre-lift inline copy had `self-start` baked into the className; the shared component shouldn't carry layout-position concerns, so the parent enforces sizing.
+- **No `eye-test` automation added.** AC explicitly says "no automated tests"; the deliverable is the polish commit. Eye-test results are user-side observations on the live deploy.
+- **No `Button.test.tsx` for the lifted module itself.** Both behavior surfaces are still exercised end-to-end via the consumer tests (TicketFooter Reject + Send Stream hold semantics, SuggestionPanel credit-decline Reject hold). A dedicated unit test for the primitive would be a duplicate.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, unchanged), e2e ✓ (6/6 in 35.9s, unchanged), build ✓.
+
+---
+
 ## FXSW-031 · RELEASE_PATH E2E
 **Commit `ad4cade`**
 
