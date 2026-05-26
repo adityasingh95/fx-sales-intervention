@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-014 · TicketPanel shell + glass overlay
-**Commit `_pending_`**
+**Commit `99e9823`**
 
 - TDD red→green: 5 specified `TicketPanel.test.tsx` cases — not rendered when `uiStore.openDealId === null`, rendered when set with the deal's basic info (`data-deal-id`, client, account, pair, side, amount, reason label), Esc keypress calls `uiStore.closeTicket()`, opening fires SI `PickUp` (Initial → PickUpSent → PickedUp via `vi.advanceTimersByTime(ackDelayMs)`), closing does NOT fire `Hold` (deal stays in `PickedUp`).
 - `src/features/ticket/TicketPanel.tsx` real: right-side overlay rendered conditionally on `uiStore.openDealId`. Backdrop is `fixed inset-0 z-40` with an `onClick` that closes; panel itself is `absolute right-0 top-0 ... sm:w-[640px]` with `e.stopPropagation()` so clicks inside don't bubble to the backdrop.
