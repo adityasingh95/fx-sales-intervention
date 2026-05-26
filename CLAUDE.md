@@ -23,7 +23,6 @@ Use the canonical state and event names everywhere in code: `Queued`, `PickedUp`
 - **Build:** Vite 5 + TypeScript 5 (strict mode)
 - **UI:** React 18 + Tailwind CSS 3 + `clsx` + `lucide-react` icons
 - **State:** Zustand (UI/transient) + XState (deal lifecycle)
-- **Grid:** AG-Grid Community 31
 - **Test:** Vitest + React Testing Library (unit/component) + Playwright (E2E)
 - **Lint/format:** ESLint + Prettier
 - **Package manager:** pnpm

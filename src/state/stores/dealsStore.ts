@@ -6,8 +6,9 @@ import type { Deal, RejectionReason } from '@/types/deal';
 import type { DealChannel } from '@/types/scenario';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
-// state graph lands in FXSW-010; the store only needs to know which
-// states pull a deal out of the active blotter and into historic.
+// state graph lives in `src/state/machines/siMachine.ts` (landed in
+// FXSW-010); the store only needs to know which states pull a deal out
+// of the active blotter and into historic.
 export const TERMINAL_SI_STATES: ReadonlySet<string> = new Set([
   'TraderRejected',
   'ClientRejected',

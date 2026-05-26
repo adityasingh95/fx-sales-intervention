@@ -6,8 +6,9 @@ import { flashDocumentTitle } from '@/features/notifications/titleFlash';
 // Subscribes to dealsStore. When a deal first appears in Active with
 // siState='Initial' AND dealable=true AND has rejectionReasons (i.e. SI
 // channel, not ESP), fires the visual notification: toast + title flash.
-// Audio chime is FXSW-029 — landing alongside the mute toggle + settings
-// store so the WebAudio unlock + mute state can be wired together.
+// Audio chime is wired separately by `useNotificationSound` (FXSW-029),
+// which subscribes to the notifications store's `notifiedDealIds.size`
+// growth.
 //
 // Per docs/02 §5.1, the notification does NOT re-fire when a previously-
 // picked-up deal is Released back to dealable. The notifications store's

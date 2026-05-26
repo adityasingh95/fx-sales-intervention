@@ -17,12 +17,6 @@ importers:
       '@xstate/react':
         specifier: 4.1.1
         version: 4.1.1(@types/react@18.3.2)(react@18.3.1)(xstate@5.13.0)
-      ag-grid-community:
-        specifier: 31.3.2
-        version: 31.3.2
-      ag-grid-react:
-        specifier: 31.3.2
-        version: 31.3.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -769,15 +763,6 @@ packages:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  ag-grid-community@31.3.2:
-    resolution: {integrity: sha512-GxqFRD0OcjaVRE1gwLgoP0oERNPH8Lk8wKJ1txulsxysEQ5dZWHhiIoXXSiHjvOCVMkK/F5qzY6HNrn6VeDMTQ==}
-
-  ag-grid-react@31.3.2:
-    resolution: {integrity: sha512-SFHN05bsXp901rIT00Fa6iQLCtyavoJiKaXEDUtAU5LMu+GTkjs/FPQBQ8754omgdDFr4NsS3Ri6QbqBne3rug==}
-    peerDependencies:
-      react: ^16.3.0 || ^17.0.0 || ^18.0.0
-      react-dom: ^16.3.0 || ^17.0.0 || ^18.0.0
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -3043,15 +3028,6 @@ snapshots:
       acorn: 8.16.0
 
   acorn@8.16.0: {}
-
-  ag-grid-community@31.3.2: {}
-
-  ag-grid-react@31.3.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      ag-grid-community: 31.3.2
-      prop-types: 15.8.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   agent-base@7.1.4: {}
 
