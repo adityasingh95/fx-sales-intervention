@@ -97,4 +97,9 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - Added ## Tests sections to 9 component pages (pricing-feed, deal-feed, scenario-player, deals-store, rfs-machine, si-machine, deal-machine, status-derivation, suggestion-engine) and 6 feature pages (active-blotter, historic-blotter, ticket, ai-margin-suggestion, notifications, dev-injector). Each section: file path + case count + 1-line category summary. Cross-references to test-patterns.md §N where a pattern is at play.
 ##   - onboarding.md §8 updated to point at test-patterns.md as required reading before first test.
 ##   - wiki/index.md: test-patterns.md added to Components category.
-##   Option 3 (lessons.md from dev-log "What surprised you" entries) intentionally not done — those lessons are inlined as comments in tests or as paragraphs on the relevant component pages where they affect behaviour; a separate lessons page would duplicate dev-log without adding synthesis value.
+## [2026-05-26] schema-update | Refresh stale-state synthesis pages post-merge. Spotted by user. Fixed:
+##   - overview.md §Current state: "Phase 2 closed" → "Phase 4 closed" with current test suite counts (296 unit + 4 E2E + smoke) and remaining-Phase-5 list.
+##   - onboarding.md §9 build-progression: Phases 3 + 4 flipped Not-started → Done; Phase 2 demoted from "(current state)" to plain Done.
+##   - features/ticket.md: dropped the stale "AI panel wiki still in-progress pending Phase 4 ingest" line — AI panel is now stable; replaced with a clean stable-state description.
+##   - glossary.md: dropped three "(pending)" notes on dummy-feed / scenarios / dev-injector cross-references — those pages all exist now; repointed to live wiki links.
+##   in-progress statuses confirmed correct on: onboarding.md (schema-mandated rewrite-at-end-of-Phase-5), notifications.md (Phase 5), release-path.md (FXSW-031 Phase 5).

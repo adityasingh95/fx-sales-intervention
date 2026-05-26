@@ -141,9 +141,9 @@ Tests assert on `data-*` attributes, never on text or color. The test-contract a
 |---|---|---|---|
 | 0 | (pre-build) | Spec pack, backlog, CLAUDE.md | Done |
 | 1 | FXSW-001 → FXSW-006 | Scaffold + first hardcoded blotter row | Done |
-| 2 | FXSW-007 → FXSW-013 | Pricing feed, deal feed, two-machine deal lifecycle, status derivation, live blotters, dev injector + HAPPY_PATH_ESP E2E | **Done** (current state) |
-| 3 | FXSW-014 → FXSW-021 | TicketPanel + sub-panels, footer actions, OFF_HOURS_INTERVENTION E2E | Not started |
-| 4 | FXSW-022 → FXSW-027 | AI margin engine, suggestion panel, SIZE_LIMIT + CREDIT_BREACH E2E | Not started |
+| 2 | FXSW-007 → FXSW-013 | Pricing feed, deal feed, two-machine deal lifecycle, status derivation, live blotters, dev injector + HAPPY_PATH_ESP E2E | Done |
+| 3 | FXSW-014 → FXSW-021 | TicketPanel + sub-panels, footer actions, OFF_HOURS_INTERVENTION E2E | **Done** |
+| 4 | FXSW-022 → FXSW-027 | AI margin engine, suggestion panel, SIZE_LIMIT + CREDIT_BREACH E2E | **Done** (current state) |
 | 5 | FXSW-028 → FXSW-034 | Notifications, polish, CI, README, Pages deploy, RELEASE_PATH E2E | Not started |
 
 Full backlog: `docs/BACKLOG.md`. Per-ticket implementation notes: `docs/dev-log.md`.
