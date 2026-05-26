@@ -20,6 +20,8 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Fetch reference FX mids (predev/prebuild script)
+        run: pnpm exec tsx scripts/fetch-reference-mids.ts
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test:run
