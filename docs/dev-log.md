@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-023 · Suggestion engine
-**Commit `TBD`**
+**Commit `ca0cad8`**
 
 - TDD red→green: **34 `engine.test.ts` cases** organised by concern — tier baseline (×4), notional band (×5 including non-USD-base conversion), market context (×6 covering vol/liquidity/pair-class true+false), rejection reasons (×4 incl. CREDIT_LIMIT precedence), client behaviour (×6 covering all flag paths + acceptance both sides), confidence (×5 covering all three return paths + each gate), algebraic invariant (×1, samples 5 inputs), floor (×1), and the two canonical scenarios from `docs/09 §8` (Globex 5M USDJPY OFF_HOURS = 5 pips; Northwind 12M EURUSD SIZE_LIMIT = 4 pips).
 - `src/services/suggestion/engine.ts` real per `docs/09 §5`: pure `suggestMargin(input)`. CREDIT_LIMIT short-circuits to the `credit-decline` shape with the §7 message. Otherwise builds a `Factor[]` walking tier baseline → notional band → market (vol / thin liquidity / pair class) → rejection reasons → behaviour (flight_risk / VIP-volume / acceptance) → floor & round. `approxUsdNotional` helper inlined: USD-base pairs return notional as-is, USD-quote pairs convert via current mid.
