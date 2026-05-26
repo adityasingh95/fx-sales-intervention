@@ -72,7 +72,7 @@ Each chip carries `data-reason="{REASON}"` for test scoping.
 
 ## Client Summary Panel (FXSW-019)
 
-- Three-column grid: Client Bid / Client Ask / Estimated profit, each with its own testid.
+- Three-column grid with one testid per cell: `data-testid="client-bid"`, `data-testid="client-ask"`, `data-testid="estimated-profit"`. Container is `data-testid="client-summary-panel"`.
 - All math lives in `src/lib/pips.ts`:
   - `pipSizeFor(pair)` — 0.0001 for 4dp pairs, 0.01 for 2dp JPY/INR pairs.
   - `clientBidFromTrader`, `clientAskFromTrader` — round to the pair's display precision so float drift doesn't leak (`1.0850 − 3*0.0001` is `1.0846999999999998` in raw floats; the lib rounds to 1.0847).

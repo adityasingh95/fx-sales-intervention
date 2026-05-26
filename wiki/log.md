@@ -84,3 +84,10 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - wiki/scenarios/size-limit-margin-tune.md: in-progress → stable; cited commit ab8cd30; concrete assertion details
 ##   - wiki/index.md: status refresh — 4 AI pages promoted to stable; 2 scenarios promoted to passing-E2E
 ##   - LINT-303 resolved (suggestion-* testids now documented).
+
+## [2026-05-26] lint | Post-Phase-4 lint pass (MANDATORY focus: engine.ts pip-deltas ↔ wiki/components/suggestion-engine.md). Findings:
+##   - Pip-delta drift check: CLEAN. 13/13 values match — 4 tier baselines (1.5/2/3/4), 3 notional bands (+2.5/+1.5/+0.5), 3 market deltas (+1/+1.5/+0.5), 2 rejection-reason deltas (+1.5/+0.5), 3 behaviour deltas (−1/−0.5/−0.5), confidence thresholds (10M/100M/1M/<0.4), floor `max(1, round(...))`.
+##   - LINT-401 (fixed): client-bid, client-ask, estimated-profit testids documented in prose in wiki/features/ticket.md but not enumerated in test-contract format. Replaced "each with its own testid" with the explicit data-testid="..." strings.
+##   - Client profile seed values: all 5 match exactly (Halcyon's 0.5 neutral prior preserved bold).
+##   - Vendor-neutrality, component naming, state-machine, scenario, dep, cross-reference, orphan checks: all clean.
+##   - BACKLOG status: 28 ☑ tickets match 28 unique FXSW commits in git log.
