@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-017 · PricingPanel streaming mode
-**Commit `_pending_`**
+**Commit `1f88333`**
 
 - TDD red→green: **3 specified `PricingPanel.test.tsx` cases** plus 2 supporting `usePrice.test.tsx` cases.
   - `usePrice` subscribes on mount and receives a tick within 600ms; unsubscribes on unmount (no further state updates after).
