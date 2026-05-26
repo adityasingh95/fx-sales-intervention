@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-015 · ReasonsPanel
-**Commit `_pending_`**
+**Commit `5198b26`**
 
 - TDD red→green: 3 specified `ReasonsPanel.test.tsx` cases — `['OFF_HOURS']` → one chip with "Outside trading window", `['SIZE_LIMIT', 'CREDIT_LIMIT']` → two chips with the right labels, `[]` → renders nothing (container.firstChild is null).
 - `src/features/ticket/ReasonsPanel.tsx` real per `docs/02 §4.1`: title row "Risk Analysis" (`aria-label` + visible `<h2>`), then one `<li data-reason={r}>` per reason with icon (lucide `Clock` / `Maximize2` / `ShieldAlert` for OFF_HOURS / SIZE_LIMIT / CREDIT_LIMIT), label, and the verbatim one-line explanation from the spec. `data-testid="reasons-panel"` on the `<section>`.
