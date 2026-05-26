@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-      # Temporary: lets the Phase 2 WIP branch auto-deploy until the
-      # phase merges to main. Strip in the merge commit.
-      - claude/cool-planck-MeZgz
   workflow_dispatch:
 
 permissions:
