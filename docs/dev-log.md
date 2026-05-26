@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-018 · PricingPanel fixed mode + margin controls
-**Commit `_pending_`**
+**Commit `3a09a3e`**
 
 - TDD red→green: **6 specified `PricingPanel.test.tsx` cases** for the fixed-mode + margin behaviour, in a `describe('fixed mode (FXSW-018)')` sibling of the 3 streaming cases from FXSW-017. New cases: click bid → `data-pricing-mode="fixed"` + bid cell gets `data-focused`; Refresh button only renders in fixed mode; + / − buttons increment/decrement by 1; keyboard `+` / `-` does the same as the buttons; margin floor is 1 (button disabled at floor; keypress clamps); programmatic margin update (parent prop change) animates `data-margin-glow="true"` for 600ms.
 - `PricingPanel.tsx`: streaming-mode behaviour preserved verbatim. New state: `pricingMode: 'streaming' | 'fixed'`, `fixedSide: 'bid' | 'ask' | null`, `frozenTick: PriceTick | null`, `marginGlow: boolean`.
