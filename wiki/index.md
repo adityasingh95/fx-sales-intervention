@@ -27,6 +27,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
 - [components/suggestion-engine.md](components/suggestion-engine.md) — **stable.** Deterministic rule engine, tier base + size + market + reason + behaviour deltas. Rationale builder + CREDIT_DECLINE_RATIONALE constant.
+- [components/test-patterns.md](components/test-patterns.md) — recurring test patterns: seed pinning, fake timers for `*Sent`, hold-to-confirm interaction, harness pattern, `queueMicrotask` cleanup, cell-testid scoping, throwaway debug spec, `data-*` over text/color.
 
 ## Data models
 

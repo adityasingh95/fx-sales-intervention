@@ -87,6 +87,12 @@ XState v5 doesn't cleanly allow `after` transitions on `final` states. The hidde
 
 State name surfaces on each blotter row as `data-si-state`. Most informative attribute for Playwright assertions. See [active-blotter.md](../features/active-blotter.md).
 
+## Tests
+
+`src/state/machines/siMachine.test.ts` — **4 cases**. Starts in `Initial`; `PickUp` transitions to `PickUpSent`; after 250ms (fake timers) advances to `PickedUp`; overriding `timings.ackDelayMs = 0` makes the transition synchronous. The full state graph (`QuoteSent`, `WithdrawSent`, `HoldSent`, `RejectSent`, terminals, `Removed`) is exercised through the parent [dealMachine](deal-machine.md) tests.
+
+Fake-timer + zero-delay patterns for `*Sent` states: see [test-patterns.md](test-patterns.md) §2.
+
 ## Sources
 
 - `docs/03-trade-state-model.md` §2, §3, §4, §7, §9 — SI states, cross-model relationships, side-effect timers, out-of-scope items

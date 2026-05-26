@@ -133,6 +133,8 @@ Determinism: Playwright pins `window.__seedFeed = 42` (deterministic price walks
 
 Tests assert on `data-*` attributes, never on text or color. The test-contract attributes per component live in each feature/component wiki page.
 
+**Recurring patterns** (seed pinning, fake timers for `*Sent`, hold-to-confirm pointer events + double-click fallback, harness pattern for lifted state, `queueMicrotask` for actor cleanup, cell-testid scoping, throwaway debug spec) are documented in [components/test-patterns.md](components/test-patterns.md). Read this before writing your first new test — it covers the lessons learned across Phases 1-4. Per-component test inventories (file path + case count + 1-line categories) sit at the bottom of each component / feature page under `## Tests`.
+
 ## 9 · Build progression
 
 | Phase | Tickets | What lands | Status |

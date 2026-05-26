@@ -57,6 +57,12 @@ The injector is a demo/dev tool, not a trader-facing feature. Hiding it behind `
 
 Each E2E scenario spec drives the first click via the corresponding `data-testid`. See the [Scenarios section of the index](../index.md#scenarios).
 
+## Tests
+
+`src/App.test.tsx` — **4 cases**. App renders without error; contains text "FX Sales Workstation"; **does NOT contain the banned vendor name** (vendor-neutrality assertion per the build-agent rule and [ADR-0010](../decisions/ADR-0010-brand-neutral-product.md)); `dev-injector-slot` visible with `?dev=1` + hidden without (via `window.history.replaceState`).
+
+End-to-end coverage is per-scenario: [scenarios/happy-path-esp.md](../scenarios/happy-path-esp.md) drives the `inject-HAPPY_PATH_ESP` button + asserts the resulting blotter row; the four pending scenarios follow the same shape.
+
 ## Sources
 
 - `docs/02-functional-spec.md` §6 — button enumeration, `?dev=1` gating

@@ -54,6 +54,12 @@ The blotter body wrapper carries `data-testid="historic-blotter-body"`. Each row
 
 `data-outcome` is the canonical test-assertion attribute, per `docs/07-scenario-pack.md` test fidelity notes.
 
+## Tests
+
+`src/features/blotter/HistoricBlotter.test.tsx` — **2 cases**. Empty-state message; rendered rows show the right outcome label per `outcomeFromFinalStates`.
+
+End-to-end archival from terminal SI/RFS state through to the historic list is covered by `dealsStore.test.ts` — see [components/deals-store.md](../components/deals-store.md) §Tests.
+
 ## Implementation
 
 - Component: `src/features/blotter/HistoricBlotter.tsx`.

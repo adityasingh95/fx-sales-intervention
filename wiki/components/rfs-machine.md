@@ -75,6 +75,10 @@ For ESP deals (auto-priced), SI stays at `Initial` for the whole deal — there 
 
 State name surfaces on each blotter row as `data-rfs-state`. See [active-blotter.md](../features/active-blotter.md) for the full row attribute list.
 
+## Tests
+
+`src/state/machines/rfsMachine.test.ts` — **2 cases**. Starts in `Queued`; `PickUp` transitions to `PickedUp`. The full state graph is exercised end-to-end through the parent [dealMachine](deal-machine.md) tests.
+
 ## Sources
 
 - `docs/03-trade-state-model.md` §1, §3, §4, §9 — RFS states, RFS↔SI relationships, Mermaid diagram, out-of-scope items

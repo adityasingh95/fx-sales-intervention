@@ -80,6 +80,25 @@ The store pulls both child actors out of the parent's context and subscribes to 
 - **Do not derive status labels** anywhere except `statusFromMachines.ts` — see [status-derivation.md](status-derivation.md).
 - **Do not mutate** `dealable` directly — it's derived from SI state in the store.
 
+## Tests
+
+`src/state/machines/dealMachine.test.ts` — **11 cases**. The integration coverage for the full RFS + SI state graph and every cross-model send from `docs/03 §3`:
+
+- Context + spawn shape (RFS in `Queued`, SI in `Initial`, shared `dealId`).
+- `PickUp` → SI `Initial → PickUpSent → PickedUp` + RFS `Queued → PickedUp`.
+- `Hold` from PickedUp → SI `PickedUp → HoldSent → Initial` + RFS `PickedUp → Queued` (Dealable=true again).
+- `Quote` → SI `PickedUp → QuoteSent → Quoted` + RFS `PickedUp → Executable`.
+- `Withdraw` from Quoted → SI `Quoted → WithdrawSent → PickedUp` + RFS `Executable → PickedUp`.
+- `Reject` from PickedUp + `Reject` from Quoted → SI terminal `TraderRejected`.
+- `ClientReject` in Quoted → SI terminal `ClientRejected`.
+- `TradeConfirmed` → both machines terminal.
+- 5-second `removeFromActive` rule via `after: 5000` across all three terminal SI states.
+- Terminal states reject all subsequent events (no transitions).
+
+All run under `vi.useFakeTimers()` + `vi.advanceTimersByTime(timings.ackDelayMs)`.
+
+Fake-timer pattern: see [test-patterns.md](test-patterns.md) §2.
+
 ## Sources
 
 - `docs/03-trade-state-model.md` §3, §4, §6, §10 — cross-model relationships, diagrams, status derivation, anti-patterns

@@ -51,6 +51,19 @@ E2E coverage in `tests/e2e/notifications.spec.ts`:
 - Muted: visual elements still appear; no `<audio>` plays.
 - Unmuted: spy on `AudioContext.prototype.resume` and `OscillatorNode` creation to assert a sound was scheduled.
 
+## Tests
+
+_Not yet written. Phase 5 (FXSW-028, FXSW-029). When the layer ships, expected coverage per `docs/08-test-plan.md` §2 + §3:_
+
+- `ToastStack.test.tsx` — toast appears on new SI deal; auto-dismisses at 6s; click calls `uiStore.openTicket(dealId)`; re-released deal does NOT re-fire notifications.
+- `titleFlash.test.ts` — `document.title` prefixed with `● ` for 5s, then restored.
+- `settingsStore.test.ts` — mute toggle persists to `sessionStorage` `si.muted` across reload.
+- `useNotificationSound.test.tsx` — schedules `OscillatorNode` when unmuted + post-gesture; not when muted; not before first user gesture.
+- `MuteToggle.test.tsx` — click flips state; correct icon per state.
+- `tests/e2e/notifications.spec.ts` — mute persists across reload; muted = visual cues fire but no `<audio>` scheduled; unmuted = `AudioContext.prototype.resume` + `createOscillator` spied.
+
+E2E specs for OFF_HOURS_INTERVENTION, CREDIT_BREACH, and SIZE_LIMIT_MARGIN_TUNE all have toast + document-title-prefix assertions stubbed-out commented, ready to activate once this layer ships.
+
 ## Status
 
 Phase 5 work. Toast layer is FXSW-028; audio chime + mute + settingsStore is FXSW-029. Not yet started.

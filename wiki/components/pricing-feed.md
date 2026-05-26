@@ -102,6 +102,14 @@ In Phase 3 the ticket's `usePrice` call lives at `TicketPanel` level (not inside
 
 The hook is at `src/services/feed/usePrice.ts` (next to the feed it wraps), not under `src/features/ticket/` — so [active-blotter.md](../features/active-blotter.md)'s `RateCell` can adopt it in a future refactor without a cross-feature import.
 
+## Tests
+
+`src/services/feed/pricingFeed.test.ts` — **6 cases**. Subscribe round-trip; two subscribers receive identical ticks; unsubscribe stops one without affecting others; **seed-42 golden mid sequence `[1.1715, 1.1714, 1.1714, 1.1714, 1.1714]`**; `stop()` clears subscriptions; `getLatest()` null-then-cached.
+
+`src/services/feed/usePrice.test.tsx` — **2 cases**. Hook subscribes on mount + receives tick within 600ms; unsubscribes on unmount.
+
+Seed-pinning + half-spread rounding caveat: see [test-patterns.md](test-patterns.md) §1.
+
 ## Sources
 
 - `docs/04-dummy-feed-spec.md` §2, §3, §10 — pair config, price model, build-time reference-mid sourcing

@@ -91,3 +91,10 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - Client profile seed values: all 5 match exactly (Halcyon's 0.5 neutral prior preserved bold).
 ##   - Vendor-neutrality, component naming, state-machine, scenario, dep, cross-reference, orphan checks: all clean.
 ##   - BACKLOG status: 28 ☑ tickets match 28 unique FXSW commits in git log.
+
+## [2026-05-26] schema-update | Added test-case documentation per user request (option 2 of 3 surfaced):
+##   - New: wiki/components/test-patterns.md — 11 recurring patterns (seed pinning, fake timers, hold-to-confirm, harness, queueMicrotask, cell-testid scoping, throwaway debug spec, etc.). Stable reference doc; pattern set changes rarely.
+##   - Added ## Tests sections to 9 component pages (pricing-feed, deal-feed, scenario-player, deals-store, rfs-machine, si-machine, deal-machine, status-derivation, suggestion-engine) and 6 feature pages (active-blotter, historic-blotter, ticket, ai-margin-suggestion, notifications, dev-injector). Each section: file path + case count + 1-line category summary. Cross-references to test-patterns.md §N where a pattern is at play.
+##   - onboarding.md §8 updated to point at test-patterns.md as required reading before first test.
+##   - wiki/index.md: test-patterns.md added to Components category.
+##   Option 3 (lessons.md from dev-log "What surprised you" entries) intentionally not done — those lessons are inlined as comments in tests or as paragraphs on the relevant component pages where they affect behaviour; a separate lessons page would duplicate dev-log without adding synthesis value.

@@ -67,6 +67,10 @@ ESP deals don't have a Sales Intervention machine in the canonical sense — the
 
 Each row's `data-display-status` attribute is the return value of this function. Playwright tests assert against it. The `docs/03 §6` table is implemented row-for-row in `statusFromMachines.test.ts` (13 `it.each` cases, including both RFS variants of `RejectSent`).
 
+## Tests
+
+`src/features/blotter/statusFromMachines.test.ts` — **13 cases via `it.each`**. One per row of the `docs/03 §6` mapping table (12 documented rows + an extra `RejectSent from Quoted` since the spec calls out `PickedUp/Executable` as the two possible RFS states underneath that label). Pure function tests, no timers, no actors.
+
 ## Sources
 
 - `docs/03-trade-state-model.md` §6 — the mapping table

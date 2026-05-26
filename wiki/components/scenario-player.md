@@ -67,6 +67,14 @@ Full payloads (client, account, pair, side, notional, reasons) live in `src/serv
 
 The state-gate's `state` field is typed as a plain `string`, not the closed SI-state union. The full SI state set landed in FXSW-010; tying the gate to the not-yet-complete enum at FXSW-008 would have created churn. The trade-off: no typo protection on the gate name. The `definitions.test.ts` round-trip is the practical guard. See `docs/dev-log.md` FXSW-008 entry.
 
+## Tests
+
+`src/services/scenarios/player.test.ts` — **2 cases**. Pinned `generateDealId` + `now` seams; time-gated + state-gated follow-ups fire at the right deltas; `reset()` cancels both kinds.
+
+`src/services/scenarios/definitions.test.ts` — **2 cases**. Round-trip the five scenario payloads against the canonical spec.
+
+State-gate vs time-gate pattern: see [test-patterns.md](test-patterns.md) §5.
+
 ## Sources
 
 - `docs/04-dummy-feed-spec.md` §5, §6, §7 — scenarios, client simulation, implementation notes

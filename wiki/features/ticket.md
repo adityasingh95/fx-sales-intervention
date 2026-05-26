@@ -142,6 +142,22 @@ Each action button stays mounted through its `*Sent` window so the spinner rende
 
 Per-cell / per-field testids documented in each sub-panel section above. The OFF_HOURS_INTERVENTION E2E ([scenarios/off-hours-intervention.md](../scenarios/off-hours-intervention.md)) is the integration check for the entire panel stack.
 
+## Tests
+
+| File | Cases | Covers |
+|---|---|---|
+| `src/features/ticket/TicketPanel.test.tsx` | 5 | Not rendered when closed; rendered when open with deal info; Esc closes; opening fires SI `PickUp` (gated on `Initial`); closing does NOT fire `Hold`. |
+| `src/features/ticket/ReasonsPanel.test.tsx` | 3 | One chip per reason with the verbatim label; multi-reason render; empty array renders nothing. |
+| `src/features/ticket/SummaryPanel.test.tsx` | 2 | Natural-language sentence + key/value strip (account / trade date / settlement). |
+| `src/features/ticket/DealSummaryPanel.test.tsx` | 4 | T+2 settlement weekday calc; weekend rollover Thursday→Monday; direction/notional/account/dates rendered. |
+| `src/features/ticket/PricingPanel.test.tsx` | 9 | Streaming bid/mid/ask from seed-42 feed; `data-flash="up/down"` 80ms tick flash; stale-feed em-dash; click bid → fixed mode + `data-focused`; Refresh only in fixed mode; +/− and keyboard +/- increment margin; floor at 1; margin-glow animation on programmatic margin change. |
+| `src/features/ticket/ClientSummaryPanel.test.tsx` | 5 | EURUSD margin → client bid/ask via pip arithmetic; USDJPY 2-decimal pip; profit reactive to margin; fixed-mode uses captured tick; null tick → em-dash. |
+| `src/features/ticket/TicketFooter.test.tsx` | 7 | Visibility per SI state + pricingMode (PickedUp streaming / fixed / Quoted); Reject single-click no-op + 600ms hold fires; Send Stream cycles `QuoteSent → Quoted` via ack delay; `data-in-flight` during `*Sent`; Release cycles `HoldSent → Initial` and flips `dealable`. |
+| `src/lib/pips.test.ts` | 9 | `pipSizeFor`, `clientBidFromTrader`, `clientAskFromTrader`, `estimatedProfitUsd` across 4 pairs; JPY 2-decimal asymmetry; zero-rate guard. |
+| `src/lib/time.test.ts` | 6 | `addBusinessDays` (Mon/Wed/Thu/Fri/Sat/Sun start); `formatSettlementDate` en-GB `DD MMM YYYY`. |
+
+Hold-to-confirm + double-click pattern: see [components/test-patterns.md](../components/test-patterns.md) §3. Pricing-panel harness pattern: §4. Half-spread rounding caveat for seed-42 tick 1: §1.
+
 ## Status
 
 Panel shell, all sub-panels, and footer are **stable** as of FXSW-020 (`18e0c24`). The AI Margin Suggestion sub-panel is wired (Phase 4 work is on main) but the wiki entry for it ([ai-margin-suggestion.md](ai-margin-suggestion.md)) is still marked `in-progress` pending the dedicated Phase 4 ingest.

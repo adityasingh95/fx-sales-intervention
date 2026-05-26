@@ -101,6 +101,16 @@ The suggested-pips number is replaced with a `bg-elevated` pulse skeleton. The r
 
 The `suggestion-pips` testid scopes to the number-only span; the "pips" unit label is a sibling span outside that testid (so `toHaveText('4')` is unambiguous — the FXSW-027 debug detour fixed this).
 
+## Tests
+
+`src/features/ticket/SuggestionPanel.test.tsx` — **14 cases**. Ready state renders pips + rationale + confidence from mocked engine output (per `docs/09 §13`); Apply switches `data-suggestion-state="applied"` and updates margin; Undo restores previous margin + flips back to `ready`; Why? toggles factor table; **`MarginGlowHarness` integration test** wires SuggestionPanel + PricingPanel and proves Apply triggers `data-margin-glow` on the margin input for 600ms (the indigo outline animation from `docs/05 §4.5`); credit-decline state renders Reject shortcut + no Apply; recompute icon → 800ms `computing` state → re-rendered ready; vol-shift > 30% triggers recompute; null suggestion + new-suggestion-prop reset cases.
+
+Engine-side tests (34 unit + 7 rationale + 6 clientProfiles cases): see [components/suggestion-engine.md](../components/suggestion-engine.md) §Tests.
+
+End-to-end coverage: [scenarios/credit-breach.md](../scenarios/credit-breach.md) (credit-decline path), [scenarios/size-limit-margin-tune.md](../scenarios/size-limit-margin-tune.md) (Apply path).
+
+Harness pattern for the cross-component glow assertion: see [components/test-patterns.md](../components/test-patterns.md) §4. Pips-span testid scoping: §8.
+
 ## Implementation commits
 
 | Ticket | Commit | What |

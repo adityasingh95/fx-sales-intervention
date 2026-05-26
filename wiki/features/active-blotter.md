@@ -84,6 +84,12 @@ The blotter body wrapper carries `data-testid="active-blotter-body"`. Each row i
 
 Playwright tests assert on `data-si-state` (most informative) and `data-display-status` (user-facing label). Both are stable parts of the test contract — see the [Scenarios section of the index](../index.md#scenarios) for the per-scenario assertions.
 
+## Tests
+
+`src/features/blotter/ActiveBlotter.test.tsx` — **5 cases**. Empty-state message; two rows render with `data-deal-id`; `data-si-state` / `data-display-status` / `data-dealable` reflect machine through a `PickUp` transition; row click calls `uiStore.openTicket`; terminal-state row gets `data-removing="true"` then unmounts at `timings.removalDelayMs`.
+
+`src/lib/format.test.ts` — **6 cases**. `formatTime`, `formatAmount`, `formatRate` across the four pairs at both precisions.
+
 ## Implementation
 
 - Component: `src/features/blotter/ActiveBlotter.tsx`.

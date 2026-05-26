@@ -127,9 +127,13 @@ Recomputed when:
 
 Updates are **debounced at 800ms** to avoid flicker. The suggestion does **not** recompute on every price tick — that would be noise.
 
-## Test contract
+## Tests
 
-Coverage targets per `docs/08-test-plan.md` §8: **100% branch coverage on `engine.ts`** (every `if`/`else if`/`&&`/`||` tested both true and false), 90% line on `rationale.ts`. Per-named-client + per-scenario snapshot tests across the five seed profiles. Total Phase 4 unit tests after FXSW-024: 47 across `engine.test.ts` (34), `rationale.test.ts` (7), `clientProfiles.test.ts` (6).
+`src/services/suggestion/engine.test.ts` — **34 cases**. Per-tier baselines (4); per-notional-band deltas (4); per-rejection-reason deltas (3 incl. credit short-circuit); per-market branch (vol > 1.5, thin, HIGH_VOL_PAIRS — 3); per-behaviour-flag branch (flight_risk, VIP, low acceptance — 3); confidence branches (high / low / medium — 3); algebraic-invariant sweep across sampled inputs (5); floor clamp at 1 pip; CREDIT_LIMIT short-circuit shape and field presence. **100% branch coverage target on `engine.ts`** per `docs/08-test-plan.md` §8 (every `if`/`else if`/`&&`/`||` tested both true and false).
+
+`src/services/suggestion/rationale.test.ts` — **7 cases**. Two canonical worked examples (`Globex 5M USDJPY OFF_HOURS = 5 pips`; `Northwind 12M EURUSD SIZE_LIMIT = 4 pips`); 0-factor input; 5-factor truncation under the 120-char cap; credit-decline returns the §7 constant; pluralisation `1 pip` vs `N pips`; enriched client phrase for high_engagement + acceptance ≥ 0.7.
+
+`src/services/suggestion/clientProfiles.test.ts` — **6 cases**. Five named profile lookups + unknown-client neutral-prior fallback.
 
 ## Implementation commits
 

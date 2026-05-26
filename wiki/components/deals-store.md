@@ -75,6 +75,14 @@ All state updates use immutable `Map` replacement: `new Map(state.deals); next.s
 
 The SI subscriber additionally calls `dealFeed.notifyDealState(dealId, siState)` on every SI transition. This closes the state-gate loop for [scenario-player.md](scenario-player.md) follow-ups.
 
+## Tests
+
+`src/state/stores/dealsStore.test.ts` — **6 cases**. `addDeal` creates entry + starts actor; `removeDeal` stops actor + subsequent `forwardEvent` is safe no-op; `forwardEvent` advances SI through `PickUpSent → PickedUp` (uses fake timers); active/historic split; two `addDeal` calls → two independent actors; `TradeConfirmed → Removed → historic` archival end-to-end.
+
+`src/state/stores/dealsBootstrap.test.ts` — **2 cases**. `dealFeed.inject('HAPPY_PATH_ESP')` lands the deal in the store; `inject('CREDIT_BREACH')` lands with the right payload.
+
+Subscribe-to-children pattern: see [test-patterns.md](test-patterns.md) §6. `queueMicrotask` archival timing: §7.
+
 ## Sources
 
 - `docs/06-tech-architecture.md` §5 — store contract, machine wiring

@@ -62,6 +62,14 @@ Idempotency: the store guards `addDeal` against duplicate `dealId`s; the dealFee
 - `inject(id)` for the same scenario twice creates two independent deals with two independent follow-up timers (fresh `dealId` per call). The spec's "no double-firing if called twice mid-scenario for the same deal" is structurally satisfied by the one-shot timer model.
 - `reset()` cancels both time-gated `setTimeout` callbacks and unarmed state-gates.
 
+## Tests
+
+`src/services/feed/dealFeed.test.ts` — **4 cases**. Subscribe round-trip; `inject('HAPPY_PATH_ESP')` emits `NEW_ESP_DEAL` + schedules `CLIENT_ACCEPT` at t+2000; `inject('OFF_HOURS_INTERVENTION')` gates `CLIENT_ACCEPT` on SI `Quoted`; `reset()` cancels time-gated + state-gated pending events.
+
+`src/services/scenarios/definitions.test.ts` — **2 cases**. Round-trip every scenario's client / account / pair / side / notional / reasons against the values claimed in [scenarios/](../#scenarios).
+
+State-gate vs time-gate pattern: see [test-patterns.md](test-patterns.md) §5.
+
 ## Sources
 
 - `docs/04-dummy-feed-spec.md` §4, §6 — public API, client-simulation logic
