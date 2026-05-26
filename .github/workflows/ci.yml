@@ -20,7 +20,9 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Fetch reference FX mids (predev/prebuild script)
+      - name: Write reference FX mids (pinned-fallback for deterministic tests)
+        env:
+          USE_FALLBACK_MIDS: 'true'
         run: pnpm exec tsx scripts/fetch-reference-mids.ts
       - run: pnpm typecheck
       - run: pnpm lint
