@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-019 · ClientSummaryPanel
-**Commit `_pending_`**
+**Commit `466bb45`**
 
 - TDD red→green: **4 specified `ClientSummaryPanel.test.tsx` cases** + 1 extra for the `tick=null` placeholder + 9 `pips.test.ts` cases for the lib functions FXSW-019 introduces.
   - EURUSD bid 1.0850 / ask 1.0852 / margin 3 → client bid 1.0847 / client ask 1.0855.
