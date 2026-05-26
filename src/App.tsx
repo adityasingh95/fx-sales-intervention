@@ -1,9 +1,11 @@
-import { Volume2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
+import MuteToggle from '@/features/notifications/MuteToggle';
+import ToastStack from '@/features/notifications/ToastStack';
+import { useNotificationSound } from '@/features/notifications/useNotificationSound';
 import TicketPanel from '@/features/ticket/TicketPanel';
 import { useUiStore } from '@/state/stores/uiStore';
 
@@ -28,6 +30,9 @@ export default function App() {
   const clock = useSessionClock();
   const dev = isDevMode();
   const ticketOpen = useUiStore((s) => s.openDealId !== null);
+  // FXSW-029: hook drives the WebAudio chime + autoplay-unlock listener
+  // for the lifetime of the app. No-op output; side-effects only.
+  useNotificationSound();
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
@@ -48,13 +53,7 @@ export default function App() {
           </div>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-3 text-text-dim sm:gap-4">
-          <button
-            type="button"
-            aria-label="Toggle mute"
-            className="rounded-sm p-1 text-text-dim transition-colors hover:text-text"
-          >
-            <Volume2 size={18} aria-hidden />
-          </button>
+          <MuteToggle />
           <time
             aria-label="Session clock"
             className="font-mono text-xs tabular-nums text-text-dim sm:text-sm"
@@ -77,6 +76,7 @@ export default function App() {
         </section>
       </main>
       <TicketPanel />
+      <ToastStack />
     </div>
   );
 }

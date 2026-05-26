@@ -40,6 +40,13 @@ test('OFF_HOURS_INTERVENTION — full trader-driven SI flow', async ({ page }) =
   const dealId = await row.getAttribute('data-deal-id');
   expect(dealId).toMatch(/^d_/);
 
+  // FXSW-028: top-right toast + document-title prefix fire for new SI deals.
+  const toast = page.getByTestId(`toast-${dealId}`);
+  await expect(toast).toBeVisible();
+  await expect(toast).toContainText('Globex Industries');
+  await expect(toast).toContainText('USDJPY');
+  await expect.poll(async () => await page.title()).toMatch(/^●\s/);
+
   // When the operator clicks the new row, the ticket panel slides in.
   await row.click();
   const ticket = page.getByTestId('ticket-panel');

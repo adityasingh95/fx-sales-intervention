@@ -32,6 +32,137 @@ Most recent first.
 
 ---
 
+## FXSW-033 · README + demo recording
+**Commit `ba88cca`**
+
+- `README.md` rewritten for the shipped state. Adds:
+  - **CI + Deploy badges** on the masthead so a reader sees green at a glance.
+  - **"What it demonstrates"** section with a five-scenario table mapping each Inject button to what the reader should watch for. The third column tells the demo story in one sentence per scenario, which is what the deliverable's running-order spec wants ("the operator can sit through the demo and not flinch at any visual moment").
+  - **CI** section describing the workflow + Playwright trace upload.
+  - **Demo recording** placeholder pointing at `docs/demo.mp4` with an HTML-comment hint for the eventual GitHub Assets video URL. The recording itself is user-captured (no screen-record affordance in the cloud build environment) — flagging this as the one ticket deliverable that requires manual hand-off.
+  - **Docs** section linking each spec file rather than just the four highlights — gives a reader the full surface, including `phase-summaries/` and the scenario pack.
+- Verified the README contains no `Caplin` mentions per CLAUDE.md rule §1.
+
+**User-directed decisions:** None — the AC structure was pinned by `CLAUDE.md` rule §1 + the BACKLOG done-when.
+
+**Agent-directed decisions:**
+- **Scenario table in the README, not just a link to `07-scenario-pack.md`.** A reader landing on the repo wants a 30-second tour, not a click-through to a Gherkin file. The table doubles as the demo-recording outline.
+- **Demo recording placeholder rather than the recording itself.** The cloud build env has no screen-capture capability and uploading binary video without the actual file would be misleading. Comment in the README block tells the human exactly what to drop in.
+- **Pages-environment caveat explicit** under Deploy. The branch-allow-list step on the `github-pages` environment is the one thing that bit us repeatedly in Phase 1; documenting it here saves the next person the same diagnostic loop.
+- **Mute toggle + AI-suggestion ApplyUndo flow mentioned in the running-order column**. Not strictly required by `docs/07`, but the demo's "moment of delight" is the AI suggestion landing + Apply, and the mute affordance is otherwise discoverable only by clicking the bell icon. Both belong in a "what to look at" demo guide.
+- All gates green (unchanged): typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**), e2e ✓ (6/6 in 35.9s), build ✓. README changes are docs-only.
+
+---
+
+## FXSW-032 · CI workflow
+**Commit `d1ed41a`**
+
+- `.github/workflows/ci.yml` per `docs/08 §6` — checkout → pnpm setup (v10 to match the existing `packageManager` field + the deploy workflow) → Node 20 with pnpm cache → install `--frozen-lockfile` → typecheck → lint → test:run → Playwright Chromium install → test:e2e. On any failure, uploads `test-results/` + `playwright-report/` as a `playwright-trace` artifact (7-day retention) so failed runs can be inspected.
+- Triggers: `push` to `main` or any `claude/**` branch + every `pull_request`. Gives the per-session feature branches CI coverage without flooding when the human is iterating locally.
+- `timeout-minutes: 10` per job — the spec budget is 5 minutes (typecheck + lint + unit suite typically 30s, Playwright install ~60s, 6-spec E2E ~40s); the 10-minute cap is a safety net rather than a target.
+
+**User-directed decisions:** None — `docs/08 §6` YAML was the template; the only changes are pnpm version (10 not 9, to match the existing `packageManager` pin), the trigger filter, and the failure-artifact retention.
+
+**Agent-directed decisions:**
+- **pnpm version 10**, not the doc's `version: 9`. The repo's `package.json` already pins `"packageManager": "pnpm@10.33.0"` and the existing `deploy.yml` uses `version: 10`. Aligning CI keeps lockfile compatibility intact.
+- **Trigger filter `push: branches: [main, 'claude/**']`** rather than the doc's bare `[push, pull_request]`. The feature-branch pattern matches every per-session branch the harness creates without polluting CI history with random push notifications from a future branch namespace.
+- **Artifact retention of 7 days** rather than the GitHub default of 90. Phase 5 prototype scope doesn't warrant long-term trace storage; 7 days covers the typical debug window.
+- **`if-no-files-found: ignore`** on the artifact upload so a failure that doesn't produce trace files (e.g., the install step itself errors before any test runs) doesn't compound into a second failure on the upload step.
+- **Not pinning `pnpm test:e2e` worker count**. The Playwright config already pins single-worker (`workers: 1` from FXSW-013's setup) for scenario-time determinism — the env doesn't need to repeat it.
+- **No `--retries` flag on the CI run** — Playwright config already sets `retries: isCI ? 2 : 0`, so the workflow inherits the 2-retry policy without extra wiring.
+- The ci.yml is itself the artifact; the workflow run on this push is the test. Will flip the BACKLOG `☐ → ☑` once the run lands green on this branch.
+
+---
+
+## FXSW-030 · Visual polish pass
+**Commit `1befad9`**
+
+- **Button.tsx lift** — `src/components/Button.tsx` real, exporting `Button` (the simple variant) and `HoldButton` (the 600ms-hold-or-double-click variant) with a shared 4-variant style table (`primary` / `secondary` / `danger` / `ghost`) per `docs/05 §3.1`. Lifted from `TicketFooter.tsx` (FXSW-020 inline) and `SuggestionPanel.tsx` (FXSW-026 RejectHoldButton inline) — both consumers now import from the shared module. ~90 lines of duplicated primitive code removed; behavior contract preserved (testids, `data-in-flight`, `data-holding`, `aria-describedby` hint, `holdgrow` keyframe overlay all unchanged).
+- `TicketFooter.tsx` shed: the local `ActionButton`, the local `HoldButton`, the `Variant` type, the `VARIANT_CLASSES` record, and the `HOLD_MS` constant. Imports the shared primitives via aliased names (`Button as ActionButton`) so the existing JSX inside the footer stays unchanged.
+- `SuggestionPanel.tsx` shed: the `RejectHoldButton` helper component, the inline 600ms timer hook, the inline `holdgrow` `<span>` overlay, the `HOLD_MS` constant. The credit-decline branch now wraps the shared `HoldButton variant="danger"` in a `self-start` div to constrain the button width.
+- No new tests for the lift — the existing `TicketFooter.test.tsx` (7) + `SuggestionPanel.test.tsx` (14) cover both consumers' behavior, including the 600ms hold semantics and the credit-decline Reject path. Both green post-refactor.
+- **Eye-test polish (user-driven on the live URL):** glass blur on the ticket overlay, header gradient strip, AI panel indigo glow, animation durations, hover states, focus rings, console-error sweep. The responsive amendment (header inject-button strip + each blotter scrolls horizontally as a unit below 1440px) was already in place from Phase 2.
+
+**User-directed decisions:** None — the lift implements `docs/05 §3.1` literally and the previous FXSW-020 / FXSW-026 dev-log entries called out the "lift when a second consumer arrives" timing.
+
+**Agent-directed decisions:**
+- **Imported `Button as ActionButton` in `TicketFooter.tsx`** to keep the JSX inside the footer (which has six `<ActionButton ... />` call sites) unchanged. Renaming the prop alias is cheaper than renaming six call sites.
+- **`ButtonVariant` type + `VARIANT_CLASSES` record are file-local**, not exported. Consumers reference the variant as a string-literal union via the component's prop type (`variant="primary"`). Avoids the `react-refresh/only-export-components` lint warning that fires when a component file co-exports non-component values, and keeps the public surface of `Button.tsx` strictly the two components.
+- **Credit-decline button gets a `<div className="self-start">` wrapper** rather than fighting the shared `HoldButton`'s default-stretch behaviour inside the SuggestionPanel's `flex-col` container. The pre-lift inline copy had `self-start` baked into the className; the shared component shouldn't carry layout-position concerns, so the parent enforces sizing.
+- **No `eye-test` automation added.** AC explicitly says "no automated tests"; the deliverable is the polish commit. Eye-test results are user-side observations on the live deploy.
+- **No `Button.test.tsx` for the lifted module itself.** Both behavior surfaces are still exercised end-to-end via the consumer tests (TicketFooter Reject + Send Stream hold semantics, SuggestionPanel credit-decline Reject hold). A dedicated unit test for the primitive would be a duplicate.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, unchanged), e2e ✓ (6/6 in 35.9s, unchanged), build ✓.
+
+---
+
+## FXSW-031 · RELEASE_PATH E2E
+**Commit `ad4cade`**
+
+- TDD red→green: **`tests/e2e/release-path.spec.ts`** (0.7s) — transcribes `docs/07-scenario-pack.md` Scenario 5. Inject → INTERVENE row for Polaris Holdings / USDINR → row's `data-dealable="true"` → click row → ticket opens → SI advances to PickedUp → `data-dealable="false"` + status "PICKED UP" → click Release → ticket panel unmounts → SI cycles HoldSent → Initial → `data-dealable="true"` + status back to "INTERVENE" → row still in Active (no 5s removal because no terminal transition).
+- `src/features/ticket/TicketFooter.tsx` Release handler now also calls `useUiStore.getState().closeTicket()` per Scenario 5's "the ticket panel closes" assertion. The change is one extra line and doesn't break the existing FXSW-020 footer tests (those wrap only the footer and don't observe `uiStore`). Comment in the handler distinguishes the Release path (intentional Hold + close) from the passive Esc/backdrop close paths per `docs/02 §4.8` (which still don't auto-Hold).
+- All 6 E2Es now green in 35.9s — smoke (0.2s), happy-path-esp (8.0s), off-hours (8.2s), credit-breach (7.4s), size-limit-margin-tune (9.3s), release-path (0.7s).
+
+**User-directed decisions:** None — `docs/07 §5` Gherkin was verbatim.
+
+**Agent-directed decisions:**
+- **Release closes the ticket, Esc/backdrop don't.** `docs/02 §4.8` is explicit that passive close paths must not auto-Hold; the converse — Hold paths can close — isn't stated but is consistent with the Gherkin and with the affordance ("hand back to the desk" implies finishing with this ticket). Comment in the code distinguishes the two paths so a future reader doesn't unify them.
+- **No follow-up assertions in the spec.** The scenario terminates on the release; there's no scripted CLIENT_ACCEPT or trader-rejection that follows. Spec ends with "row is still visible in Active." Trying to also assert "no 5s removal happens" would slow the test by 6s without a clean signal — the released row would just sit there indefinitely.
+- **Released row's status returns to INTERVENE.** `derivedStatus(rfsState='Queued', siState='Initial', dealable=true)` per `statusFromMachines.ts` — matches the scenario's "displayed status returns to INTERVENE" assertion.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, unchanged — E2E adds Playwright not Vitest), e2e ✓ (6/6 in 35.9s), build ✓.
+
+---
+
+## FXSW-029 · Audio chime + mute toggle + settingsStore
+**Commit `5343219`**
+
+- TDD red→green: **12 new tests** — 5 in `settingsStore.test.ts` (default unmuted; toggleMute flips; persists to sessionStorage; setMuted writes; reload-restore via fresh module import), 3 in `MuteToggle.test.tsx` (Bell↔BellOff icons + `aria-pressed` + `data-muted` toggles; click flips state + persists), 4 in `useNotificationSound.test.tsx` (no schedule before audio unlock; schedules 880Hz OscillatorNode after unlock + new SI deal + unmuted; no schedule when muted; one oscillator per new deal, not per render).
+- `src/state/stores/settingsStore.ts` — Zustand store, `muted: boolean` + `toggleMute()` / `setMuted()`. Reads sessionStorage `si.muted` key on init; writes on every mutation. Safari-private-mode tolerant (try/catch around storage calls).
+- `src/features/notifications/useNotificationSound.ts` — module-scoped lazy WebAudio context, lazy because browsers reject `new AudioContext()` before a user gesture. `playChime()` builds an OscillatorNode (880Hz sine) into a GainNode with `setValueAtTime(0.15)` + `exponentialRampToValueAtTime(0.0001, t0 + 0.18)`. The hook installs `click` / `keydown` listeners on `document` for the audio unlock and subscribes to the notificationsStore's `notifiedDealIds.size` to fire one chime per new SI deal. `_audio` test-only export exposes `setFactory` / `reset` so tests can inject a mock AudioContext.
+- `src/features/notifications/MuteToggle.tsx` — header button rendering `Bell` (unmuted) / `BellOff` (muted) from lucide-react. `aria-pressed` + `data-muted` + dynamic `aria-label` ("Mute notifications" / "Unmute notifications").
+- `src/App.tsx` wiring: `MuteToggle` replaces the placeholder Volume2 button; `useNotificationSound()` mounted once at the app root for the lifetime of the session.
+
+**User-directed decisions:** None — `docs/02 §5.3` + `§5.4` and CLAUDE.md rule §3 pinned the implementation surface; `docs/06-tech-architecture.md §5` confirmed sessionStorage scope.
+
+**Agent-directed decisions:**
+- **AudioContext is module-scoped, lazy, and replaceable via `_audio.setFactory`.** Singleton per session keeps WebAudio resources controlled; lazy creation defers the actual `new AudioContext()` to first use (browsers can throw on construction before user gesture); factory injection lets tests run without a real WebAudio implementation. Production never touches `_audio`.
+- **The mute gate happens in the hook, not in the play function**, so the unmuted path can stay sync + side-effect-only. `playChime()` itself is muted-agnostic — useful if a future ticket adds a "test sound" affordance in a settings panel.
+- **`notifiedDealIds.size` as the trigger signal**, not the full Set. Comparing sizes is `O(1)`; comparing Set membership across renders would need diffing. Cosmetically: the dispatcher only ever *adds* to the Set (never removes), so size growth uniquely identifies "a new deal has been notified."
+- **Audio unlock relies on click + keydown only.** Touch is the iOS path; in the prototype's desktop-first scope, the `click` event is dispatched on touch too, so adding a separate touch listener would just create duplicate unlock calls. Keep it simple.
+- **`setMuted(true)` IS exposed alongside `toggleMute()`** even though the UI only uses the toggle. Tests use `setMuted` to set up specific states without ambiguity. Trivial API surface; no cost.
+- **`reload-restore` test uses dynamic import with a cache-busting query string** (`'./settingsStore?reload=' + Date.now()`). Vitest module cache would otherwise reuse the existing module and its already-initialised `muted` state, hiding the bug.
+- **Replaced the placeholder `Volume2` icon** in the header rather than augmenting it. The original FXSW-006 button was wired to nothing and used the wrong icon (`Volume2` is a speaker, the spec says `Bell`).
+- **`useNotificationSound()` mounted at the App root**, not inside a `<NotificationSoundProvider />` wrapper. The hook has no children and no shared state to provide — wrapping would just add ceremony.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, up from 304 / 0 — 12 new), build clean.
+
+---
+
+## FXSW-028 · Notifications visual layer
+**Commit `227c96f`**
+
+- TDD red→green: **8 new tests** — 2 in `titleFlash.test.ts` (prefix + restore at 5s; repeated calls reset the timer without double-prefixing), 6 in `ToastStack.test.tsx` (toast appears on a fresh SI deal; auto-dismiss at 6s; click opens the ticket + dismisses; re-Release does not re-fire; ESP deals don't trigger; dispatcher also fires the title flash).
+- `src/state/stores/notificationsStore.ts` real (Zustand) — `toasts: Toast[]` plus a `notifiedDealIds: Set<string>` so re-Release of a previously-picked-up deal doesn't re-fire per `docs/02 §5.1`. `reset()` for test cleanup.
+- `src/features/notifications/dispatcher.ts` — `dispatchNotifications(deals)` iterates the store, fires the toast + title-flash for any deal that is SI-channel (`rejectionReasons.length > 0`) + `siState === 'Initial'` + `dealable` + not-yet-notified. `wireNotifications()` subscribes to the dealsStore at app boot (called alongside `wireDealFeedToStore` in `main.tsx`).
+- `src/features/notifications/titleFlash.ts` — `flashDocumentTitle()` prefixes `● ` for 5s, then restores. Idempotent — concurrent triggers reset the timer without compounding the prefix. `_resetTitleFlash` test-only helper exported for cleanup.
+- `src/features/notifications/ToastStack.tsx` real per `docs/02 §5.2` + `docs/05 §4.5` chrome family — top-right `fixed` stack, AI-bordered + glass background, 320px wide; each card has `data-testid="toast-{dealId}"`. Click opens the ticket (calls `uiStore.openTicket(dealId)`) and dismisses itself; explicit `X` button dismisses without opening.
+- Wired into `src/App.tsx` (renders `<ToastStack />` at the root level so it overlays both blotters and the ticket panel) and `src/main.tsx` (`wireNotifications()` boots the dispatcher subscription).
+- **Row flash** per `docs/02 §5.2` — `ActiveBlotter.tsx`'s Row tags new SI-Initial-dealable rows with `data-row-flash="new"` + a Tailwind `animate-row-flash` class that runs the `row-flash` keyframe (`global.css`, 300ms amber-30% → transparent fade with `forwards` fill mode). No JS timer; the CSS animation plays once on mount.
+- **All three SI E2Es now assert the toast + title-prefix.** OFF_HOURS, CREDIT_BREACH, and SIZE_LIMIT_MARGIN_TUNE each add a `getByTestId('toast-{dealId}')` visibility check + `expect.poll(page.title()).toMatch(/^●\s/)`. Removes the FXSW-028-deferred markers those specs were carrying.
+
+**User-directed decisions:** None — `docs/02 §5.1` / `§5.2` pinned the trigger conditions, message format, and the dedupe rule.
+
+**Agent-directed decisions:**
+- **Dispatcher lives in `src/features/notifications/`, store lives in `src/state/stores/`.** Mirrors the existing dealFeed / dealsStore separation: feature-y subscriber pattern in features/, pure Zustand data in stores/. The bootstrap wiring lives in `main.tsx` alongside `wireDealFeedToStore` so all the cross-system glue is in one place.
+- **SI channel detection via `rejectionReasons.length > 0`**, not a separate `channel` field on the entry. The dealsStore already tracks `rejectionReasons` per deal and ESP deals always have an empty list (they're auto-priced, no intervention reasons). One less concept to thread through.
+- **`dispatchNotifications` exported as a function alongside `wireNotifications`** so tests can drive it directly without spinning up the subscription. Keeps tests synchronous and lets the test verify "second call with same deal doesn't re-fire" cleanly.
+- **Toast click both opens the ticket AND dismisses the toast.** Spec wording ("Clicking the toast opens the ticket") is silent on dismissal; keeping the toast around after the trader is already in the ticket would be visual noise. Matches the intent of the affordance.
+- **`X` button on each toast** uses an inline `<span role="button">` rather than a nested `<button>` because the outer card is itself a `<button>` and nested buttons are an HTML structural error. Click handler uses `stopPropagation` to suppress the outer card's open-ticket handler.
+- **`animate-row-flash` Tailwind utility** added via `tailwind.config.ts` `animation` extension; the keyframe itself lives in `global.css` next to the existing `holdgrow` keyframe (FXSW-020 pattern). Keeps Tailwind config terse and lets keyframe rules colocate with each other.
+- **`expect.poll(page.title())` for the E2E title-prefix check** rather than a strict `toHaveTitle` — the title clears after 5s, and `expect.poll` retries the assertion against the live document title without racing the 5s window.
+- **`reset()` on the notifications store** is intentionally a test affordance; production never calls it. The `markNotified`/`hasNotified` separation lets the dispatcher stay idempotent without needing to read the full set.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**304 pass / 0 todo**, up from 296 / 0 — 8 new), e2e ✓ (5/5 in 49.9s — up from 34.5s with the added notification assertions), build ✓.
+
+---
+
 ## FXSW-027 · SIZE_LIMIT_MARGIN_TUNE + CREDIT_BREACH E2E
 **Commit `ab8cd30`**
 
