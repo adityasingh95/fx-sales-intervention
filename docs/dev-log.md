@@ -32,6 +32,35 @@ Most recent first.
 
 ---
 
+## FXSW-019 · ClientSummaryPanel
+**Commit `_pending_`**
+
+- TDD red→green: **4 specified `ClientSummaryPanel.test.tsx` cases** + 1 extra for the `tick=null` placeholder + 9 `pips.test.ts` cases for the lib functions FXSW-019 introduces.
+  - EURUSD bid 1.0850 / ask 1.0852 / margin 3 → client bid 1.0847 / client ask 1.0855.
+  - USDJPY (2-decimal pip) margin 3 → 157.74 / 157.81.
+  - Margin change re-renders in one frame; estimated profit updates from $300 (at 3 pips) to $600 (at 6 pips) on EURUSD 1M.
+  - Fixed mode uses whichever tick the parent passes (the panel doesn't know about modes — it just reads the tick prop).
+  - Null tick → all three cells render the em-dash placeholder.
+- `src/lib/pips.ts` real: `pipSizeFor(pair)`, `clientBidFromTrader`, `clientAskFromTrader`, `estimatedProfitUsd(margin, notional, pair, midRate)`. Per-pair pip sizes + display decimals from `docs/02 §2`. The bid/ask helpers round to the pair's display precision so consumers don't have to handle float drift (`1.0850 − 3*0.0001 === 1.0846999999999998` in raw floats — would render as `1.0847` only because `formatRate` did its own rounding; FXSW-019 makes the lib itself authoritative).
+- `estimatedProfitUsd` handles both quote-side currencies: for USD-quoted pairs (`pair.endsWith('USD')`) the pip value is already a USD amount; for USD-based pairs the pip value is in the quote CCY and gets divided by the current midRate to convert. Zero-rate guard returns `0` so a transient stale-feed doesn't crash with `Infinity`.
+- `src/features/ticket/ClientSummaryPanel.tsx` real per `docs/02 §4.5`: three-column grid with Client Bid / Client Ask / Est. profit. Profit formatted via `Intl.NumberFormat` USD currency, `maximumFractionDigits: 0` for compact display.
+- **Refactor of PricingPanel**: `pricingMode`, `fixedSide`, `frozenTick` lifted from internal state to props with parent-owned state. Live tick also passed in via prop instead of the component calling `usePrice` itself. PricingPanel becomes fully presentational for mode + frozen-tick semantics. TicketPanel owns the lifted state via a single `usePrice` subscription and computes `displayTick = pricingMode === 'fixed' ? frozenTick : liveTick`.
+- TicketPanel mounts `<ClientSummaryPanel tick={displayTick} margin={margin} notional={deal.notional} pair={deal.pair} />` between PricingPanel and DealSummaryPanel — both panels see the same `displayTick`, so they freeze and unfreeze together. Resets pricing-mode state on opening a different deal alongside the margin reset.
+
+**User-directed decisions:** None — `docs/02 §4.5` is one paragraph and verbatim on every field.
+
+**Agent-directed decisions:**
+- **Lifted pricing-mode state from PricingPanel to TicketPanel** instead of bolting an "override tick" prop onto ClientSummaryPanel. The clean architecture is "one source of truth for the display tick"; the alternative (each panel subscribes to the feed and accepts an override) duplicates the subscription and splits the truth across two panels. Touched FXSW-017/018 tests — they now render through a `Harness` that mirrors the new TicketPanel wiring (single `usePrice` call + lifted state).
+- **`pips.ts` rounds at the lib boundary**, not at the formatter. CLAUDE.md "Money values as `number` in display units, never strings. Format at the render boundary only" — but the bid/ask result of `1.085 − 3*0.0001` is `1.0846999999999998` in raw floats, which a consumer comparing values would treat as "different from 1.0847." Rounding to the pair's display precision inside the lib keeps `number` semantics clean (1.0847 is what consumers see and what equality checks against).
+- **`estimatedProfitUsd` handles USD-based pairs via mid-rate division.** Spec says "use a static EUR/USD-style table for v1; precision doesn't matter as long as it changes when margin changes" — i.e. a hand-wave on the conversion factor. Doing the proper per-pair calculation (divide by midRate for USD-base pairs) costs one extra branch and gives accurate numbers across all 4 pairs without needing a separate table.
+- **Profit displayed as `Intl.NumberFormat` USD currency** (`$300`, `$1,234`), zero decimals. Matches a trader's "what's this worth" glance; the spec doesn't pin a format so the en-US `style: 'currency'` + zero decimals is the most-readable default.
+- **`tick={null}` → all three cells render em-dash**, not the calculated-from-zero values. The display tick is null when the live feed hasn't ticked yet OR when fixed mode was entered without a captured tick (defensive — shouldn't happen via UI). Em-dashes match the FXSW-012 RateCell + FXSW-017 PricingPanel pattern for "no data yet."
+- **ClientSummaryPanel is `data-testid="client-summary-panel"` even though the AC only mentions field-level testids.** Container testid lets future tests scope to "the right panel" before reading fields; field testids inside scope cleanly. Same pattern as ReasonsPanel + SummaryPanel + DealSummaryPanel.
+- **Refactor preserved every FXSW-017 / FXSW-018 test contract.** The 9 PricingPanel tests still cover the same behaviours through the `Harness` wrapper that mirrors TicketPanel; only the prop-shape changed.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**228 pass / 3 todo**, up from 214 / 4 — 5 new ClientSummaryPanel + 9 new pips, the FXSW-018 stub test retired), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-018 · PricingPanel fixed mode + margin controls
 **Commit `3a09a3e`**
 

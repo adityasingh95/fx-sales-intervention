@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { pricingFeed } from '@/services/feed/pricingFeed';
-import type { Pair } from '@/services/feed/types';
+import type { Pair, PriceTick } from '@/services/feed/types';
+import { usePrice } from '@/services/feed/usePrice';
 import PricingPanel from './PricingPanel';
 
 const setSeed = (n: number | undefined): void => {
@@ -11,24 +12,45 @@ const setSeed = (n: number | undefined): void => {
   else w.__seedFeed = n;
 };
 
-// Test harness that holds margin state and lets the test read + push it.
+// Harness mirrors what TicketPanel does: subscribes to the live feed
+// via usePrice, owns the pricing-mode + frozen-tick state, owns the
+// margin state. Lets the tests drive PricingPanel through the same
+// surface the app uses.
 function Harness({
   pair,
   initialMargin = 3,
-  onChange,
+  onMarginChange,
 }: {
   pair: Pair;
   initialMargin?: number;
-  onChange?: (n: number) => void;
+  onMarginChange?: (n: number) => void;
 }) {
   const [margin, setMargin] = useState(initialMargin);
+  const [pricingMode, setPricingMode] = useState<'streaming' | 'fixed'>('streaming');
+  const [fixedSide, setFixedSide] = useState<'bid' | 'ask' | null>(null);
+  const [frozenTick, setFrozenTick] = useState<PriceTick | null>(null);
+  const liveTick = usePrice(pair);
+
   return (
     <PricingPanel
       pair={pair}
+      liveTick={liveTick}
+      frozenTick={frozenTick}
+      pricingMode={pricingMode}
+      fixedSide={fixedSide}
       margin={margin}
       onMarginChange={(n) => {
         setMargin(n);
-        onChange?.(n);
+        onMarginChange?.(n);
+      }}
+      onEnterFixed={(side) => {
+        if (!liveTick) return;
+        setPricingMode('fixed');
+        setFixedSide(side);
+        setFrozenTick(liveTick);
+      }}
+      onRefresh={() => {
+        if (liveTick) setFrozenTick(liveTick);
       }}
     />
   );
@@ -54,17 +76,14 @@ describe('<PricingPanel />', () => {
         pricingFeed.start();
         vi.advanceTimersByTime(300);
       });
-      // Seed-42 first EURUSD tick: mid_float sits in
-      // [1.17145, 1.171475) — mid rounds to 1.1715, but
-      // bid = mid_float − 0.000025 lands below 1.17145 and rounds to
-      // 1.1714. FXSW-007's golden sequence locked the mid only.
+      // Seed-42 first EURUSD tick: mid 1.1715, bid 1.1714, ask 1.1715
+      // (half-spread rounding asymmetry — see dev-log FXSW-017).
       expect(screen.getByTestId('bid-cell')).toHaveTextContent('1.1714');
       expect(screen.getByTestId('mid-cell')).toHaveTextContent('1.1715');
       expect(screen.getByTestId('ask-cell')).toHaveTextContent('1.1715');
     });
 
     it('on a value change, the cell gets data-flash="down" that clears after 80ms', () => {
-      // Seed-42 GBPUSD bid/ask both drop on tick 2.
       render(<Harness pair="GBPUSD" />);
       act(() => {
         pricingFeed.start();
@@ -138,7 +157,7 @@ describe('<PricingPanel />', () => {
 
     it('+ button increments margin by 1; - decrements', () => {
       const seen: number[] = [];
-      render(<Harness pair="EURUSD" initialMargin={3} onChange={(n) => seen.push(n)} />);
+      render(<Harness pair="EURUSD" initialMargin={3} onMarginChange={(n) => seen.push(n)} />);
       act(() => {
         fireEvent.click(screen.getByTestId('margin-plus'));
       });
@@ -151,7 +170,7 @@ describe('<PricingPanel />', () => {
 
     it('keypress "+"/"−" does the same as the buttons', () => {
       const seen: number[] = [];
-      render(<Harness pair="EURUSD" initialMargin={3} onChange={(n) => seen.push(n)} />);
+      render(<Harness pair="EURUSD" initialMargin={3} onMarginChange={(n) => seen.push(n)} />);
       act(() => {
         fireEvent.keyDown(document, { key: '+' });
       });
@@ -164,15 +183,12 @@ describe('<PricingPanel />', () => {
 
     it('margin floor is 1 — both - button and - key clamp', () => {
       const seen: number[] = [];
-      render(<Harness pair="EURUSD" initialMargin={1} onChange={(n) => seen.push(n)} />);
-      // Button is disabled at the floor.
+      render(<Harness pair="EURUSD" initialMargin={1} onMarginChange={(n) => seen.push(n)} />);
       expect(screen.getByTestId('margin-minus')).toBeDisabled();
       act(() => {
         fireEvent.click(screen.getByTestId('margin-minus'));
       });
-      // No change emitted (button disabled).
       expect(seen).toEqual([]);
-      // Keypress still clamps.
       act(() => {
         fireEvent.keyDown(document, { key: '-' });
       });
@@ -182,7 +198,17 @@ describe('<PricingPanel />', () => {
     it('programmatic margin update (FXSW-025 Apply simulation) animates data-margin-glow for 600ms', () => {
       function ControlledHarness({ value }: { value: number }) {
         return (
-          <PricingPanel pair="EURUSD" margin={value} onMarginChange={() => {}} />
+          <PricingPanel
+            pair="EURUSD"
+            liveTick={null}
+            frozenTick={null}
+            pricingMode="streaming"
+            fixedSide={null}
+            margin={value}
+            onMarginChange={() => {}}
+            onEnterFixed={() => {}}
+            onRefresh={() => {}}
+          />
         );
       }
       const { rerender } = render(<ControlledHarness value={3} />);

@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { formatTime } from '@/lib/format';
+import type { PriceTick } from '@/services/feed/types';
+import { usePrice } from '@/services/feed/usePrice';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
+import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ReasonsPanel from './ReasonsPanel';
@@ -28,8 +31,25 @@ export default function TicketPanel() {
   // this lifts into the store. Initialised from the deal's default
   // (3 pips per the dealFeed payload) when a new deal opens.
   const [margin, setMargin] = useState<number>(entry?.deal.defaultMarginPips ?? 3);
+  // Pricing mode is per-open-deal local state. Lifted from PricingPanel
+  // in FXSW-019 so ClientSummaryPanel can read the same display tick.
+  const [pricingMode, setPricingMode] = useState<'streaming' | 'fixed'>('streaming');
+  const [fixedSide, setFixedSide] = useState<'bid' | 'ask' | null>(null);
+  const [frozenTick, setFrozenTick] = useState<PriceTick | null>(null);
+  // We always subscribe to the live tick (cheap, single subscription
+  // per ticket session); the display tick switches based on
+  // pricingMode.
+  const liveTick = usePrice(entry?.deal.pair ?? 'EURUSD');
+  const displayTick = pricingMode === 'fixed' ? frozenTick : liveTick;
+
+  // Reset margin + pricing mode whenever a different deal opens.
   useEffect(() => {
-    if (entry) setMargin(entry.deal.defaultMarginPips);
+    if (entry) {
+      setMargin(entry.deal.defaultMarginPips);
+      setPricingMode('streaming');
+      setFixedSide(null);
+      setFrozenTick(null);
+    }
   }, [openDealId, entry]);
 
   // Esc closes. Listener only active while open.
@@ -111,12 +131,34 @@ export default function TicketPanel() {
 
           <ReasonsPanel reasons={rejectionReasons} />
           <SummaryPanel deal={deal} />
-          <PricingPanel pair={deal.pair} margin={margin} onMarginChange={setMargin} />
+          <PricingPanel
+            pair={deal.pair}
+            liveTick={liveTick}
+            frozenTick={frozenTick}
+            pricingMode={pricingMode}
+            fixedSide={fixedSide}
+            margin={margin}
+            onMarginChange={setMargin}
+            onEnterFixed={(side) => {
+              if (!liveTick) return;
+              setPricingMode('fixed');
+              setFixedSide(side);
+              setFrozenTick(liveTick);
+            }}
+            onRefresh={() => {
+              if (liveTick) setFrozenTick(liveTick);
+            }}
+          />
+          <ClientSummaryPanel
+            tick={displayTick}
+            margin={margin}
+            notional={deal.notional}
+            pair={deal.pair}
+          />
           <DealSummaryPanel deal={deal} />
 
           <p className="mt-2 text-xs text-text-mute">
-            AI Suggestion, Client Summary, Margin controls, and Footer panels land in
-            FXSW-018 through FXSW-021.
+            AI Suggestion + Footer panels land in FXSW-020 through FXSW-025.
           </p>
         </div>
       </div>

@@ -2,25 +2,12 @@ import clsx from 'clsx';
 import { Minus, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatRate } from '@/lib/format';
-import { usePrice } from '@/services/feed/usePrice';
 import type { Pair, PriceTick } from '@/services/feed/types';
 
-// FXSW-017 (streaming) + FXSW-018 (fixed mode + margin controls).
+// FXSW-017 (streaming) + FXSW-018 (fixed mode + margin controls), refactored
+// in FXSW-019 to lift pricing-mode state up to the parent so both this
+// panel and ClientSummaryPanel see the same display tick.
 // Spec: docs/02 §4.4 + docs/05 §4.
-//
-// - Bid + Ask cells render live from the PricingFeed via usePrice in
-//   streaming mode; in fixed mode they show the rate captured at the
-//   moment of mode entry, until the operator clicks Refresh or exits.
-// - On a live tick in streaming mode, the cell briefly flashes 80ms
-//   (`data-flash="up"`/`"down"`).
-// - Stale-feed: if no tick lands within 3s, all cells render the em-dash
-//   placeholder per docs/05 §8.
-// - Margin: controlled (parent owns the value); +/- buttons + keyboard
-//   `+`/`-` + numeric input. Floor of 1 pip. A programmatic margin
-//   change (e.g. FXSW-025 AI-suggestion Apply) triggers a 600ms indigo
-//   glow on the input via `data-margin-glow`.
-// - Return-to-Stream action lives in the TicketFooter (FXSW-020) — for
-//   now the panel exposes its own internal toggle for tests.
 
 const STALE_MS = 3000;
 const FLASH_MS = 80;
@@ -33,41 +20,53 @@ type Side = 'bid' | 'ask';
 
 export interface PricingPanelProps {
   pair: Pair;
+  liveTick: PriceTick | null;
+  frozenTick: PriceTick | null;
+  pricingMode: PricingMode;
+  fixedSide: Side | null;
   margin: number;
   onMarginChange: (next: number) => void;
+  onEnterFixed: (side: Side) => void;
+  onRefresh: () => void;
 }
 
-export default function PricingPanel({ pair, margin, onMarginChange }: PricingPanelProps) {
-  const tick = usePrice(pair);
+export default function PricingPanel({
+  pair,
+  liveTick,
+  frozenTick,
+  pricingMode,
+  fixedSide,
+  margin,
+  onMarginChange,
+  onEnterFixed,
+  onRefresh,
+}: PricingPanelProps) {
   const prevBid = useRef<number | null>(null);
   const prevAsk = useRef<number | null>(null);
   const [bidFlash, setBidFlash] = useState<FlashDir>(null);
   const [askFlash, setAskFlash] = useState<FlashDir>(null);
   const [stale, setStale] = useState(false);
-  const [pricingMode, setPricingMode] = useState<PricingMode>('streaming');
-  const [fixedSide, setFixedSide] = useState<Side | null>(null);
-  const [frozenTick, setFrozenTick] = useState<PriceTick | null>(null);
   const [marginGlow, setMarginGlow] = useState(false);
 
-  // Tick-direction flash + stale-feed timer reset. Only run when in
-  // streaming mode — fixed mode freezes the displayed rate, so the
-  // flash and stale signals would be misleading.
+  // Tick-direction flash + stale-feed timer reset — runs only in
+  // streaming mode (fixed mode freezes the rate, so flash + stale would
+  // be misleading).
   useEffect(() => {
-    if (!tick) return;
+    if (!liveTick) return;
     let bidTimer: ReturnType<typeof setTimeout> | null = null;
     let askTimer: ReturnType<typeof setTimeout> | null = null;
     if (pricingMode === 'streaming') {
-      if (prevBid.current !== null && tick.bid !== prevBid.current) {
-        setBidFlash(tick.bid > prevBid.current ? 'up' : 'down');
+      if (prevBid.current !== null && liveTick.bid !== prevBid.current) {
+        setBidFlash(liveTick.bid > prevBid.current ? 'up' : 'down');
         bidTimer = setTimeout(() => setBidFlash(null), FLASH_MS);
       }
-      if (prevAsk.current !== null && tick.ask !== prevAsk.current) {
-        setAskFlash(tick.ask > prevAsk.current ? 'up' : 'down');
+      if (prevAsk.current !== null && liveTick.ask !== prevAsk.current) {
+        setAskFlash(liveTick.ask > prevAsk.current ? 'up' : 'down');
         askTimer = setTimeout(() => setAskFlash(null), FLASH_MS);
       }
     }
-    prevBid.current = tick.bid;
-    prevAsk.current = tick.ask;
+    prevBid.current = liveTick.bid;
+    prevAsk.current = liveTick.ask;
     setStale(false);
     const staleTimer = setTimeout(() => setStale(true), STALE_MS);
     return () => {
@@ -75,10 +74,9 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
       if (askTimer) clearTimeout(askTimer);
       clearTimeout(staleTimer);
     };
-  }, [tick, pricingMode]);
+  }, [liveTick, pricingMode]);
 
-  // Indigo glow on margin change (any source — internal buttons, keyboard,
-  // typed input, or external prop push from FXSW-025 Apply).
+  // Indigo glow on margin change (any source).
   const lastMargin = useRef(margin);
   useEffect(() => {
     if (lastMargin.current === margin) return;
@@ -88,12 +86,10 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
     return () => clearTimeout(id);
   }, [margin]);
 
-  // Keyboard +/- adjusts margin while the panel is mounted. The panel
-  // only lives inside the ticket overlay, which only ever shows one
-  // deal at a time, so a document-level listener is unambiguous.
+  // Keyboard +/- adjusts margin while the panel is mounted.
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLInputElement) return; // don't intercept typing
+      if (e.target instanceof HTMLInputElement) return;
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         onMarginChange(Math.max(MIN_MARGIN, margin + 1));
@@ -106,24 +102,11 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
     return () => document.removeEventListener('keydown', handler);
   }, [margin, onMarginChange]);
 
-  const enterFixed = (side: Side): void => {
-    if (!tick) return;
-    setPricingMode('fixed');
-    setFixedSide(side);
-    setFrozenTick(tick);
-    setBidFlash(null);
-    setAskFlash(null);
-  };
-
-  const refresh = (): void => {
-    if (tick) setFrozenTick(tick);
-  };
-
   const adjust = (delta: number): void => {
     onMarginChange(Math.max(MIN_MARGIN, margin + delta));
   };
 
-  const displayTick = pricingMode === 'fixed' ? frozenTick : tick;
+  const displayTick = pricingMode === 'fixed' ? frozenTick : liveTick;
   const showValues = displayTick !== null && (pricingMode === 'fixed' || !stale);
 
   return (
@@ -141,7 +124,7 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
           <button
             type="button"
             data-testid="refresh-button"
-            onClick={refresh}
+            onClick={onRefresh}
             className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
           >
             <RefreshCw size={12} aria-hidden /> Refresh
@@ -155,7 +138,7 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
           flash={pricingMode === 'streaming' ? bidFlash : null}
           focused={fixedSide === 'bid'}
           value={showValues ? formatRate(displayTick.bid, pair) : '—'}
-          onClick={() => enterFixed('bid')}
+          onClick={() => onEnterFixed('bid')}
         />
         <div data-testid="mid-cell" className="flex flex-col items-center">
           <span className="font-mono text-base tabular-nums text-text-dim">
@@ -171,7 +154,7 @@ export default function PricingPanel({ pair, margin, onMarginChange }: PricingPa
           flash={pricingMode === 'streaming' ? askFlash : null}
           focused={fixedSide === 'ask'}
           value={showValues ? formatRate(displayTick.ask, pair) : '—'}
-          onClick={() => enterFixed('ask')}
+          onClick={() => onEnterFixed('ask')}
         />
       </div>
 
