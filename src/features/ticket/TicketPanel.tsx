@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { formatTime } from '@/lib/format';
@@ -65,17 +65,11 @@ export default function TicketPanel() {
     }
   }, [openDealId, entry]);
 
-  // Compute the suggestion on entry to PickedUp. Clears when SI leaves
-  // PickedUp; will recompute on re-entry (e.g. after Withdraw).
-  useEffect(() => {
-    if (!entry || entry.siState !== 'PickedUp') {
-      setSuggestion(null);
-      suggestionComputed.current = false;
-      return;
-    }
-    if (suggestionComputed.current) return;
-    if (!liveTick) return;
-    suggestionComputed.current = true;
+  // Synchronous re-usable compute — driven both by the initial PickedUp
+  // entry effect below and by SuggestionPanel's Recompute / vol-shift
+  // callback.
+  const computeAndSetSuggestion = useCallback((): void => {
+    if (!entry || !liveTick) return;
     const profile = getClientProfile(entry.deal.clientName);
     const marketStatic = getMarketContext(entry.deal.pair);
     setSuggestion(
@@ -96,6 +90,20 @@ export default function TicketPanel() {
       }),
     );
   }, [entry, liveTick]);
+
+  // Compute the suggestion on entry to PickedUp. Clears when SI leaves
+  // PickedUp; will recompute on re-entry (e.g. after Withdraw).
+  useEffect(() => {
+    if (!entry || entry.siState !== 'PickedUp') {
+      setSuggestion(null);
+      suggestionComputed.current = false;
+      return;
+    }
+    if (suggestionComputed.current) return;
+    if (!liveTick) return;
+    suggestionComputed.current = true;
+    computeAndSetSuggestion();
+  }, [entry, liveTick, computeAndSetSuggestion]);
 
   // Esc closes. Listener only active while open.
   useEffect(() => {
@@ -179,6 +187,11 @@ export default function TicketPanel() {
             suggestion={suggestion}
             currentMargin={margin}
             onApply={setMargin}
+            onRecompute={computeAndSetSuggestion}
+            onReject={() =>
+              useDealsStore.getState().forwardEvent(deal.dealId, { type: 'Reject' })
+            }
+            currentVolatility={getMarketContext(deal.pair).pairVolatility}
           />
           <SummaryPanel deal={deal} />
           <PricingPanel

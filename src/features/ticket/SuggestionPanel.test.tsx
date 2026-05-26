@@ -25,14 +25,27 @@ const READY: ReadySuggestion = {
 function Harness({
   initialMargin = 3,
   suggestion,
+  onReject,
+  onRecompute,
+  currentVolatility,
 }: {
   initialMargin?: number;
   suggestion: MarginSuggestion | null;
+  onReject?: () => void;
+  onRecompute?: () => void;
+  currentVolatility?: number;
 }) {
   const [margin, setMargin] = useState(initialMargin);
   return (
     <>
-      <SuggestionPanel suggestion={suggestion} currentMargin={margin} onApply={setMargin} />
+      <SuggestionPanel
+        suggestion={suggestion}
+        currentMargin={margin}
+        onApply={setMargin}
+        onReject={onReject}
+        onRecompute={onRecompute}
+        currentVolatility={currentVolatility}
+      />
       <div data-testid="current-margin">{margin}</div>
     </>
   );
@@ -142,19 +155,129 @@ describe('<SuggestionPanel />', () => {
     expect(screen.getByTestId('margin-input')).not.toHaveAttribute('data-margin-glow');
   });
 
-  it('renders nothing for a credit-decline suggestion (FXSW-026 implements the credit-decline UI)', () => {
-    const decline: MarginSuggestion = {
+  it('renders nothing when suggestion is null', () => {
+    render(<Harness suggestion={null} />);
+    expect(screen.queryByTestId('suggestion-panel')).toBeNull();
+  });
+
+  describe('credit-decline (FXSW-026)', () => {
+    const DECLINE: MarginSuggestion = {
       kind: 'credit-decline',
       rationale: 'Credit limit breach — recommend declining. Suggested action: Reject.',
       computedAt: 1_700_000_000_000,
     };
-    render(<Harness suggestion={decline} />);
-    expect(screen.queryByTestId('suggestion-panel')).toBeNull();
+
+    it('renders the §7 message + Reject shortcut + data-suggestion-state="credit-decline"; Apply is absent', () => {
+      render(<Harness suggestion={DECLINE} onReject={() => undefined} />);
+      const panel = screen.getByTestId('suggestion-panel');
+      expect(panel).toHaveAttribute('data-suggestion-state', 'credit-decline');
+      expect(panel).toHaveTextContent(/Credit limit breach/);
+      expect(screen.getByTestId('suggestion-reject')).toBeInTheDocument();
+      expect(screen.queryByTestId('suggestion-apply')).toBeNull();
+    });
+
+    it('Reject shortcut: single click does nothing; 600ms hold fires onReject', () => {
+      const onReject = vi.fn();
+      render(<Harness suggestion={DECLINE} onReject={onReject} />);
+      const btn = screen.getByTestId('suggestion-reject');
+      act(() => {
+        fireEvent.pointerDown(btn);
+        fireEvent.pointerUp(btn);
+      });
+      expect(onReject).not.toHaveBeenCalled();
+      act(() => {
+        fireEvent.pointerDown(btn);
+        vi.advanceTimersByTime(600);
+      });
+      expect(onReject).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('renders nothing when suggestion is null', () => {
-    render(<Harness suggestion={null} />);
-    expect(screen.queryByTestId('suggestion-panel')).toBeNull();
+  describe('Recompute (FXSW-026)', () => {
+    it('Recompute click flips data-suggestion-state to "computing" then back to "ready" after 800ms, calling onRecompute once', () => {
+      const onRecompute = vi.fn();
+      render(<Harness suggestion={READY} onRecompute={onRecompute} />);
+      const btn = screen.getByTestId('suggestion-recompute');
+      act(() => {
+        fireEvent.click(btn);
+      });
+      expect(screen.getByTestId('suggestion-panel')).toHaveAttribute(
+        'data-suggestion-state',
+        'computing',
+      );
+      expect(onRecompute).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(onRecompute).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('suggestion-panel')).toHaveAttribute(
+        'data-suggestion-state',
+        'ready',
+      );
+    });
+
+    it('multiple rapid Recompute clicks debounce to one onRecompute call', () => {
+      const onRecompute = vi.fn();
+      render(<Harness suggestion={READY} onRecompute={onRecompute} />);
+      const btn = screen.getByTestId('suggestion-recompute');
+      act(() => {
+        fireEvent.click(btn);
+        vi.advanceTimersByTime(300);
+        fireEvent.click(btn);
+        vi.advanceTimersByTime(300);
+        fireEvent.click(btn);
+      });
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(onRecompute).toHaveBeenCalledTimes(1);
+    });
+
+    it('Apply is disabled while in "computing" state', () => {
+      render(<Harness suggestion={READY} onRecompute={() => undefined} />);
+      act(() => {
+        fireEvent.click(screen.getByTestId('suggestion-recompute'));
+      });
+      expect(screen.getByTestId('suggestion-apply')).toBeDisabled();
+    });
+
+    it('vol shift > 30% from last input triggers recompute', () => {
+      const onRecompute = vi.fn();
+      const { rerender } = render(
+        <Harness suggestion={READY} onRecompute={onRecompute} currentVolatility={1.0} />,
+      );
+      rerender(
+        <Harness suggestion={READY} onRecompute={onRecompute} currentVolatility={1.5} />,
+      );
+      // 50% jump → triggers recompute → after 800ms, fires.
+      expect(screen.getByTestId('suggestion-panel')).toHaveAttribute(
+        'data-suggestion-state',
+        'computing',
+      );
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(onRecompute).toHaveBeenCalledTimes(1);
+    });
+
+    it('vol shift ≤ 30% does NOT trigger recompute', () => {
+      const onRecompute = vi.fn();
+      const { rerender } = render(
+        <Harness suggestion={READY} onRecompute={onRecompute} currentVolatility={1.0} />,
+      );
+      rerender(
+        <Harness suggestion={READY} onRecompute={onRecompute} currentVolatility={1.2} />,
+      );
+      // 20% shift, below 30% threshold → no recompute trigger.
+      expect(screen.getByTestId('suggestion-panel')).toHaveAttribute(
+        'data-suggestion-state',
+        'ready',
+      );
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(onRecompute).not.toHaveBeenCalled();
+    });
   });
 
   it('resets internal applied/why state when the suggestion prop changes', () => {

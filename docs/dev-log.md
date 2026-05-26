@@ -32,6 +32,35 @@ Most recent first.
 
 ---
 
+## FXSW-026 · SuggestionPanel credit-decline + Recompute
+**Commit `TBD`**
+
+- TDD red→green: **6 new `SuggestionPanel.test.tsx` cases** (14 total) — credit-decline UI shows §7 message + Reject shortcut + `data-suggestion-state="credit-decline"` + no Apply; Reject hold-to-confirm (single click does nothing, 600ms hold fires `onReject`); Recompute click switches `data-suggestion-state` to `computing` then back to `ready` after the 800ms debounce and calls `onRecompute` exactly once; multiple rapid Recompute clicks coalesce into one call; Apply disabled during computing; vol shift > 30% triggers recompute, ≤ 30% does not. Removed the FXSW-025 placeholder test "renders nothing for credit-decline" — superseded.
+- `src/features/ticket/SuggestionPanel.tsx` extensions:
+  - Credit-decline branch: distinct header ("AI Recommendation" + amber AlertTriangle), §7 rationale, `RejectHoldButton` primitive (600ms hold or double-click) on `red/40` chrome.
+  - Recompute icon button (`RotateCw`) in the header right cluster next to the confidence badge. Disabled + spinning while computing.
+  - Computing state replaces the pips number with a `bg-elevated` pulse skeleton and the rationale with "Recomputing…"; Apply + Why? both disabled. `aria-busy` mirrors the visual state.
+  - Debounced trigger (`triggerRecompute`) clears any in-flight timer on each call so rapid invocations coalesce into one `onRecompute()` after 800ms of quiet.
+  - Vol-shift effect: when `currentVolatility` prop changes by > 30% relative to the value used at the last compute, fires `triggerRecompute`. The static v1 lookup means this branch never fires in practice — the wiring is in place for v2 per `docs/09 §3.1`.
+- `src/features/ticket/TicketPanel.tsx` integration:
+  - Compute logic refactored into `computeAndSetSuggestion` (a `useCallback`) so the initial PickedUp-entry effect and the Recompute callback both go through the same path.
+  - Wires `onRecompute` → `computeAndSetSuggestion`, `onReject` → `forwardEvent(dealId, { type: 'Reject' })` (same event the TicketFooter Reject sends), and `currentVolatility` → `getMarketContext(pair).pairVolatility`.
+
+**User-directed decisions:** None — `docs/09 §7`, `§9`, and `docs/05 §4.5` "computed state" pinned the credit-decline shape, the recompute triggers, the debounce window, and the shimmer affordance.
+
+**Agent-directed decisions:**
+- **`RejectHoldButton` inlined inside `SuggestionPanel.tsx`** rather than lifting `HoldButton` out of `TicketFooter.tsx` into a shared component. Per the FXSW-020 dev-log, "FXSW-029 (polish) can lift to `/components/Button.tsx` when there's a second consumer." Second consumer is now FXSW-026; the lift belongs in FXSW-029 (where it gets the full Button-with-variants treatment per `docs/05 §3.1`). For FXSW-026 the inline copy is ~40 lines and keeps the change scoped.
+- **Computing state takes 800ms regardless of whether the parent computed synchronously.** The doc explicitly calls out the debounce as a "Recomputing…" affordance — running it for 800ms gives the trader the feedback animation even when the engine is instant. The new suggestion is in props well before the timer fires; the panel simply waits before revealing it.
+- **Apply + Why? disabled during computing**, not just hidden. Visible disabled chrome (`opacity-50` + `cursor-not-allowed`) reads as "in flight" rather than "gone"; matches the in-flight pattern from FXSW-020's `data-in-flight` buttons.
+- **`onReject` is a parent-injected callback**, not a direct `useDealsStore.getState().forwardEvent` call from the panel. Keeps the panel free of store coupling and lets TicketPanel route the event the same way as the TicketFooter Reject (single source of truth for "what does Reject mean").
+- **Vol-shift detection uses relative change, not absolute.** `|new - old| / |old| > 0.3` matches the spec's "shift > 30% from the value used at last computation" rather than "absolute delta > 0.3 pips/min." Guards against `lastVol === 0` returning `Infinity`.
+- **`recomputing` state is NOT cleared by the suggestion-change effect.** When the parent swaps `suggestion` mid-compute (synchronous recompute returns immediately), the panel keeps the shimmer visible until the 800ms timer expires. Tested directly: rapid Recompute clicks still produce exactly one `onRecompute`.
+- **Vol prop type is `number | undefined`** so the watch effect can no-op cleanly when the parent doesn't supply a value (e.g., a test rendering only the ready-state assertions). Tested via the existing "ready" cases — they don't pass `currentVolatility` and still pass.
+- **Reject button label is "Reject deal"**, not "Reject" — the credit-decline framing is "decline this trade entirely," not "abort the quote." Matches the §4.5 sketch.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**296 pass / 0 todo**, up from 290 / 0 — 6 new SuggestionPanel cases, 1 obsolete placeholder removed). Build clean.
+
+---
+
 ## FXSW-025 · SuggestionPanel ready / applied / Undo
 **Commit `301aac1`**
 
