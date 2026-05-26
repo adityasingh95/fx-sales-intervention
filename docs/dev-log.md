@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-025 · SuggestionPanel ready / applied / Undo
-**Commit `TBD`**
+**Commit `301aac1`**
 
 - TDD red→green: **8 `SuggestionPanel.test.tsx` cases** — renders pips + rationale + confidence in `ready` state (per `docs/09 §13`); Apply click switches `data-suggestion-state` to `applied` and updates current margin; Undo restores the previous margin and flips back to `ready`; Why? toggles the factors table; **integration test** wires SuggestionPanel + PricingPanel via a `MarginGlowHarness` and asserts the `data-margin-glow` attribute appears on the margin input then clears after 600ms (the `docs/05 §4.5` "indigo outline animation" called out in the FXSW-025 AC); credit-decline + null suggestion render nothing; a new suggestion prop resets the panel back to `ready` so re-computes get a fresh visit.
 - `src/features/ticket/SuggestionPanel.tsx` real per `docs/02 §4.3` + `docs/05 §4.5`:
