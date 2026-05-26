@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-031 · RELEASE_PATH E2E
-**Commit `TBD`**
+**Commit `ad4cade`**
 
 - TDD red→green: **`tests/e2e/release-path.spec.ts`** (0.7s) — transcribes `docs/07-scenario-pack.md` Scenario 5. Inject → INTERVENE row for Polaris Holdings / USDINR → row's `data-dealable="true"` → click row → ticket opens → SI advances to PickedUp → `data-dealable="false"` + status "PICKED UP" → click Release → ticket panel unmounts → SI cycles HoldSent → Initial → `data-dealable="true"` + status back to "INTERVENE" → row still in Active (no 5s removal because no terminal transition).
 - `src/features/ticket/TicketFooter.tsx` Release handler now also calls `useUiStore.getState().closeTicket()` per Scenario 5's "the ticket panel closes" assertion. The change is one extra line and doesn't break the existing FXSW-020 footer tests (those wrap only the footer and don't observe `uiStore`). Comment in the handler distinguishes the Release path (intentional Hold + close) from the passive Esc/backdrop close paths per `docs/02 §4.8` (which still don't auto-Hold).
