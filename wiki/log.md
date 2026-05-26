@@ -45,3 +45,5 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ## [2026-05-26] schema-update | wrote onboarding.md (status: in-progress; final rewrite at end of Phase 5)
 
 ## [2026-05-26] lint | first-run sweep — vendor-neutrality grep clean (zero hits in content pages; rule-definition files retain term by necessity)
+
+## [2026-05-26] ingest | raw/prs/FXSW-013-phase-2-summary.md (synthesized from docs/dev-log.md + git log; build agent never produced the docs/phase-summaries file the KICKOFF-PROMPT contract called for). Affects no new wiki pages — Phase 2 ticket frontmatter was already inlined on relevant component/feature/scenario pages during the first-run ingest.
