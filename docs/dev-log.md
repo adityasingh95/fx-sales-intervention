@@ -32,6 +32,34 @@ Most recent first.
 
 ---
 
+## FXSW-018 · PricingPanel fixed mode + margin controls
+**Commit `_pending_`**
+
+- TDD red→green: **6 specified `PricingPanel.test.tsx` cases** for the fixed-mode + margin behaviour, in a `describe('fixed mode (FXSW-018)')` sibling of the 3 streaming cases from FXSW-017. New cases: click bid → `data-pricing-mode="fixed"` + bid cell gets `data-focused`; Refresh button only renders in fixed mode; + / − buttons increment/decrement by 1; keyboard `+` / `-` does the same as the buttons; margin floor is 1 (button disabled at floor; keypress clamps); programmatic margin update (parent prop change) animates `data-margin-glow="true"` for 600ms.
+- `PricingPanel.tsx`: streaming-mode behaviour preserved verbatim. New state: `pricingMode: 'streaming' | 'fixed'`, `fixedSide: 'bid' | 'ask' | null`, `frozenTick: PriceTick | null`, `marginGlow: boolean`.
+- **Cell becomes a `<button>`** so click-to-enter-fixed is keyboard + a11y accessible. `data-focused="true"` marks the clicked side; CSS adds the `--color-border-focus` outline + a 1px indigo ring.
+- **Refresh button** (lucide `RefreshCw`) appears in the panel header only when `pricingMode === 'fixed'`. Click re-captures the current live tick as the frozen tick.
+- **Margin controls**: parent-controlled (`margin` + `onMarginChange` props). +/− buttons via lucide `Plus` / `Minus`. Numeric input clamps floor at 1 on every change. Minus button is `disabled` at the floor.
+- **Keyboard `+` / `-`** attached at the document level inside a `useEffect`. The handler ignores keys typed into an `<input>` so the operator can type a margin value without the global accelerator firing. `+`/`=` increment, `-`/`_` decrement.
+- **Indigo glow** on margin change: a `useRef` tracks the previous margin; on every render the effect compares and, if different, flips `data-margin-glow="true"` for 600ms. Fires regardless of source (internal button, keyboard, typed input, or external prop push) — the visual cue means "margin updated", not "AI just suggested."
+- **Tick flash + stale-watchdog suppressed in fixed mode** because the displayed rate is frozen — a flash or stale indicator would be misleading. They restart cleanly when the operator returns to streaming (Return-to-Stream lands in FXSW-020's TicketFooter).
+- **`TicketPanel` owns the margin state**: `useState<number>(entry?.deal.defaultMarginPips ?? 3)`. A `useEffect` resets the value to the new deal's default whenever the operator opens a different deal. FXSW-025 + dealMachine context will eventually source this from the store; the prop-drilled local-state is the interim seam.
+- Placeholder note in TicketPanel updated: FXSW-018 dropped from "panels coming." Margin floor + keyboard nav are user-visible.
+
+**User-directed decisions:** None — `docs/02 §4.4` and `docs/05 §4` were verbatim on every control (label "Trader Rate" / "Margin", `MIN_MARGIN = 1`, focus outline color, 200ms + 600ms glow timing).
+
+**Agent-directed decisions:**
+- **Controlled component (`margin` + `onMarginChange` props), not internal state.** AC requires a "programmatic margin update simulating FXSW-025 Apply" — uncontrolled state would need an imperative ref or an effect comparing an `applyValue` prop, both more brittle than a plain controlled pattern. TicketPanel owns the state until FXSW-025 lifts it to the AI suggestion + the dealMachine context.
+- **Cells are `<button type="button">`, not divs with `onClick`.** Keyboard activation (Enter / Space) works for free; correct semantics for assistive tech; matches the FXSW-012 blotter row pattern. Cost is a CSS reset to drop the default button styles.
+- **Keyboard handler ignores input focus** via `if (e.target instanceof HTMLInputElement) return`. Otherwise typing `4` into the margin field with `+` modifier or pressing `-` on a negative number would fight the global accelerator.
+- **Glow fires on every margin change**, not only on external pushes. The spec wording is "programmatic update animates" but a margin change from the operator's own keystroke is just as much a "this number just changed" event — keeping the visual cue consistent across sources avoids the confusing UX of "the field flashes when AI applies but not when I click +."
+- **`disabled` minus button at the floor** rather than letting the click fire and clamping silently. Visible affordance + no spurious `onMarginChange` calls. The keyboard `-` still works (and clamps) because keyboard users don't see button state — and they get the same end state.
+- **No "Return to Stream" button in the panel itself.** Per AC: "lives in TicketFooter — wired in FXSW-020." Until FXSW-020 lands, the panel has no exit from fixed mode — the operator would need to click a different bid/ask side (just re-enters fixed for that side) or close + reopen the ticket. Documented as a known interim in the code header comment.
+- **Initial margin sourced from `entry.deal.defaultMarginPips`** (3 per the dealFeed payload in FXSW-008 definitions), not hardcoded to 3. Future scenarios with non-default margins land for free.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**214 pass / 4 todo**, up from 208 / 4 — 6 new fixed-mode cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-017 · PricingPanel streaming mode
 **Commit `1f88333`**
 

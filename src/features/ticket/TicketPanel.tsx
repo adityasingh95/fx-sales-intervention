@@ -22,6 +22,15 @@ export default function TicketPanel() {
   const openDealId = useUiStore((s) => s.openDealId);
   const entry = useDealsStore((s) => (openDealId ? s.deals.get(openDealId) : undefined));
   const [slidIn, setSlidIn] = useState(false);
+  // Margin is per-open-deal local state for now. FXSW-025 will source
+  // it from an AI suggestion + Apply, and the deal-machine context
+  // ultimately holds the canonical value (docs/03 §6) — at that point
+  // this lifts into the store. Initialised from the deal's default
+  // (3 pips per the dealFeed payload) when a new deal opens.
+  const [margin, setMargin] = useState<number>(entry?.deal.defaultMarginPips ?? 3);
+  useEffect(() => {
+    if (entry) setMargin(entry.deal.defaultMarginPips);
+  }, [openDealId, entry]);
 
   // Esc closes. Listener only active while open.
   useEffect(() => {
@@ -102,7 +111,7 @@ export default function TicketPanel() {
 
           <ReasonsPanel reasons={rejectionReasons} />
           <SummaryPanel deal={deal} />
-          <PricingPanel pair={deal.pair} />
+          <PricingPanel pair={deal.pair} margin={margin} onMarginChange={setMargin} />
           <DealSummaryPanel deal={deal} />
 
           <p className="mt-2 text-xs text-text-mute">
