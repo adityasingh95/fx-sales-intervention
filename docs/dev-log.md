@@ -32,6 +32,32 @@ Most recent first.
 
 ---
 
+## FXSW-020 · TicketFooter + *Sent → *Ack flow
+**Commit `_pending_`**
+
+- TDD red→green: **7 specified `TicketFooter.test.tsx` cases** — PickedUp streaming-mode visibility (Send Stream / Release / Reject), PickedUp fixed-mode visibility (Send Quote / Release / Reject / Return-to-Stream), Quoted visibility (Withdraw / Reject + Release), Reject single-click does nothing + 600ms hold fires, Send Stream cycles `QuoteSent → Quoted` via the ack delay, Send Stream shows `data-in-flight="true"` during `QuoteSent`, Release cycles `HoldSent → Initial` and flips `dealable` back to true.
+- `src/features/ticket/TicketFooter.tsx` real per `docs/02 §4.7`: 6 buttons (Reject / Release / Send Stream / Send Quote / Withdraw / Return-to-Stream) gated on `siState` + `pricingMode`. Send Stream + Send Quote stay mounted through `QuoteSent` so the spinner can render in-place; same for Reject through `RejectSent` and Release through `HoldSent` and Withdraw through `WithdrawSent`.
+- **HoldButton** primitive inlined in the same file: 600ms `setTimeout` on `pointerDown`, cancels on `pointerUp` or `pointerLeave`; double-click is an alternative confirm path (per `02 §4.7` "600ms hold or double-click"). Visual progress overlay via an inline-styled `<span>` driven by a `holdgrow` keyframe added to `global.css` — Tailwind config stays untouched.
+- **`data-in-flight`** marks the *Sent window. Buttons disable themselves automatically while `inFlight === true`; lucide `Loader2` icon renders inside the button with `animate-spin`.
+- `TicketPanel` mounts `<TicketFooter dealId={deal.dealId} siState={siState} pricingMode={pricingMode} onReturnToStream={…} />` outside the scrollable body so it stays pinned to the bottom. Return-to-Stream resets `pricingMode` / `fixedSide` / `frozenTick` together.
+- Placeholder note in TicketPanel updated: now only the AI Suggestion (FXSW-022–026) remains as a "panels coming."
+
+**User-directed decisions:** None — `docs/02 §4.7` visibility table + the AC test list pinned every button's behaviour. The choice of progress-overlay animation was unspecified; picked a left-to-right wipe to match the 600ms hold timeline.
+
+**Agent-directed decisions:**
+- **`pointerDown`/`pointerUp` not `mousedown`/`mouseup`.** Pointer events normalise across mouse, touch, and pen — covers a future mobile-tap demo without a second code path. RTL's `fireEvent.pointerDown` works in jsdom.
+- **Double-click is `onDoubleClick` even when the hold path didn't fire.** Two single clicks (each cancelled by the immediate `pointerUp`) still register as a `dblclick` at the DOM level — that's the spec's "double-click" alternative. No timing math needed; the browser fires `dblclick` after two `click`s within ~500ms.
+- **HoldButton primitive inlined** in `TicketFooter.tsx`, not extracted to `src/components/Button.tsx`. The placeholder `Button.tsx` says (per `docs/05 §3.1`) "variants: primary, secondary, ghost, danger. Sizes: sm, md. Supports `holdToConfirm` prop." That's the eventual shared shape; for FXSW-020 the only two consumers are Reject + Send Stream, both with the same look. Extracting now would speculate. FXSW-029 (polish) can lift to `/components/Button.tsx` when there's a second consumer.
+- **`btn-release` is a single-click action**, not hold-to-confirm. AC + spec list only Reject + Send Stream as hold-to-confirm. Release is reversible (the operator can re-open the row and pick up again), so the friction isn't warranted.
+- **Spinner stays in-place during *Sent**, not "button replaced by a separate spinner element." Same testid (`btn-send-stream`), same DOM node, just `data-in-flight="true"` + `disabled` + an icon inside. Tests can keep a single locator across the whole transition.
+- **Quoted state shows Release in addition to Withdraw + Reject.** The `02 §4.7` table lists Release as visible in `Quoted` (it "withdraws the live quote as part of the release"). The AC test only mentions Withdraw + Reject; included Release because the spec table is the source of truth and the AC test wasn't claiming exclusivity.
+- **Keyframe `holdgrow` in `global.css`**, not a Tailwind extension. One-off animation, used by one component, keeping it in global CSS avoids growing the Tailwind config for a single rule. Inline `style={{ animation: 'holdgrow 600ms linear forwards' }}` on the overlay span pulls it in.
+- **`aria-describedby` + `.sr-only` hint on HoldButton** ("Hold for 600ms or double-click to confirm") per `docs/05 §7` accessibility note "Hold-to-confirm buttons announce via `aria-describedby`."
+- **`onClick` on regular buttons disables when `inFlight`** — defensive double-tap guard. The `*Sent` ack delay is 250ms by default; a fast operator could double-click before the state advances. Disabling closes the gap.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**235 pass / 3 todo**, up from 228 / 3 — 7 new TicketFooter cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-019 · ClientSummaryPanel
 **Commit `466bb45`**
 

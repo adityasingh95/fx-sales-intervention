@@ -13,6 +13,7 @@ import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SummaryPanel from './SummaryPanel';
+import TicketFooter from './TicketFooter';
 
 // FXSW-014 shell. Renders only when uiStore.openDealId is set. Slides in
 // from the right via transform: translateX over 240ms per docs/02 §1 +
@@ -158,9 +159,19 @@ export default function TicketPanel() {
           <DealSummaryPanel deal={deal} />
 
           <p className="mt-2 text-xs text-text-mute">
-            AI Suggestion + Footer panels land in FXSW-020 through FXSW-025.
+            AI Suggestion lands in FXSW-022 through FXSW-026.
           </p>
         </div>
+        <TicketFooter
+          dealId={deal.dealId}
+          siState={siState}
+          pricingMode={pricingMode}
+          onReturnToStream={() => {
+            setPricingMode('streaming');
+            setFixedSide(null);
+            setFrozenTick(null);
+          }}
+        />
       </div>
     </div>
   );

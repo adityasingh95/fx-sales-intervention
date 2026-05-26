@@ -34,3 +34,15 @@ pre,
   font-feature-settings: 'tnum' on;
   font-variant-numeric: tabular-nums;
 }
+
+/* Hold-to-confirm progress overlay (TicketFooter HoldButton). 600ms
+   left-to-right wipe. Driven via inline style so the keyframes live
+   here and the component stays Tailwind-only. */
+@keyframes holdgrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
