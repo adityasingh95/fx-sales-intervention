@@ -28,7 +28,7 @@ _None yet — first ingest of `docs/07-scenario-pack.md` will seed this section.
 
 ## Glossary
 
-- [glossary.md](glossary.md) — _pending first ingest of `docs/00-glossary.md`._
+- [glossary.md](glossary.md) — FX market terms, Sales Intervention workflow terms, RFS + SI state names, blotter fields, prototype-only terms. Source: `docs/00-glossary.md`. Status: `stable`.
 
 ## Onboarding
 
