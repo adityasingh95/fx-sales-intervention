@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-020 · TicketFooter + *Sent → *Ack flow
-**Commit `_pending_`**
+**Commit `18e0c24`**
 
 - TDD red→green: **7 specified `TicketFooter.test.tsx` cases** — PickedUp streaming-mode visibility (Send Stream / Release / Reject), PickedUp fixed-mode visibility (Send Quote / Release / Reject / Return-to-Stream), Quoted visibility (Withdraw / Reject + Release), Reject single-click does nothing + 600ms hold fires, Send Stream cycles `QuoteSent → Quoted` via the ack delay, Send Stream shows `data-in-flight="true"` during `QuoteSent`, Release cycles `HoldSent → Initial` and flips `dealable` back to true.
 - `src/features/ticket/TicketFooter.tsx` real per `docs/02 §4.7`: 6 buttons (Reject / Release / Send Stream / Send Quote / Withdraw / Return-to-Stream) gated on `siState` + `pricingMode`. Send Stream + Send Quote stay mounted through `QuoteSent` so the spinner can render in-place; same for Reject through `RejectSent` and Release through `HoldSent` and Withdraw through `WithdrawSent`.
