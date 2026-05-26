@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDealsStore } from '@/state/stores/dealsStore';
+import { useUiStore } from '@/state/stores/uiStore';
 import type { DealEvent as ParentDealEvent } from '@/state/machines/dealMachine';
 
 // FXSW-020: 6-button footer per docs/02 §4.7. Visibility gated on the
@@ -63,7 +64,14 @@ export default function TicketFooter({
       {showRelease && (
         <ActionButton
           testId="btn-release"
-          onClick={() => fire({ type: 'Hold' })}
+          onClick={() => {
+            fire({ type: 'Hold' });
+            // FXSW-031 — Release hands the ticket back to the desk;
+            // closing the panel matches docs/07 Scenario 5 ("the ticket
+            // panel closes"). Distinct from the passive close paths
+            // (Esc / backdrop) which do NOT fire Hold per docs/02 §4.8.
+            useUiStore.getState().closeTicket();
+          }}
           inFlight={isHoldSent}
           variant="ghost"
         >

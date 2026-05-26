@@ -32,6 +32,23 @@ Most recent first.
 
 ---
 
+## FXSW-031 · RELEASE_PATH E2E
+**Commit `TBD`**
+
+- TDD red→green: **`tests/e2e/release-path.spec.ts`** (0.7s) — transcribes `docs/07-scenario-pack.md` Scenario 5. Inject → INTERVENE row for Polaris Holdings / USDINR → row's `data-dealable="true"` → click row → ticket opens → SI advances to PickedUp → `data-dealable="false"` + status "PICKED UP" → click Release → ticket panel unmounts → SI cycles HoldSent → Initial → `data-dealable="true"` + status back to "INTERVENE" → row still in Active (no 5s removal because no terminal transition).
+- `src/features/ticket/TicketFooter.tsx` Release handler now also calls `useUiStore.getState().closeTicket()` per Scenario 5's "the ticket panel closes" assertion. The change is one extra line and doesn't break the existing FXSW-020 footer tests (those wrap only the footer and don't observe `uiStore`). Comment in the handler distinguishes the Release path (intentional Hold + close) from the passive Esc/backdrop close paths per `docs/02 §4.8` (which still don't auto-Hold).
+- All 6 E2Es now green in 35.9s — smoke (0.2s), happy-path-esp (8.0s), off-hours (8.2s), credit-breach (7.4s), size-limit-margin-tune (9.3s), release-path (0.7s).
+
+**User-directed decisions:** None — `docs/07 §5` Gherkin was verbatim.
+
+**Agent-directed decisions:**
+- **Release closes the ticket, Esc/backdrop don't.** `docs/02 §4.8` is explicit that passive close paths must not auto-Hold; the converse — Hold paths can close — isn't stated but is consistent with the Gherkin and with the affordance ("hand back to the desk" implies finishing with this ticket). Comment in the code distinguishes the two paths so a future reader doesn't unify them.
+- **No follow-up assertions in the spec.** The scenario terminates on the release; there's no scripted CLIENT_ACCEPT or trader-rejection that follows. Spec ends with "row is still visible in Active." Trying to also assert "no 5s removal happens" would slow the test by 6s without a clean signal — the released row would just sit there indefinitely.
+- **Released row's status returns to INTERVENE.** `derivedStatus(rfsState='Queued', siState='Initial', dealable=true)` per `statusFromMachines.ts` — matches the scenario's "displayed status returns to INTERVENE" assertion.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, unchanged — E2E adds Playwright not Vitest), e2e ✓ (6/6 in 35.9s), build ✓.
+
+---
+
 ## FXSW-029 · Audio chime + mute toggle + settingsStore
 **Commit `5343219`**
 
