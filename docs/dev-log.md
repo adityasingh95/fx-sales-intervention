@@ -32,6 +32,26 @@ Most recent first.
 
 ---
 
+## FXSW-015 · ReasonsPanel
+**Commit `_pending_`**
+
+- TDD red→green: 3 specified `ReasonsPanel.test.tsx` cases — `['OFF_HOURS']` → one chip with "Outside trading window", `['SIZE_LIMIT', 'CREDIT_LIMIT']` → two chips with the right labels, `[]` → renders nothing (container.firstChild is null).
+- `src/features/ticket/ReasonsPanel.tsx` real per `docs/02 §4.1`: title row "Risk Analysis" (`aria-label` + visible `<h2>`), then one `<li data-reason={r}>` per reason with icon (lucide `Clock` / `Maximize2` / `ShieldAlert` for OFF_HOURS / SIZE_LIMIT / CREDIT_LIMIT), label, and the verbatim one-line explanation from the spec. `data-testid="reasons-panel"` on the `<section>`.
+- `TicketPanel` now mounts `<ReasonsPanel />` in place of the inline "Risk reasons" placeholder list that FXSW-014 used as a temporary stand-in. Existing FXSW-014 test "contains the deal's basic info" still passes because the new component renders "Outside trading window" (label match) — same text, richer markup.
+- Placeholder note in TicketPanel updated to drop FXSW-015 from the "coming soon" list.
+
+**User-directed decisions:** None — `02 §4.1` is verbatim on every label and explanation string.
+
+**Agent-directed decisions:**
+- **Icon picks (lucide).** Spec says "icon + label + explanation" without naming icons; picked `Clock` for OFF_HOURS, `Maximize2` for SIZE_LIMIT, `ShieldAlert` for CREDIT_LIMIT. All amber-tinted (`text-amber`) so they read as warnings without competing with the status pill's color. If FXSW-020 (polish) wants different icons, they're a one-line swap.
+- **`<section role implicit>` + `aria-label="Risk Analysis"`** rather than `role="region"`. The `<h2>` inside already labels the section semantically; the `aria-label` is redundant-but-cheap insurance for tests that bypass the heading.
+- **`data-reason={r}` on each chip** rather than `data-testid="reason-{r}"`. The list is the structure being tested; `data-reason` reads more naturally as "this chip is the X reason" and the FXSW-014 / E2E tests can scope to `[data-reason="OFF_HOURS"]`. testids stay on container-level elements per `08-test-plan.md §4` convention.
+- **Empty-state returns null, not a "no reasons" placeholder.** Spec says "Always visible" but also that the panel exists *because* there are rejection reasons (the ticket is an SI ticket; ESP deals don't open tickets). An empty reasons list shouldn't happen in practice — defending with null instead of a "no reasons" message avoids confusing copy in a state the user shouldn't reach.
+- **No standalone Tailwind chip styling** — used the same border/bg/padding shape as the blotter's Chip (border + elevated bg + small radius) so the look composes with the rest of the ticket without a new visual language for the same primitive.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**191 pass / 4 todo**, up from 188 / 4 — 3 new ReasonsPanel cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-014 · TicketPanel shell + glass overlay
 **Commit `99e9823`**
 

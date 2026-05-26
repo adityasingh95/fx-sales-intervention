@@ -6,13 +6,7 @@ import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { formatAmount, formatTime } from '@/lib/format';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import type { RejectionReason } from '@/types/deal';
-
-const REASON_LABEL: Record<RejectionReason, string> = {
-  OFF_HOURS: 'Outside trading window',
-  SIZE_LIMIT: 'Size > auto-pricer band',
-  CREDIT_LIMIT: 'Credit limit breach',
-};
+import ReasonsPanel from './ReasonsPanel';
 
 // FXSW-014 shell. Renders only when uiStore.openDealId is set. Slides in
 // from the right via transform: translateX over 240ms per docs/02 §1 +
@@ -140,22 +134,11 @@ export default function TicketPanel() {
               </div>
             </div>
 
-            {rejectionReasons.length > 0 && (
-              <div className="mt-1">
-                <div className="mb-1 text-xs uppercase tracking-tight text-text-mute">
-                  Risk reasons
-                </div>
-                <ul className="flex flex-col gap-1 text-sm text-text">
-                  {rejectionReasons.map((r) => (
-                    <li key={r}>{REASON_LABEL[r]}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <ReasonsPanel reasons={rejectionReasons} />
 
             <p className="mt-4 text-xs text-text-mute">
-              Reasons, Summary, Pricing, AI Suggestion, Client Summary, Deal Summary, and
-              Footer panels land in FXSW-015 through FXSW-021.
+              Summary, Pricing, AI Suggestion, Client Summary, Deal Summary, and Footer
+              panels land in FXSW-016 through FXSW-021.
             </p>
           </section>
         </div>
