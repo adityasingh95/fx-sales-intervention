@@ -50,7 +50,7 @@
 | FXSW-026 | SuggestionPanel credit-decline + recompute | 4 | M | 🟡 | ☑ |
 | FXSW-027 | SIZE_LIMIT + CREDIT_BREACH E2E | 4 | S | 🟢 | ☑ |
 | FXSW-028 | Notifications visual layer | 5 | M | 🟡 | ☑ |
-| FXSW-029 | Audio chime + mute + settingsStore | 5 | M | 🔴 | ☐ |
+| FXSW-029 | Audio chime + mute + settingsStore | 5 | M | 🔴 | ☑ |
 | FXSW-030 | Visual polish pass | 5 | M | — | ☐ |
 | FXSW-031 | RELEASE_PATH E2E | 5 | S | 🟢 | ☐ |
 | FXSW-032 | CI workflow | 5 | S | 🟡 | ☐ |

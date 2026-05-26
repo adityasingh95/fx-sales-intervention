@@ -32,6 +32,30 @@ Most recent first.
 
 ---
 
+## FXSW-029 · Audio chime + mute toggle + settingsStore
+**Commit `TBD`**
+
+- TDD red→green: **12 new tests** — 5 in `settingsStore.test.ts` (default unmuted; toggleMute flips; persists to sessionStorage; setMuted writes; reload-restore via fresh module import), 3 in `MuteToggle.test.tsx` (Bell↔BellOff icons + `aria-pressed` + `data-muted` toggles; click flips state + persists), 4 in `useNotificationSound.test.tsx` (no schedule before audio unlock; schedules 880Hz OscillatorNode after unlock + new SI deal + unmuted; no schedule when muted; one oscillator per new deal, not per render).
+- `src/state/stores/settingsStore.ts` — Zustand store, `muted: boolean` + `toggleMute()` / `setMuted()`. Reads sessionStorage `si.muted` key on init; writes on every mutation. Safari-private-mode tolerant (try/catch around storage calls).
+- `src/features/notifications/useNotificationSound.ts` — module-scoped lazy WebAudio context, lazy because browsers reject `new AudioContext()` before a user gesture. `playChime()` builds an OscillatorNode (880Hz sine) into a GainNode with `setValueAtTime(0.15)` + `exponentialRampToValueAtTime(0.0001, t0 + 0.18)`. The hook installs `click` / `keydown` listeners on `document` for the audio unlock and subscribes to the notificationsStore's `notifiedDealIds.size` to fire one chime per new SI deal. `_audio` test-only export exposes `setFactory` / `reset` so tests can inject a mock AudioContext.
+- `src/features/notifications/MuteToggle.tsx` — header button rendering `Bell` (unmuted) / `BellOff` (muted) from lucide-react. `aria-pressed` + `data-muted` + dynamic `aria-label` ("Mute notifications" / "Unmute notifications").
+- `src/App.tsx` wiring: `MuteToggle` replaces the placeholder Volume2 button; `useNotificationSound()` mounted once at the app root for the lifetime of the session.
+
+**User-directed decisions:** None — `docs/02 §5.3` + `§5.4` and CLAUDE.md rule §3 pinned the implementation surface; `docs/06-tech-architecture.md §5` confirmed sessionStorage scope.
+
+**Agent-directed decisions:**
+- **AudioContext is module-scoped, lazy, and replaceable via `_audio.setFactory`.** Singleton per session keeps WebAudio resources controlled; lazy creation defers the actual `new AudioContext()` to first use (browsers can throw on construction before user gesture); factory injection lets tests run without a real WebAudio implementation. Production never touches `_audio`.
+- **The mute gate happens in the hook, not in the play function**, so the unmuted path can stay sync + side-effect-only. `playChime()` itself is muted-agnostic — useful if a future ticket adds a "test sound" affordance in a settings panel.
+- **`notifiedDealIds.size` as the trigger signal**, not the full Set. Comparing sizes is `O(1)`; comparing Set membership across renders would need diffing. Cosmetically: the dispatcher only ever *adds* to the Set (never removes), so size growth uniquely identifies "a new deal has been notified."
+- **Audio unlock relies on click + keydown only.** Touch is the iOS path; in the prototype's desktop-first scope, the `click` event is dispatched on touch too, so adding a separate touch listener would just create duplicate unlock calls. Keep it simple.
+- **`setMuted(true)` IS exposed alongside `toggleMute()`** even though the UI only uses the toggle. Tests use `setMuted` to set up specific states without ambiguity. Trivial API surface; no cost.
+- **`reload-restore` test uses dynamic import with a cache-busting query string** (`'./settingsStore?reload=' + Date.now()`). Vitest module cache would otherwise reuse the existing module and its already-initialised `muted` state, hiding the bug.
+- **Replaced the placeholder `Volume2` icon** in the header rather than augmenting it. The original FXSW-006 button was wired to nothing and used the wrong icon (`Volume2` is a speaker, the spec says `Bell`).
+- **`useNotificationSound()` mounted at the App root**, not inside a `<NotificationSoundProvider />` wrapper. The hook has no children and no shared state to provide — wrapping would just add ceremony.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, up from 304 / 0 — 12 new), build clean.
+
+---
+
 ## FXSW-028 · Notifications visual layer
 **Commit `227c96f`**
 
