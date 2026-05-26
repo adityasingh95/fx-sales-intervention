@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
+import ToastStack from '@/features/notifications/ToastStack';
 import TicketPanel from '@/features/ticket/TicketPanel';
 import { useUiStore } from '@/state/stores/uiStore';
 
@@ -77,6 +78,7 @@ export default function App() {
         </section>
       </main>
       <TicketPanel />
+      <ToastStack />
     </div>
   );
 }

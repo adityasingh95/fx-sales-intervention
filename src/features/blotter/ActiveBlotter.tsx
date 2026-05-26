@@ -41,6 +41,10 @@ function Row({ entry }: { entry: DealEntry }) {
   const status = derivedStatus(entry.rfsState, entry.siState, entry.dealable);
   const openTicket = useUiStore((s) => s.openTicket);
   const removing = isHistoric(entry.siState);
+  // FXSW-028 — amber row flash on mount for new SI deals. Plays once per
+  // mount via a CSS keyframe; no JS timer needed because the keyframe
+  // animation has `forwards` fill-mode and a fixed 300ms duration.
+  const flashOnMount = !removing && entry.siState === 'Initial' && entry.dealable;
   return (
     <button
       type="button"
@@ -51,9 +55,11 @@ function Row({ entry }: { entry: DealEntry }) {
       data-display-status={status}
       data-dealable={entry.dealable ? 'true' : 'false'}
       data-removing={removing ? 'true' : 'false'}
+      data-row-flash={flashOnMount ? 'new' : undefined}
       className={clsx(
         'group flex w-full items-center border-b border-l-4 border-border bg-bg-app px-4 py-2 text-left text-sm transition-opacity duration-200 hover:bg-bg-row-hover',
         BAR_FOR[status],
+        flashOnMount && 'animate-row-flash',
         removing && 'opacity-60',
       )}
     >

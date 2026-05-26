@@ -38,6 +38,10 @@ test('CREDIT_BREACH — credit-decline suggestion + trader Reject end-to-end', a
   const dealId = await row.getAttribute('data-deal-id');
   expect(dealId).toMatch(/^d_/);
 
+  // FXSW-028: toast + title-prefix fire for the new SI deal.
+  await expect(page.getByTestId(`toast-${dealId}`)).toContainText('Halcyon Capital');
+  await expect.poll(async () => await page.title()).toMatch(/^●\s/);
+
   // Open the ticket. SI advances PickUp → PickedUp (ack zeroed).
   await row.click();
   const ticket = page.getByTestId('ticket-panel');

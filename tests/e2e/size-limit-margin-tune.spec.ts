@@ -35,6 +35,10 @@ test('SIZE_LIMIT_MARGIN_TUNE — AI suggestion Apply + Send Stream end-to-end', 
   const dealId = await row.getAttribute('data-deal-id');
   expect(dealId).toMatch(/^d_/);
 
+  // FXSW-028: toast + title-prefix fire for the new SI deal.
+  await expect(page.getByTestId(`toast-${dealId}`)).toContainText('Northwind FX');
+  await expect.poll(async () => await page.title()).toMatch(/^●\s/);
+
   // Open the ticket; SI advances to PickedUp (ack zeroed).
   await row.click();
   const ticket = page.getByTestId('ticket-panel');

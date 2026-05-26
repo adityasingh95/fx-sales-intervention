@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { wireNotifications } from './features/notifications/dispatcher';
 import { pricingFeed } from './services/feed/pricingFeed';
 import { timings } from './state/machines/timings';
 import { wireDealFeedToStore } from './state/stores/dealsBootstrap';
@@ -22,6 +23,7 @@ if (typeof window !== 'undefined' && window.__zeroAckDelay) {
 }
 
 wireDealFeedToStore();
+wireNotifications();
 pricingFeed.start();
 
 createRoot(document.getElementById('root')!).render(

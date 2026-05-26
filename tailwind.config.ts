@@ -85,6 +85,9 @@ const config: Config = {
         'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
         'out-quart': 'cubic-bezier(0.25, 1, 0.5, 1)',
       },
+      animation: {
+        'row-flash': 'row-flash 300ms ease-out forwards',
+      },
     },
   },
   plugins: [],

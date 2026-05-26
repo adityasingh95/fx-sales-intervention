@@ -32,6 +32,33 @@ Most recent first.
 
 ---
 
+## FXSW-028 · Notifications visual layer
+**Commit `TBD`**
+
+- TDD red→green: **8 new tests** — 2 in `titleFlash.test.ts` (prefix + restore at 5s; repeated calls reset the timer without double-prefixing), 6 in `ToastStack.test.tsx` (toast appears on a fresh SI deal; auto-dismiss at 6s; click opens the ticket + dismisses; re-Release does not re-fire; ESP deals don't trigger; dispatcher also fires the title flash).
+- `src/state/stores/notificationsStore.ts` real (Zustand) — `toasts: Toast[]` plus a `notifiedDealIds: Set<string>` so re-Release of a previously-picked-up deal doesn't re-fire per `docs/02 §5.1`. `reset()` for test cleanup.
+- `src/features/notifications/dispatcher.ts` — `dispatchNotifications(deals)` iterates the store, fires the toast + title-flash for any deal that is SI-channel (`rejectionReasons.length > 0`) + `siState === 'Initial'` + `dealable` + not-yet-notified. `wireNotifications()` subscribes to the dealsStore at app boot (called alongside `wireDealFeedToStore` in `main.tsx`).
+- `src/features/notifications/titleFlash.ts` — `flashDocumentTitle()` prefixes `● ` for 5s, then restores. Idempotent — concurrent triggers reset the timer without compounding the prefix. `_resetTitleFlash` test-only helper exported for cleanup.
+- `src/features/notifications/ToastStack.tsx` real per `docs/02 §5.2` + `docs/05 §4.5` chrome family — top-right `fixed` stack, AI-bordered + glass background, 320px wide; each card has `data-testid="toast-{dealId}"`. Click opens the ticket (calls `uiStore.openTicket(dealId)`) and dismisses itself; explicit `X` button dismisses without opening.
+- Wired into `src/App.tsx` (renders `<ToastStack />` at the root level so it overlays both blotters and the ticket panel) and `src/main.tsx` (`wireNotifications()` boots the dispatcher subscription).
+- **Row flash** per `docs/02 §5.2` — `ActiveBlotter.tsx`'s Row tags new SI-Initial-dealable rows with `data-row-flash="new"` + a Tailwind `animate-row-flash` class that runs the `row-flash` keyframe (`global.css`, 300ms amber-30% → transparent fade with `forwards` fill mode). No JS timer; the CSS animation plays once on mount.
+- **All three SI E2Es now assert the toast + title-prefix.** OFF_HOURS, CREDIT_BREACH, and SIZE_LIMIT_MARGIN_TUNE each add a `getByTestId('toast-{dealId}')` visibility check + `expect.poll(page.title()).toMatch(/^●\s/)`. Removes the FXSW-028-deferred markers those specs were carrying.
+
+**User-directed decisions:** None — `docs/02 §5.1` / `§5.2` pinned the trigger conditions, message format, and the dedupe rule.
+
+**Agent-directed decisions:**
+- **Dispatcher lives in `src/features/notifications/`, store lives in `src/state/stores/`.** Mirrors the existing dealFeed / dealsStore separation: feature-y subscriber pattern in features/, pure Zustand data in stores/. The bootstrap wiring lives in `main.tsx` alongside `wireDealFeedToStore` so all the cross-system glue is in one place.
+- **SI channel detection via `rejectionReasons.length > 0`**, not a separate `channel` field on the entry. The dealsStore already tracks `rejectionReasons` per deal and ESP deals always have an empty list (they're auto-priced, no intervention reasons). One less concept to thread through.
+- **`dispatchNotifications` exported as a function alongside `wireNotifications`** so tests can drive it directly without spinning up the subscription. Keeps tests synchronous and lets the test verify "second call with same deal doesn't re-fire" cleanly.
+- **Toast click both opens the ticket AND dismisses the toast.** Spec wording ("Clicking the toast opens the ticket") is silent on dismissal; keeping the toast around after the trader is already in the ticket would be visual noise. Matches the intent of the affordance.
+- **`X` button on each toast** uses an inline `<span role="button">` rather than a nested `<button>` because the outer card is itself a `<button>` and nested buttons are an HTML structural error. Click handler uses `stopPropagation` to suppress the outer card's open-ticket handler.
+- **`animate-row-flash` Tailwind utility** added via `tailwind.config.ts` `animation` extension; the keyframe itself lives in `global.css` next to the existing `holdgrow` keyframe (FXSW-020 pattern). Keeps Tailwind config terse and lets keyframe rules colocate with each other.
+- **`expect.poll(page.title())` for the E2E title-prefix check** rather than a strict `toHaveTitle` — the title clears after 5s, and `expect.poll` retries the assertion against the live document title without racing the 5s window.
+- **`reset()` on the notifications store** is intentionally a test affordance; production never calls it. The `markNotified`/`hasNotified` separation lets the dispatcher stay idempotent without needing to read the full set.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**304 pass / 0 todo**, up from 296 / 0 — 8 new), e2e ✓ (5/5 in 49.9s — up from 34.5s with the added notification assertions), build ✓.
+
+---
+
 ## FXSW-027 · SIZE_LIMIT_MARGIN_TUNE + CREDIT_BREACH E2E
 **Commit `ab8cd30`**
 

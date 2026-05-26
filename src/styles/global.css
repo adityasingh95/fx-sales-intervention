@@ -46,3 +46,15 @@ pre,
     transform: scaleX(1);
   }
 }
+
+/* FXSW-028 — new-SI-deal row flash. Amber 30% → transparent over 300ms,
+   plays once on mount. Tailwind utility `animate-row-flash` wires this
+   keyframe via tailwind.config.ts. */
+@keyframes row-flash {
+  from {
+    background-color: rgba(251, 191, 36, 0.3);
+  }
+  to {
+    background-color: transparent;
+  }
+}
