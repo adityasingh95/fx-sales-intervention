@@ -2,7 +2,8 @@
 last_updated: 2026-05-26
 sources:
   - docs/07-scenario-pack.md
-status: in-progress
+  - docs/phase-summaries/FXSW-021-summary.md
+status: stable
 ticket: FXSW-021
 ---
 
@@ -10,7 +11,7 @@ ticket: FXSW-021
 
 **ID:** `OFF_HOURS_INTERVENTION`
 
-The canonical SI happy path. Notification fires, trader opens ticket, sends stream, client accepts. Exercises every panel in the [ticket](../features/ticket.md), the full SI machine forward path (`Initial → PickUpSent → PickedUp → QuoteSent → Quoted → TradeConfirmed`), the [notifications](../features/notifications.md) layer, and the [5-second removal rule](../features/active-blotter.md#5-second-removal-rule).
+The canonical SI happy path. Notification fires, trader opens ticket, sends stream, client accepts. Exercises every panel in the [ticket](../features/ticket.md), the full SI machine forward path (`Initial → PickUpSent → PickedUp → QuoteSent → Quoted → TradeConfirmed`), and the [5-second removal rule](../features/active-blotter.md#5-second-removal-rule).
 
 ## Test data
 
@@ -36,8 +37,6 @@ Scenario: Off-hours USDJPY deal is priced manually and accepted
   And the row's CCY pair is "USDJPY"
   And the row's client is "Globex Industries"
   And the row's Reasons cell contains "OFF_HOURS"
-  And a toast appears in the top-right with text containing "Globex Industries"
-  And the document title is prefixed with "● "
 
   When the operator clicks the new row
 
@@ -72,12 +71,33 @@ Scenario: Off-hours USDJPY deal is priced manually and accepted
 
 The state-gated follow-up means `CLIENT_ACCEPT` doesn't fire until the trader has actually sent the stream. If the trader never sends, the scenario stalls quietly — useful behaviour for free-play exploration.
 
-## Status
+## E2E implementation
 
-E2E spec is FXSW-021 (Phase 3, after the ticket panels build out). Not yet implemented. The scenario definition is registered and the state-gated follow-up wires through; what's missing is the ticket UI that the trader drives.
+Spec: `tests/e2e/off-hours-intervention.spec.ts`. Commit `65e2cbf` (FXSW-021).
+
+- Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true` via `page.addInitScript` per `docs/07` "Notes on test fidelity".
+- Hold via Playwright's `click({ delay: 700 })` — 700ms gives a small margin against the timer-vs-pointerup race. The double-click alternative path also exists on `HoldButton` but the hold is the spec-true path ("clicks Send Stream and holds for 600ms").
+- Tolerant timeouts: `Quoted` 1500ms, `TradeConfirmed` 3000ms, archived 6000ms. Each is spec value plus generous CI-jitter slack.
+- Assertions hit `data-si-state` / `data-display-status` / `data-outcome` — never text or color, per the test-fidelity rules.
+- Runtime: 8.0s. Together with `smoke` + `happy-path-esp` the full Playwright suite runs in 17.9s.
+
+### Toast + title-prefix assertions intentionally deferred
+
+The Gherkin scenario asserts:
+
+> And a toast appears in the top-right with text containing "Globex Industries"
+> And the document title is prefixed with "● "
+
+Both are notification-layer behaviour and land with FXSW-028 (Phase 5). The E2E file's header comment names them as intentionally deferred. The current spec passes without them; a follow-up commit on the E2E will add the assertions once FXSW-028 ships.
+
+## Integration coverage
+
+This E2E doubles as an integration test for the entire ticket flow. It exercises [pricing-feed.md](../components/pricing-feed.md) (FXSW-007) through [ticket.md](../features/ticket.md) (FXSW-014–020) through [scenario-player.md](../components/scenario-player.md) (state-gated `CLIENT_ACCEPT`) through [deals-store.md](../components/deals-store.md) (archival). Any contract regression on `data-deal-id`, `data-si-state`, `data-display-status`, `data-outcome`, the reasons-panel label, the margin-input value, or footer button visibility would break this E2E.
 
 ## Sources
 
 - `docs/07-scenario-pack.md` Scenario 2
 - `docs/04-dummy-feed-spec.md` §5.2, §6
+- `docs/phase-summaries/FXSW-021-summary.md`
+- `docs/dev-log.md` FXSW-021 — implementation notes
 - `docs/BACKLOG.md` FXSW-021

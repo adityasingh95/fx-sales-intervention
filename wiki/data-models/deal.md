@@ -38,8 +38,8 @@ type Deal = {
 These are part of the deal's runtime state but not on the `Deal` payload itself:
 
 - `rejectionReasons: RejectionReason[]` — stored on the `DealEntry` in [dealsStore](../components/deals-store.md). Read from the blotter's Reasons cell and from the ticket's Reasons panel.
-- `marginPips: number` — current trader margin. Held in the [dealMachine](../components/deal-machine.md) context, mutated by the Pricing Panel +/- controls and the AI Margin Suggestion Apply action.
-- `isFixedMode`, `capturedRate`, `finalRate` — pricing-mode state; held in dealMachine context.
+- `marginPips: number` — current trader margin. **Interim:** owned by `TicketPanel` local state in Phase 3 (sourced from `entry.deal.defaultMarginPips`). FXSW-025 (Phase 4) will lift this onto the [dealMachine](../components/deal-machine.md) context so the AI suggestion Apply action and the Pricing Panel +/- controls mutate a single source of truth. The `docs/03-trade-state-model.md` §6 `DealContext` already includes the field; the machine actions that mutate it land with FXSW-025.
+- `isFixedMode`, `capturedRate`, `finalRate` — pricing-mode state; also TicketPanel-owned in v1 (as `pricingMode`, `fixedSide`, `frozenTick`). Same lift planned with FXSW-025.
 - `pickedUpBy` — populated on `PickUpAck`; renders into the Trader column.
 
 ## Test contract

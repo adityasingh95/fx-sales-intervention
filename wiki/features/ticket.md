@@ -4,62 +4,127 @@ sources:
   - docs/02-functional-spec.md
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
-status: in-progress
-ticket: FXSW-014
+  - docs/phase-summaries/FXSW-021-summary.md
+status: stable
+ticket: FXSW-014..FXSW-020
 ---
 
 # Feature — SI Ticket (Spot)
 
-The right-side overlay panel a trader opens for a single deal. 640px wide, slides in from the right (240ms `cubic-bezier(0.16, 1, 0.3, 1)`), glass background (`--color-bg-glass` + `backdrop-filter: blur(20px) saturate(140%)`). Blotters dim to 75% opacity behind it.
+The right-side overlay panel a trader opens for a single deal. 640px wide on `sm:` and up, full-viewport on mobile per the responsive amendment. Slides in over 240ms with `cubic-bezier(0.16, 1, 0.3, 1)`. Glass background via `bg-bg-glass + backdrop-blur-xl + backdrop-saturate-150`. Blotters dim to `opacity-75` while the ticket is open.
 
-V1 supports the **Spot** ticket type only. Forward / NDF / Flexible Forward / Swap / Block are out of scope (see [overview.md](../overview.md) §What's not).
+V1 supports the **Spot** ticket type only.
 
 ## Panel stack (top to bottom)
 
-| Panel | Spec section | Notes |
-|---|---|---|
-| Reasons Panel | `docs/02-functional-spec.md` §4.1 | One chip per rejection reason; always visible. |
-| Summary Panel | `docs/02-functional-spec.md` §4.2 | Natural-language one-liner + key/value strip. |
-| AI Margin Suggestion Panel | `docs/02-functional-spec.md` §4.3, `docs/09-suggestion-engine.md` | Visible only in `PickedUp`. See [ai-margin-suggestion.md](ai-margin-suggestion.md). |
-| Pricing Panel | `docs/02-functional-spec.md` §4.4, `docs/05-ui-ux-spec.md` §4 | Live bid/ask, margin controls, streaming/fixed mode toggle. |
-| Client Summaries Panel | `docs/02-functional-spec.md` §4.5 | Read-only preview of what the client sees. |
-| Deal Summary Panel | `docs/02-functional-spec.md` §4.6 | Direction, notional, account, trade date, settlement date. |
-| Footer / Actions | `docs/02-functional-spec.md` §4.7 | Reject / Release / Send Stream / Send Quote / Withdraw / Return to Stream. |
+| Panel | testid | Source | Ticket |
+|---|---|---|---|
+| Reasons | `reasons-panel` | `src/features/ticket/ReasonsPanel.tsx` | FXSW-015 |
+| Summary | `summary-panel` | `src/features/ticket/SummaryPanel.tsx` | FXSW-016 |
+| AI Margin Suggestion | `suggestion-panel` | `src/features/ticket/SuggestionPanel.tsx` | (Phase 4 — see [ai-margin-suggestion.md](ai-margin-suggestion.md)) |
+| Pricing | `pricing-panel` | `src/features/ticket/PricingPanel.tsx` | FXSW-017 (streaming), FXSW-018 (fixed + margin) |
+| Client Summary | `client-summary-panel` | `src/features/ticket/ClientSummaryPanel.tsx` | FXSW-019 |
+| Deal Summary | `deal-summary-panel` | `src/features/ticket/DealSummaryPanel.tsx` | FXSW-016 |
+| Footer | `ticket-footer` | `src/features/ticket/TicketFooter.tsx` | FXSW-020 |
 
-## Open / close
+## Open / close (FXSW-014)
 
 - **Opens** when the operator clicks a row in SI `Initial` state with `Dealable=true`. The click fires the parent `dealMachine`'s `PickUp` event, which the parent fans into both child machines per [components/deal-machine.md](../components/deal-machine.md).
+- The `PickUp` fire is **gated on `siState === 'Initial'`** — re-opening a `PickedUp` deal (operator closed without releasing, clicked the row again) doesn't double-fire.
 - **Closes** via `Esc`, clicking outside the panel, or any terminal action.
-- Closing without action leaves the deal in its current state (e.g. `PickedUp`). It does **not** auto-Hold/Release. Another trader cannot pick up a `PickedUp` deal — the operator must click Release explicitly to flip `Dealable` back to `true`.
+- Closing without action leaves the deal in its current state. It does **not** auto-Hold/Release. Another trader cannot pick up a `PickedUp` deal — the operator must click Release explicitly to flip `Dealable` back to `true`.
+- Conditional mount (not always-mounted-with-CSS-translate) so the testid is absent from DOM when closed. Slide-in via two-pass `requestAnimationFrame` to animate from `translate-x-full` → `translate-x-0`.
 
-## Pricing modes
+## Reasons Panel (FXSW-015)
 
-The Pricing Panel runs in one of two modes:
+One chip per `RejectionReason` from the deal's payload. Renders nothing when reasons array is empty.
 
-- **Streaming (default).** Trader rate boxes update live from the [pricing feed](../components/pricing-feed.md). Margin adjustments are reactive.
-- **Fixed.** Triggered by single-clicking the Bid or Ask box. The clicked box highlights; rates freeze; the Refresh button appears. Click `Return to Stream` in the footer to resume.
-
-## Footer-button visibility (gated by SI state)
-
-| Button | Visible when SI ∈ | Fires |
+| Reason | Icon | Label |
 |---|---|---|
-| Reject | `PickedUp`, `Quoted` | `Reject` → `RejectSent` → `TraderRejected`. Hold-to-confirm. |
-| Release | `PickedUp`, `Quoted` | `Hold` → `HoldSent` → `Initial` with `Dealable=true`. From `Quoted` the live quote is withdrawn on the RFS side as part of the release. |
-| Send Stream | `PickedUp`, streaming mode | `Quote` → `QuoteSent` → `Quoted`. Hold-to-confirm. |
-| Send Quote | `PickedUp`, fixed mode | `Quote` with captured rate → `QuoteSent` → `Quoted`. |
-| Withdraw | `Quoted` | `Withdraw` → `WithdrawSent` → `PickedUp`. |
-| Return to Stream | `PickedUp`, fixed mode | Resumes streaming locally; flips the action button back to Send Stream. |
+| `OFF_HOURS` | `Clock` | "Outside trading window" |
+| `SIZE_LIMIT` | `Maximize2` | "Notional exceeds auto-pricing band" |
+| `CREDIT_LIMIT` | `ShieldAlert` | "Client credit limit would be breached" |
 
-`Reject` and `Send Stream` require 600ms hold or double-click to prevent accidental terminal actions.
+Each chip carries `data-reason="{REASON}"` for test scoping.
+
+## Summary Panel + Deal Summary Panel (FXSW-016)
+
+- **Summary Panel** renders a natural-language sentence (`"Client X wants to BUY/SELL Y BASE vs QUOTE for SPOT settlement."`) plus a three-column key/value strip (Account / Trade date / Settlement date).
+- **Deal Summary Panel** renders Direction / Notional / Account / Trade date / Settlement date, each with `data-field="{name}"`.
+- T+2 settlement date computed by `src/lib/time.ts` `addBusinessDays(date, 2)`. Skips Sat + Sun. Weekend trade dates roll forward to the next Monday first.
+
+## Pricing Panel — streaming mode (FXSW-017)
+
+- Subscribes to the [pricing feed](../components/pricing-feed.md) via the `usePrice(pair)` hook.
+- Bid + Ask cells at `text-2xl font-mono tabular-nums`, Mid between them at smaller dimmer text.
+- Each cell carries `data-flash="up" | "down"` on a value change, cleared after 80ms (direction-coloured border).
+- Stale-feed watchdog: 3-second `setTimeout` resets on every tick. If it fires, all three cells render the em-dash placeholder.
+- Test contract: `data-testid="bid-cell" | "mid-cell" | "ask-cell"`.
+
+## Pricing Panel — fixed mode (FXSW-018)
+
+- Click a bid or ask cell to enter fixed mode for that side. The panel switches to `data-pricing-mode="fixed"` and the clicked cell gets `data-focused="true"`. Cells are real `<button>` elements so keyboard activation (Enter/Space) works.
+- Refresh button (`data-testid="refresh-button"`, lucide `RefreshCw`) appears only in fixed mode. Click re-captures the current live tick.
+- Margin controls: `data-testid="margin-minus" | "margin-input" | "margin-plus"`. + / − increment / decrement by 1. Numeric input clamps floor at 1; minus button is `disabled` at the floor.
+- Keyboard `+` / `=` / `-` / `_` on the document increment/decrement margin. Handler ignores keys typed into an `<input>` (so the operator can type a margin value without the global accelerator firing).
+- Indigo glow on margin change: `data-margin-glow="true"` for 600ms on every margin change (internal click, keypress, typed input, or external prop push).
+- Tick flash + stale watchdog suppressed in fixed mode — the displayed rate is frozen, so motion would be misleading.
+
+## Client Summary Panel (FXSW-019)
+
+- Three-column grid: Client Bid / Client Ask / Estimated profit, each with its own testid.
+- All math lives in `src/lib/pips.ts`:
+  - `pipSizeFor(pair)` — 0.0001 for 4dp pairs, 0.01 for 2dp JPY/INR pairs.
+  - `clientBidFromTrader`, `clientAskFromTrader` — round to the pair's display precision so float drift doesn't leak (`1.0850 − 3*0.0001` is `1.0846999999999998` in raw floats; the lib rounds to 1.0847).
+  - `estimatedProfitUsd(margin, notional, pair, midRate)` — handles both quote-side currencies: USD-quoted pairs use the pip value directly; USD-base pairs divide by `midRate` to convert to USD. Zero-rate guard returns 0 so a transient stale feed doesn't crash with `Infinity`.
+- Estimated profit formatted as `Intl.NumberFormat` USD currency, zero decimals.
+- Null tick → all three cells render the em-dash placeholder.
+
+## Pricing-mode + margin state lifted to TicketPanel
+
+In Phase 3 (post-FXSW-019), `pricingMode`, `fixedSide`, `frozenTick`, and `marginPips` live as TicketPanel state. A single `usePrice(deal.pair)` call at the parent level feeds both PricingPanel and ClientSummaryPanel via `displayTick = pricingMode === 'fixed' ? frozenTick : liveTick`, so both panels freeze and unfreeze together.
+
+This is an interim — FXSW-025 (Phase 4) will lift `marginPips` onto the dealMachine context. See [data-models/deal.md](../data-models/deal.md).
+
+## Footer / Actions (FXSW-020)
+
+Six buttons per `docs/02-functional-spec.md` §4.7. Visibility gated on `siState + pricingMode`.
+
+| Button | testid | Visible when SI ∈ | Fires |
+|---|---|---|---|
+| Reject | `btn-reject` | `PickedUp`, `Quoted` | `Reject` → `RejectSent` → `TraderRejected`. Hold-to-confirm. |
+| Release | `btn-release` | `PickedUp`, `Quoted` | `Hold` → `HoldSent` → `Initial` (Dealable=true). Single click — Release is reversible so doesn't need the hold safety. |
+| Send Stream | `btn-send-stream` | `PickedUp`, streaming mode | `Quote` → `QuoteSent` → `Quoted`. Hold-to-confirm. |
+| Send Quote | `btn-send-quote` | `PickedUp`, fixed mode | `Quote` with captured rate → `QuoteSent` → `Quoted`. |
+| Withdraw | `btn-withdraw` | `Quoted` | `Withdraw` → `WithdrawSent` → `PickedUp`. |
+| Return to Stream | `btn-return-stream` | `PickedUp`, fixed mode | Resumes streaming locally; resets `pricingMode` / `fixedSide` / `frozenTick`. |
+
+### Hold-to-confirm + double-click
+
+Reject and Send Stream require **600ms hold** OR **double-click** to fire. Implemented inline as a `HoldButton` primitive in `TicketFooter.tsx`:
+
+- 600ms `setTimeout` on `pointerDown`, cancels on `pointerUp` / `pointerLeave`.
+- `onDoubleClick` is the alternative confirm path. Two single clicks (each cancelled) still register as a `dblclick` at the DOM level.
+- Visual progress overlay via an inline-styled `<span>` driven by a `holdgrow` keyframe in `global.css`.
+- `aria-describedby` hint ("Hold for 600ms or double-click to confirm") per `docs/05` §7 accessibility note.
+
+`HoldButton` is **not** lifted to `src/components/Button.tsx` yet — only two consumers in Phase 3. FXSW-029 (polish) will lift when there's a third.
+
+### `*Sent` window UI
+
+Each action button stays mounted through its `*Sent` window so the spinner renders in-place (same testid, same DOM node, `data-in-flight="true"` + `disabled` + lucide `Loader2` icon with `animate-spin`). Tests can keep a single locator across the full transition.
+
+`onClick` on regular buttons disables when `inFlight` — defensive double-tap guard against fast operators racing the 250ms ack delay.
 
 ## Keyboard shortcuts
 
 | Keys | Action |
 |---|---|
 | `Esc` | Close ticket without action |
-| `+` / `-` | Increment / decrement margin |
-| `Enter` | (streaming) Send Stream (with confirm) |
-| `R` | Reject (with confirm) |
+| `+` / `=` | Increment margin |
+| `-` / `_` | Decrement margin |
+
+(The full `Enter` = Send Stream / `R` = Reject / `M` = mute shortcuts from `docs/02-functional-spec.md` §7 are deferred to later polish.)
 
 ## Test contract
 
@@ -75,15 +140,16 @@ The Pricing Panel runs in one of two modes:
 </aside>
 ```
 
-Buttons: `data-testid="btn-reject"`, `btn-release`, `btn-send-stream`, `btn-send-quote`, `btn-withdraw`, `btn-return-stream`.
+Per-cell / per-field testids documented in each sub-panel section above. The OFF_HOURS_INTERVENTION E2E ([scenarios/off-hours-intervention.md](../scenarios/off-hours-intervention.md)) is the integration check for the entire panel stack.
 
 ## Status
 
-Panel shell + glass overlay is FXSW-014. Per-panel build-out lands in FXSW-015 through FXSW-020. Not yet started — Phase 3.
+Panel shell, all sub-panels, and footer are **stable** as of FXSW-020 (`18e0c24`). The AI Margin Suggestion sub-panel is wired (Phase 4 work is on main) but the wiki entry for it ([ai-margin-suggestion.md](ai-margin-suggestion.md)) is still marked `in-progress` pending the dedicated Phase 4 ingest.
 
 ## Sources
 
-- `docs/02-functional-spec.md` §4 (all sub-sections)
+- `docs/02-functional-spec.md` §4 — all sub-sections + §4.8 open/close behaviour
 - `docs/03-trade-state-model.md` §2, §3, §7 — SI states, RFS↔SI relationships, side-effect timers
 - `docs/05-ui-ux-spec.md` §2, §4, §5 — overlay layout, pricing-panel detail, animation budget
-- `docs/BACKLOG.md` FXSW-014 through FXSW-020 — implementation tickets
+- `docs/phase-summaries/FXSW-021-summary.md` — Phase 3 hand-off summary
+- `docs/dev-log.md` FXSW-014 → FXSW-020 — per-ticket implementation notes

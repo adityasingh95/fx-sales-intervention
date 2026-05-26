@@ -61,6 +61,10 @@ Completed / rejected / expired deals stay in Active for exactly 5 seconds after 
 
 > "No active deals. Use the dev injector (top right) to start a scenario."
 
+## Dim when ticket open
+
+When the [ticket panel](ticket.md) is open, the blotters dim to `opacity-75` via a `transition-opacity duration-[240ms]` on the `<main>` wrapper, per `docs/05-ui-ux-spec.md` §2.
+
 ## Test contract
 
 Each row carries:

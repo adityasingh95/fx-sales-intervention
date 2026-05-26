@@ -54,3 +54,16 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - LINT-003 (deferred): src/services/feed/referenceMids.json absent locally; expected per ADR-0005 (gitignored build artifact regenerated on predev/prebuild). No action.
 ##   - Code-drift on engine.ts pip deltas + clientProfiles.ts: deferred — files not yet implemented (Phase 4).
 ##   - Vendor-neutrality grep clean. State-machine drift clean. Dependency versions match package.json. All 5 scenarios match definitions.ts. data-* test contract clean (forward-looking wiki-only attrs are roadmap claims on in-progress pages).
+
+## [2026-05-26] reconcile | wiki/CLAUDE.md merge conflict on main — build agent had written a softer "scope" version at 85c476b; our stricter 10-rule version (per user directive) takes precedence. Resolution merged useful build-agent sections (root-CLAUDE.md scoping note, Activation pointer, build-agent coordination) into the strict-rule structure. User approved option 2 (merge).
+
+## [2026-05-26] resolved | LINT-002 — build agent flipped FXSW-001 through FXSW-022 to ☑ in docs/BACKLOG.md (commit 58895d4 on main). Escalation closed.
+
+## [2026-05-26] ingest | docs/phase-summaries/FXSW-021-summary.md + Phase 3 commits (FXSW-014 through FXSW-021). Affected pages:
+##   - wiki/features/ticket.md: major update — promoted to stable, documented all 7 sub-panels with real testids + per-ticket commit attributions
+##   - wiki/scenarios/off-hours-intervention.md: in-progress → stable; cited commit 65e2cbf; noted toast + title-prefix assertions intentionally deferred to FXSW-028
+##   - wiki/components/pricing-feed.md: added usePrice hook section (FXSW-017)
+##   - wiki/features/active-blotter.md: noted opacity-75 dim-when-ticket-open
+##   - wiki/data-models/deal.md: noted marginPips/pricingMode/fixedSide/frozenTick are TicketPanel-owned interim state until FXSW-025 lifts to dealMachine
+##   - wiki/index.md: status refresh
+##   Phase 4 work (FXSW-022 through FXSW-027) landed on main but is OUT OF SCOPE for this ingest per user direction; deferred to a separate Phase 4 ingest.

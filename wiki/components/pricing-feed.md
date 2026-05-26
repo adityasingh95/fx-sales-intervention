@@ -86,9 +86,21 @@ See also: [data-models/price-tick.md](../data-models/price-tick.md).
 
 ## How components consume it
 
-The pricing feed is consumed **directly** by components that need live prices (e.g. `RateCell`, `PricingPanel`) via custom hooks — **not** routed through Zustand. Rationale: 300ms per tick × 4 pairs would thrash Zustand subscribers. Each consuming component subscribes directly to the feed.
+The pricing feed is consumed **directly** by components that need live prices (e.g. `RateCell`, `PricingPanel`) — **not** routed through Zustand. Rationale: 300ms per tick × 4 pairs would thrash Zustand subscribers. Each consuming component subscribes directly to the feed.
 
 `pricingFeed.start()` is called once in `main.tsx` at app boot so the deployed app has live mids within 300ms.
+
+### `usePrice(pair)` hook (FXSW-017)
+
+`src/services/feed/usePrice.ts` is the React-facing wrapper for the feed. Subscribes on mount, unsubscribes on unmount, returns the latest tick. State is seeded from `pricingFeed.getLatest(pair)` so consumers mounting after a tick has already arrived don't render `—` for a frame.
+
+```typescript
+const tick = usePrice('EURUSD');  // PriceTick | null
+```
+
+In Phase 3 the ticket's `usePrice` call lives at `TicketPanel` level (not inside `PricingPanel` or `ClientSummaryPanel`) so both panels see the same display tick — when fixed mode freezes the rate, they freeze together. See [features/ticket.md](../features/ticket.md) §Pricing-mode-+-margin-state-lifted-to-TicketPanel.
+
+The hook is at `src/services/feed/usePrice.ts` (next to the feed it wraps), not under `src/features/ticket/` — so [active-blotter.md](../features/active-blotter.md)'s `RateCell` can adopt it in a future refactor without a cross-feature import.
 
 ## Sources
 
