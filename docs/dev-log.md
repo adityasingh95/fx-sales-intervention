@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## Wiki Agent bootstrap (build-agent rule §10 override, user-authorized)
-**Commit `_pending_`**
+**Commit `85c476b`**
 
 - Wiki Agent first-run session (separate from this build session) flagged three blockers when the human asked it to ingest the Phase 2 summary: (1) summary file wasn't on `main` yet — fixed in PR #4; (2) `wiki/` directory + `WIKI_SCHEMA.md` don't exist, the first-run initialization from `WIKI-SETUP.md` was never executed — Wiki Agent's responsibility to do, not blocked from this side; (3) **role conflict** — the Wiki Agent's session was loading the project-root `CLAUDE.md`, which contains rule §10 forbidding writes to `wiki/`, which would have made it impossible for the Wiki Agent to do its job.
 - Fix for (3): authored `wiki/CLAUDE.md` so Claude Code loads it (closest-CLAUDE.md-up-the-tree) when a session operates inside `wiki/`. The file explicitly states "the project root `CLAUDE.md` does not apply to sessions operating in this directory" and points at `docs/dev-wiki.md` + `docs/WIKI-SETUP.md` as the Wiki Agent's actual contract. It also clarifies the Wiki Agent's write boundaries (`wiki/` + `raw/` only — `docs/`, `src/`, etc. stay read-only for the Wiki Agent).
