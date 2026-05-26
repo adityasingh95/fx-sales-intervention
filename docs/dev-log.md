@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-021 · OFF_HOURS_INTERVENTION E2E
-**Commit `_pending_`**
+**Commit `65e2cbf`**
 
 - TDD red→green: full Playwright spec at `tests/e2e/off-hours-intervention.spec.ts` transcribing `docs/07-scenario-pack.md` Scenario 2. Inject → INTERVENE row → click row → ticket slides in with reasons + streaming bid/ask + margin 3 → hold Send Stream 600ms (Playwright's `click({ delay: 700 })`) → `data-si-state` cycles through `QuoteSent` to `Quoted`, status to STREAMING, footer shows Withdraw + Reject → 1.5s elapses → CLIENT_ACCEPT lands → TradeConfirmed + DONE → 5s elapses → row leaves Active, lands in Historic with `data-outcome="Executed"`. Runtime 8.0s (well under the 15s budget).
 - Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true` via `page.addInitScript` per the test-fidelity rules in `07 Notes`. Zero ack delays make every `*Sent` instant; real wall-clock for the 1.5s `CLIENT_ACCEPT` gate + the 5s blotter-removal rule.
