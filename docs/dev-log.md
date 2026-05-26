@@ -32,6 +32,27 @@ Most recent first.
 
 ---
 
+## FXSW-027 · SIZE_LIMIT_MARGIN_TUNE + CREDIT_BREACH E2E
+**Commit `TBD`**
+
+- TDD red→green: **two new Playwright specs** transcribing `docs/07 §3` (Credit Breach) and `docs/07 §4` (Size Limit + Margin Tune).
+  - `tests/e2e/credit-breach.spec.ts` (7.3s) — inject CREDIT_BREACH → INTERVENE row for Halcyon Capital / GBPUSD / "Credit limit breach" → click row → ticket opens → SI advances to PickedUp → ReasonsPanel shows "Client credit limit would be breached" → `data-suggestion-state="credit-decline"` + §7 rationale visible + `suggestion-reject` present + `suggestion-apply` absent → hold Reject 600ms → SI cycles RejectSent → TraderRejected → status REJECTED → 5s removal → Historic with `data-outcome="Rejected by Trader"`.
+  - `tests/e2e/size-limit-margin-tune.spec.ts` (9.2s) — inject SIZE_LIMIT_MARGIN_TUNE → INTERVENE row for Northwind FX / EURUSD / "Size > auto-pricer band" → click row → ticket opens with margin=3 → AI Suggestion Panel reaches `ready` state showing 4 pips, High confidence, rationale containing "Gold-tier" or "12M EURUSD" → click Apply → margin-input animates to 4 + panel collapses to `applied` strip showing "Applied 4 pips" → hold Send Stream 600ms → SI Quoted (STREAMING) → 2s wait for the scripted CLIENT_ACCEPT follow-up → TradeConfirmed (DONE) → 5s removal → Historic with `data-outcome="Executed"`.
+- Total 5 E2Es now green in 34.5s (smoke 0.1s, happy-path-esp 8.0s, off-hours-intervention 8.1s, credit-breach 7.3s, size-limit-margin-tune 9.2s) — comfortably under the 5-min CI budget anticipated for FXSW-032.
+- **End of Phase 4 per BACKLOG.** Full AI Margin Suggestion slice from clientProfiles seed data through the rule engine, rationale builder, panel UI (ready / applied / credit-decline / computing), and both end-to-end demonstrations is in place.
+
+**User-directed decisions:** None — `docs/07-scenario-pack.md` Gherkins were verbatim.
+
+**Agent-directed decisions:**
+- **Debug detour: rendered HTML asserted the panel was present, the test said it was missing.** The root cause was the FXSW-025 markup placing `{suggestion.suggestedPips}` and a child `<span>pips</span>` inside the same `data-testid="suggestion-pips"` div — Playwright's `toHaveText('4')` resolved to the combined text `"4pips"`. Fixed by lifting the unit label to a sibling span and tightening the testid scope to the number only. Took a 15-minute diagnostic detour writing a throwaway spec that dumped the ticket panel HTML + console-logged the compute effect; useful enough that I considered keeping it, but a throwaway tool isn't a Phase 4 deliverable.
+- **Blotter row assertion uses the short chip label**, not the long ReasonsPanel label. Initial attempts asserted `"Client credit limit would be breached"` on the blotter row — that text lives in `ReasonsPanel.tsx` (inside the ticket), not `ReasonsCell.tsx` (the blotter chip, which shows `"Credit limit breach"`). Both labels are now asserted in the credit-breach spec — short label on the row, long label on the panel once the ticket opens.
+- **No `Why?` click in either E2E.** The factor-table expansion is unit-tested directly in `SuggestionPanel.test.tsx`; including it in the E2E would add wall-clock without exercising new contract surface.
+- **No assertion on the indigo margin-glow flash in the E2E**, even though the AC describes the visual. The unit-level integration harness (FXSW-025 `MarginGlowHarness`) already proves Apply triggers `data-margin-glow`. Re-asserting it in the E2E would just race the 600ms animation timer.
+- **Both specs follow the `__seedFeed = 42` + `__zeroAckDelay = true` initScript pattern from the OFF_HOURS spec.** Same test-fidelity rules from `docs/07 §"Notes on test fidelity"`: assert on `data-si-state` / `data-display-status` / `data-outcome`, never on the natural-language display text for state.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**296 pass / 0 todo**, unchanged — E2E specs are Playwright not Vitest), e2e ✓ (5/5 in 34.5s), build ✓.
+
+---
+
 ## FXSW-026 · SuggestionPanel credit-decline + Recompute
 **Commit `a7cd0fd`**
 

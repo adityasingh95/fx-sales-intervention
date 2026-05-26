@@ -210,12 +210,14 @@ export default function SuggestionPanel({
           </>
         ) : (
           <>
-            <div
-              data-testid="suggestion-pips"
-              className="font-mono text-2xl font-semibold text-text"
-            >
-              {suggestion.suggestedPips}
-              <span className="ml-2 text-xs font-normal text-text-mute">pips</span>
+            <div className="flex items-baseline gap-2">
+              <span
+                data-testid="suggestion-pips"
+                className="font-mono text-2xl font-semibold text-text"
+              >
+                {suggestion.suggestedPips}
+              </span>
+              <span className="text-xs font-normal text-text-mute">pips</span>
             </div>
             <p
               data-testid="suggestion-rationale"
