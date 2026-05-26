@@ -53,7 +53,7 @@
 | FXSW-029 | Audio chime + mute + settingsStore | 5 | M | 🔴 | ☑ |
 | FXSW-030 | Visual polish pass | 5 | M | — | ☑ |
 | FXSW-031 | RELEASE_PATH E2E | 5 | S | 🟢 | ☑ |
-| FXSW-032 | CI workflow | 5 | S | 🟡 | ☐ |
+| FXSW-032 | CI workflow | 5 | S | 🟡 | ◐ |
 | FXSW-033 | README + demo recording | 5 | M | — | ☐ |
 | FXSW-034 | GitHub Pages deploy workflow | 5 | S | 🟡 | ☐ |
 

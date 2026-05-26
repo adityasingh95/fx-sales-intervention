@@ -32,6 +32,26 @@ Most recent first.
 
 ---
 
+## FXSW-032 · CI workflow
+**Commit `TBD`**
+
+- `.github/workflows/ci.yml` per `docs/08 §6` — checkout → pnpm setup (v10 to match the existing `packageManager` field + the deploy workflow) → Node 20 with pnpm cache → install `--frozen-lockfile` → typecheck → lint → test:run → Playwright Chromium install → test:e2e. On any failure, uploads `test-results/` + `playwright-report/` as a `playwright-trace` artifact (7-day retention) so failed runs can be inspected.
+- Triggers: `push` to `main` or any `claude/**` branch + every `pull_request`. Gives the per-session feature branches CI coverage without flooding when the human is iterating locally.
+- `timeout-minutes: 10` per job — the spec budget is 5 minutes (typecheck + lint + unit suite typically 30s, Playwright install ~60s, 6-spec E2E ~40s); the 10-minute cap is a safety net rather than a target.
+
+**User-directed decisions:** None — `docs/08 §6` YAML was the template; the only changes are pnpm version (10 not 9, to match the existing `packageManager` pin), the trigger filter, and the failure-artifact retention.
+
+**Agent-directed decisions:**
+- **pnpm version 10**, not the doc's `version: 9`. The repo's `package.json` already pins `"packageManager": "pnpm@10.33.0"` and the existing `deploy.yml` uses `version: 10`. Aligning CI keeps lockfile compatibility intact.
+- **Trigger filter `push: branches: [main, 'claude/**']`** rather than the doc's bare `[push, pull_request]`. The feature-branch pattern matches every per-session branch the harness creates without polluting CI history with random push notifications from a future branch namespace.
+- **Artifact retention of 7 days** rather than the GitHub default of 90. Phase 5 prototype scope doesn't warrant long-term trace storage; 7 days covers the typical debug window.
+- **`if-no-files-found: ignore`** on the artifact upload so a failure that doesn't produce trace files (e.g., the install step itself errors before any test runs) doesn't compound into a second failure on the upload step.
+- **Not pinning `pnpm test:e2e` worker count**. The Playwright config already pins single-worker (`workers: 1` from FXSW-013's setup) for scenario-time determinism — the env doesn't need to repeat it.
+- **No `--retries` flag on the CI run** — Playwright config already sets `retries: isCI ? 2 : 0`, so the workflow inherits the 2-retry policy without extra wiring.
+- The ci.yml is itself the artifact; the workflow run on this push is the test. Will flip the BACKLOG `☐ → ☑` once the run lands green on this branch.
+
+---
+
 ## FXSW-030 · Visual polish pass
 **Commit `1befad9`**
 
