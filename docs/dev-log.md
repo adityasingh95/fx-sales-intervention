@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-029 · Audio chime + mute toggle + settingsStore
-**Commit `TBD`**
+**Commit `5343219`**
 
 - TDD red→green: **12 new tests** — 5 in `settingsStore.test.ts` (default unmuted; toggleMute flips; persists to sessionStorage; setMuted writes; reload-restore via fresh module import), 3 in `MuteToggle.test.tsx` (Bell↔BellOff icons + `aria-pressed` + `data-muted` toggles; click flips state + persists), 4 in `useNotificationSound.test.tsx` (no schedule before audio unlock; schedules 880Hz OscillatorNode after unlock + new SI deal + unmuted; no schedule when muted; one oscillator per new deal, not per render).
 - `src/state/stores/settingsStore.ts` — Zustand store, `muted: boolean` + `toggleMute()` / `setMuted()`. Reads sessionStorage `si.muted` key on init; writes on every mutation. Safari-private-mode tolerant (try/catch around storage calls).
