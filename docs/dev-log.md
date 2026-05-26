@@ -32,6 +32,206 @@ Most recent first.
 
 ---
 
+## FXSW-021 · OFF_HOURS_INTERVENTION E2E
+**Commit `65e2cbf`**
+
+- TDD red→green: full Playwright spec at `tests/e2e/off-hours-intervention.spec.ts` transcribing `docs/07-scenario-pack.md` Scenario 2. Inject → INTERVENE row → click row → ticket slides in with reasons + streaming bid/ask + margin 3 → hold Send Stream 600ms (Playwright's `click({ delay: 700 })`) → `data-si-state` cycles through `QuoteSent` to `Quoted`, status to STREAMING, footer shows Withdraw + Reject → 1.5s elapses → CLIENT_ACCEPT lands → TradeConfirmed + DONE → 5s elapses → row leaves Active, lands in Historic with `data-outcome="Executed"`. Runtime 8.0s (well under the 15s budget).
+- Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true` via `page.addInitScript` per the test-fidelity rules in `07 Notes`. Zero ack delays make every `*Sent` instant; real wall-clock for the 1.5s `CLIENT_ACCEPT` gate + the 5s blotter-removal rule.
+- All three E2Es now green: smoke (`tests/e2e/smoke.spec.ts`), happy-path-esp, off-hours-intervention. Total Playwright runtime 17.9s on local.
+- **End of Phase 3 per BACKLOG.**
+
+**User-directed decisions:** None — `docs/07 Scenario 2` is verbatim; the only judgement call was on toast + title-prefix assertions (out of scope).
+
+**Agent-directed decisions:**
+- **Toast + document-title-prefix assertions omitted.** The Gherkin scenario asserts on "a toast in the top-right with text containing 'Globex Industries'" and "the document title is prefixed with '● '". Both are notification-layer behaviour (FXSW-028 in Phase 5). Including them now would either need stubs or would fail. The test file's header comment names them as intentionally deferred.
+- **Hold via `click({ delay: 700 })` rather than `dblclick()`.** Both paths exist on HoldButton (FXSW-020 added `onDoubleClick` as an alternative). Picked the hold path for spec fidelity — the Gherkin literally says "clicks Send Stream and holds for 600ms." 700ms instead of 600ms gives a small margin against the timer-vs-pointerup race; even if `pointerUp` arrives 1ms before the `setTimeout` fires, the hold confirm still wins because the timer was already scheduled.
+- **Tolerant timeouts on the timed transitions** (`Quoted`: 1500ms timeout for the CLIENT_ACCEPT gate at +1500ms; `TradeConfirmed`: 3000ms; archived: 6000ms). Each timeout is the spec value plus a generous slack so the test isn't flaky under CI's variable jitter.
+- **Asserts on `data-si-state` + `data-display-status` + `data-outcome`**, not on text content. Per `07 Notes on test fidelity`: "Tests should assert on data-si-state / data-rfs-state attributes and data-testid values, not on text or color."
+- **Implicit reliance on previous-ticket fidelity.** The E2E doesn't directly mount/unmount components — it drives the real app top-to-bottom. So this test functions as an integration check for everything from FXSW-007 (PricingFeed) through FXSW-020 (TicketFooter). If any ticket regresses a contract — `data-deal-id`, `data-si-state`, the reasons-panel label, the margin-input value, the footer button visibility — this E2E catches it. Worth its weight at the end of Phase 3.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**235 pass / 3 todo**, unchanged — the E2E is in Playwright, not Vitest), e2e ✓ (3/3 in 17.9s), build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-020 · TicketFooter + *Sent → *Ack flow
+**Commit `18e0c24`**
+
+- TDD red→green: **7 specified `TicketFooter.test.tsx` cases** — PickedUp streaming-mode visibility (Send Stream / Release / Reject), PickedUp fixed-mode visibility (Send Quote / Release / Reject / Return-to-Stream), Quoted visibility (Withdraw / Reject + Release), Reject single-click does nothing + 600ms hold fires, Send Stream cycles `QuoteSent → Quoted` via the ack delay, Send Stream shows `data-in-flight="true"` during `QuoteSent`, Release cycles `HoldSent → Initial` and flips `dealable` back to true.
+- `src/features/ticket/TicketFooter.tsx` real per `docs/02 §4.7`: 6 buttons (Reject / Release / Send Stream / Send Quote / Withdraw / Return-to-Stream) gated on `siState` + `pricingMode`. Send Stream + Send Quote stay mounted through `QuoteSent` so the spinner can render in-place; same for Reject through `RejectSent` and Release through `HoldSent` and Withdraw through `WithdrawSent`.
+- **HoldButton** primitive inlined in the same file: 600ms `setTimeout` on `pointerDown`, cancels on `pointerUp` or `pointerLeave`; double-click is an alternative confirm path (per `02 §4.7` "600ms hold or double-click"). Visual progress overlay via an inline-styled `<span>` driven by a `holdgrow` keyframe added to `global.css` — Tailwind config stays untouched.
+- **`data-in-flight`** marks the *Sent window. Buttons disable themselves automatically while `inFlight === true`; lucide `Loader2` icon renders inside the button with `animate-spin`.
+- `TicketPanel` mounts `<TicketFooter dealId={deal.dealId} siState={siState} pricingMode={pricingMode} onReturnToStream={…} />` outside the scrollable body so it stays pinned to the bottom. Return-to-Stream resets `pricingMode` / `fixedSide` / `frozenTick` together.
+- Placeholder note in TicketPanel updated: now only the AI Suggestion (FXSW-022–026) remains as a "panels coming."
+
+**User-directed decisions:** None — `docs/02 §4.7` visibility table + the AC test list pinned every button's behaviour. The choice of progress-overlay animation was unspecified; picked a left-to-right wipe to match the 600ms hold timeline.
+
+**Agent-directed decisions:**
+- **`pointerDown`/`pointerUp` not `mousedown`/`mouseup`.** Pointer events normalise across mouse, touch, and pen — covers a future mobile-tap demo without a second code path. RTL's `fireEvent.pointerDown` works in jsdom.
+- **Double-click is `onDoubleClick` even when the hold path didn't fire.** Two single clicks (each cancelled by the immediate `pointerUp`) still register as a `dblclick` at the DOM level — that's the spec's "double-click" alternative. No timing math needed; the browser fires `dblclick` after two `click`s within ~500ms.
+- **HoldButton primitive inlined** in `TicketFooter.tsx`, not extracted to `src/components/Button.tsx`. The placeholder `Button.tsx` says (per `docs/05 §3.1`) "variants: primary, secondary, ghost, danger. Sizes: sm, md. Supports `holdToConfirm` prop." That's the eventual shared shape; for FXSW-020 the only two consumers are Reject + Send Stream, both with the same look. Extracting now would speculate. FXSW-029 (polish) can lift to `/components/Button.tsx` when there's a second consumer.
+- **`btn-release` is a single-click action**, not hold-to-confirm. AC + spec list only Reject + Send Stream as hold-to-confirm. Release is reversible (the operator can re-open the row and pick up again), so the friction isn't warranted.
+- **Spinner stays in-place during *Sent**, not "button replaced by a separate spinner element." Same testid (`btn-send-stream`), same DOM node, just `data-in-flight="true"` + `disabled` + an icon inside. Tests can keep a single locator across the whole transition.
+- **Quoted state shows Release in addition to Withdraw + Reject.** The `02 §4.7` table lists Release as visible in `Quoted` (it "withdraws the live quote as part of the release"). The AC test only mentions Withdraw + Reject; included Release because the spec table is the source of truth and the AC test wasn't claiming exclusivity.
+- **Keyframe `holdgrow` in `global.css`**, not a Tailwind extension. One-off animation, used by one component, keeping it in global CSS avoids growing the Tailwind config for a single rule. Inline `style={{ animation: 'holdgrow 600ms linear forwards' }}` on the overlay span pulls it in.
+- **`aria-describedby` + `.sr-only` hint on HoldButton** ("Hold for 600ms or double-click to confirm") per `docs/05 §7` accessibility note "Hold-to-confirm buttons announce via `aria-describedby`."
+- **`onClick` on regular buttons disables when `inFlight`** — defensive double-tap guard. The `*Sent` ack delay is 250ms by default; a fast operator could double-click before the state advances. Disabling closes the gap.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**235 pass / 3 todo**, up from 228 / 3 — 7 new TicketFooter cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-019 · ClientSummaryPanel
+**Commit `466bb45`**
+
+- TDD red→green: **4 specified `ClientSummaryPanel.test.tsx` cases** + 1 extra for the `tick=null` placeholder + 9 `pips.test.ts` cases for the lib functions FXSW-019 introduces.
+  - EURUSD bid 1.0850 / ask 1.0852 / margin 3 → client bid 1.0847 / client ask 1.0855.
+  - USDJPY (2-decimal pip) margin 3 → 157.74 / 157.81.
+  - Margin change re-renders in one frame; estimated profit updates from $300 (at 3 pips) to $600 (at 6 pips) on EURUSD 1M.
+  - Fixed mode uses whichever tick the parent passes (the panel doesn't know about modes — it just reads the tick prop).
+  - Null tick → all three cells render the em-dash placeholder.
+- `src/lib/pips.ts` real: `pipSizeFor(pair)`, `clientBidFromTrader`, `clientAskFromTrader`, `estimatedProfitUsd(margin, notional, pair, midRate)`. Per-pair pip sizes + display decimals from `docs/02 §2`. The bid/ask helpers round to the pair's display precision so consumers don't have to handle float drift (`1.0850 − 3*0.0001 === 1.0846999999999998` in raw floats — would render as `1.0847` only because `formatRate` did its own rounding; FXSW-019 makes the lib itself authoritative).
+- `estimatedProfitUsd` handles both quote-side currencies: for USD-quoted pairs (`pair.endsWith('USD')`) the pip value is already a USD amount; for USD-based pairs the pip value is in the quote CCY and gets divided by the current midRate to convert. Zero-rate guard returns `0` so a transient stale-feed doesn't crash with `Infinity`.
+- `src/features/ticket/ClientSummaryPanel.tsx` real per `docs/02 §4.5`: three-column grid with Client Bid / Client Ask / Est. profit. Profit formatted via `Intl.NumberFormat` USD currency, `maximumFractionDigits: 0` for compact display.
+- **Refactor of PricingPanel**: `pricingMode`, `fixedSide`, `frozenTick` lifted from internal state to props with parent-owned state. Live tick also passed in via prop instead of the component calling `usePrice` itself. PricingPanel becomes fully presentational for mode + frozen-tick semantics. TicketPanel owns the lifted state via a single `usePrice` subscription and computes `displayTick = pricingMode === 'fixed' ? frozenTick : liveTick`.
+- TicketPanel mounts `<ClientSummaryPanel tick={displayTick} margin={margin} notional={deal.notional} pair={deal.pair} />` between PricingPanel and DealSummaryPanel — both panels see the same `displayTick`, so they freeze and unfreeze together. Resets pricing-mode state on opening a different deal alongside the margin reset.
+
+**User-directed decisions:** None — `docs/02 §4.5` is one paragraph and verbatim on every field.
+
+**Agent-directed decisions:**
+- **Lifted pricing-mode state from PricingPanel to TicketPanel** instead of bolting an "override tick" prop onto ClientSummaryPanel. The clean architecture is "one source of truth for the display tick"; the alternative (each panel subscribes to the feed and accepts an override) duplicates the subscription and splits the truth across two panels. Touched FXSW-017/018 tests — they now render through a `Harness` that mirrors the new TicketPanel wiring (single `usePrice` call + lifted state).
+- **`pips.ts` rounds at the lib boundary**, not at the formatter. CLAUDE.md "Money values as `number` in display units, never strings. Format at the render boundary only" — but the bid/ask result of `1.085 − 3*0.0001` is `1.0846999999999998` in raw floats, which a consumer comparing values would treat as "different from 1.0847." Rounding to the pair's display precision inside the lib keeps `number` semantics clean (1.0847 is what consumers see and what equality checks against).
+- **`estimatedProfitUsd` handles USD-based pairs via mid-rate division.** Spec says "use a static EUR/USD-style table for v1; precision doesn't matter as long as it changes when margin changes" — i.e. a hand-wave on the conversion factor. Doing the proper per-pair calculation (divide by midRate for USD-base pairs) costs one extra branch and gives accurate numbers across all 4 pairs without needing a separate table.
+- **Profit displayed as `Intl.NumberFormat` USD currency** (`$300`, `$1,234`), zero decimals. Matches a trader's "what's this worth" glance; the spec doesn't pin a format so the en-US `style: 'currency'` + zero decimals is the most-readable default.
+- **`tick={null}` → all three cells render em-dash**, not the calculated-from-zero values. The display tick is null when the live feed hasn't ticked yet OR when fixed mode was entered without a captured tick (defensive — shouldn't happen via UI). Em-dashes match the FXSW-012 RateCell + FXSW-017 PricingPanel pattern for "no data yet."
+- **ClientSummaryPanel is `data-testid="client-summary-panel"` even though the AC only mentions field-level testids.** Container testid lets future tests scope to "the right panel" before reading fields; field testids inside scope cleanly. Same pattern as ReasonsPanel + SummaryPanel + DealSummaryPanel.
+- **Refactor preserved every FXSW-017 / FXSW-018 test contract.** The 9 PricingPanel tests still cover the same behaviours through the `Harness` wrapper that mirrors TicketPanel; only the prop-shape changed.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**228 pass / 3 todo**, up from 214 / 4 — 5 new ClientSummaryPanel + 9 new pips, the FXSW-018 stub test retired), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-018 · PricingPanel fixed mode + margin controls
+**Commit `3a09a3e`**
+
+- TDD red→green: **6 specified `PricingPanel.test.tsx` cases** for the fixed-mode + margin behaviour, in a `describe('fixed mode (FXSW-018)')` sibling of the 3 streaming cases from FXSW-017. New cases: click bid → `data-pricing-mode="fixed"` + bid cell gets `data-focused`; Refresh button only renders in fixed mode; + / − buttons increment/decrement by 1; keyboard `+` / `-` does the same as the buttons; margin floor is 1 (button disabled at floor; keypress clamps); programmatic margin update (parent prop change) animates `data-margin-glow="true"` for 600ms.
+- `PricingPanel.tsx`: streaming-mode behaviour preserved verbatim. New state: `pricingMode: 'streaming' | 'fixed'`, `fixedSide: 'bid' | 'ask' | null`, `frozenTick: PriceTick | null`, `marginGlow: boolean`.
+- **Cell becomes a `<button>`** so click-to-enter-fixed is keyboard + a11y accessible. `data-focused="true"` marks the clicked side; CSS adds the `--color-border-focus` outline + a 1px indigo ring.
+- **Refresh button** (lucide `RefreshCw`) appears in the panel header only when `pricingMode === 'fixed'`. Click re-captures the current live tick as the frozen tick.
+- **Margin controls**: parent-controlled (`margin` + `onMarginChange` props). +/− buttons via lucide `Plus` / `Minus`. Numeric input clamps floor at 1 on every change. Minus button is `disabled` at the floor.
+- **Keyboard `+` / `-`** attached at the document level inside a `useEffect`. The handler ignores keys typed into an `<input>` so the operator can type a margin value without the global accelerator firing. `+`/`=` increment, `-`/`_` decrement.
+- **Indigo glow** on margin change: a `useRef` tracks the previous margin; on every render the effect compares and, if different, flips `data-margin-glow="true"` for 600ms. Fires regardless of source (internal button, keyboard, typed input, or external prop push) — the visual cue means "margin updated", not "AI just suggested."
+- **Tick flash + stale-watchdog suppressed in fixed mode** because the displayed rate is frozen — a flash or stale indicator would be misleading. They restart cleanly when the operator returns to streaming (Return-to-Stream lands in FXSW-020's TicketFooter).
+- **`TicketPanel` owns the margin state**: `useState<number>(entry?.deal.defaultMarginPips ?? 3)`. A `useEffect` resets the value to the new deal's default whenever the operator opens a different deal. FXSW-025 + dealMachine context will eventually source this from the store; the prop-drilled local-state is the interim seam.
+- Placeholder note in TicketPanel updated: FXSW-018 dropped from "panels coming." Margin floor + keyboard nav are user-visible.
+
+**User-directed decisions:** None — `docs/02 §4.4` and `docs/05 §4` were verbatim on every control (label "Trader Rate" / "Margin", `MIN_MARGIN = 1`, focus outline color, 200ms + 600ms glow timing).
+
+**Agent-directed decisions:**
+- **Controlled component (`margin` + `onMarginChange` props), not internal state.** AC requires a "programmatic margin update simulating FXSW-025 Apply" — uncontrolled state would need an imperative ref or an effect comparing an `applyValue` prop, both more brittle than a plain controlled pattern. TicketPanel owns the state until FXSW-025 lifts it to the AI suggestion + the dealMachine context.
+- **Cells are `<button type="button">`, not divs with `onClick`.** Keyboard activation (Enter / Space) works for free; correct semantics for assistive tech; matches the FXSW-012 blotter row pattern. Cost is a CSS reset to drop the default button styles.
+- **Keyboard handler ignores input focus** via `if (e.target instanceof HTMLInputElement) return`. Otherwise typing `4` into the margin field with `+` modifier or pressing `-` on a negative number would fight the global accelerator.
+- **Glow fires on every margin change**, not only on external pushes. The spec wording is "programmatic update animates" but a margin change from the operator's own keystroke is just as much a "this number just changed" event — keeping the visual cue consistent across sources avoids the confusing UX of "the field flashes when AI applies but not when I click +."
+- **`disabled` minus button at the floor** rather than letting the click fire and clamping silently. Visible affordance + no spurious `onMarginChange` calls. The keyboard `-` still works (and clamps) because keyboard users don't see button state — and they get the same end state.
+- **No "Return to Stream" button in the panel itself.** Per AC: "lives in TicketFooter — wired in FXSW-020." Until FXSW-020 lands, the panel has no exit from fixed mode — the operator would need to click a different bid/ask side (just re-enters fixed for that side) or close + reopen the ticket. Documented as a known interim in the code header comment.
+- **Initial margin sourced from `entry.deal.defaultMarginPips`** (3 per the dealFeed payload in FXSW-008 definitions), not hardcoded to 3. Future scenarios with non-default margins land for free.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**214 pass / 4 todo**, up from 208 / 4 — 6 new fixed-mode cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-017 · PricingPanel streaming mode
+**Commit `1f88333`**
+
+- TDD red→green: **3 specified `PricingPanel.test.tsx` cases** plus 2 supporting `usePrice.test.tsx` cases.
+  - `usePrice` subscribes on mount and receives a tick within 600ms; unsubscribes on unmount (no further state updates after).
+  - `PricingPanel` with seeded feed renders the expected bid/mid/ask pair-precision values on tick 1; bid/ask cells get `data-flash="up"/"down"` on a value change and clear after 80ms; stale-feed (no tick for 3s) renders the em-dash placeholder in all three cells.
+- `src/services/feed/usePrice.ts` real: tiny hook wrapping `pricingFeed.subscribe(pair, setTick)` + cleanup via the returned unsubscribe. State seeded from `pricingFeed.getLatest(pair)` so consumers that mount after the feed has already ticked don't render `—` for a tick. Lives under `services/feed/` (not `features/ticket/`) so the FXSW-012 `RateCell` and future panels can share it without a cross-feature import.
+- `src/features/ticket/PricingPanel.tsx` real per `docs/02 §4.4` + `docs/05 §4` (streaming subset). Bid + Ask cells at `text-2xl font-mono tabular-nums` with the Mid between them at smaller dimmer text. Each cell carries `data-flash` (`up`/`down`/absent) for the 80ms direction-coloured border. Stale-feed watchdog: a 3-second `setTimeout` arms on every tick; if it fires the panel switches all three cells to the em-dash placeholder. Fixed mode + margin controls land in FXSW-018.
+- `TicketPanel` mounts `<PricingPanel pair={deal.pair} />` between SummaryPanel and DealSummaryPanel. Placeholder note drops FXSW-017 from the "panels coming" list.
+
+**User-directed decisions:**
+- **Keep digging on the off-by-one-pip test failure rather than loosen the assertions.** Options surfaced: (a) loosen the seed-42 test to assert behaviour not values; (b) keep debugging; (c) skip the panel; (d) discard. **Chosen:** (b). Worth understanding what was happening before papering over it. Turned out to be a real spec/test correctness issue (see below) — loosening would have hidden it.
+
+**Agent-directed decisions:**
+- **Captured the bid/ask asymmetry at the half-spread rounding boundary.** Debugging the seed-42 test failure (panel rendered `1.1714` for bid where the FXSW-007 mid-sequence said `1.1715`) showed the issue is real and consistent: for EURUSD's first tick the underlying `mid_float` sits in `[1.17145, 1.171475)`. Rounded mid is `1.1715`. But `bid_float = mid_float − 0.000025` lands below `1.17145` and rounds to `1.1714`. FXSW-007's golden sequence only locked the **mid**; the bid/ask asymmetry that emerges at the rounding boundary wasn't captured. The PricingPanel test now locks bid=`1.1714` / mid=`1.1715` / ask=`1.1715` for tick 1 + carries an explanatory comment.
+- **Switched the flash test to GBPUSD seed-42 tick 2** (clean both-cells-DOWN setup) after probing the seed-42 sequences for each pair. EURUSD's bid happens to be flat on tick 2 in the rounded value (1.1714 → 1.1714); USDJPY's bid + ask are both flat through ticks 1–3; GBPUSD's tick 1→2 drops both cells one pip, exactly the case the flash test needs.
+- **`data-flash` attribute** (string `"up"` / `"down"` / absent), not a `data-flashing` boolean + a separate `data-direction`. One attribute carries both signals, the test reads cleanly (`toHaveAttribute('data-flash', 'down')`), and the CSS in the component does the colour switch via clsx based on the same direction enum.
+- **`usePrice` lives at `src/services/feed/usePrice.ts`**, not `src/features/ticket/usePrice.ts`. The FXSW-012 RateCell already subscribes to the feed manually; a future small refactor can replace its inline subscription with the same hook. Hooks that wrap a service module belong near that service, per the `useNotificationSound.ts` precedent in `docs/05 §3.4`.
+- **Stale watchdog is a per-tick `setTimeout(3000)`** that resets on every tick, not a `setInterval(1000)` polling for staleness. Single timer, no busy-poll, fires exactly once when 3s elapse with no new tick.
+- **Cells render with `transition-colors duration-[80ms]` so the border colour eases in/out**, not a hard snap. Matches the docs/05 §5 animation budget (80ms tick flash = linear).
+- **Used a debug-test pattern to find the bug.** Wrote a throwaway `usePrice.debug.test.tsx` that logged the feed's subscriber callbacks alongside the panel's render values. Confirmed the feed correctly fired with mid=1.1715 but the panel's `tick.bid` was `1.1714` — pinned the cause to the half-spread rounding, not a React lifecycle issue. Debug test deleted before commit.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**208 pass / 4 todo**, up from 203 / 4 — 5 new tests across PricingPanel + usePrice), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-016 · Summary + DealSummary panels
+**Commit `096d645`**
+
+- TDD red→green: **3 specified cases** plus 5 supporting cases.
+  - `SummaryPanel.test.tsx` (2): Globex SELL 5M USDJPY for SPOT renders the verbatim sentence per `docs/02 §4.2`; the key/value strip shows account + trade date + T+2 settlement.
+  - `DealSummaryPanel.test.tsx` (4): Monday + 2 → Wednesday; Thursday + 2 → Monday (skips Sat + Sun); Friday + 2 → Tuesday; direction/notional fields render correctly.
+  - `lib/time.test.ts` (6): `addBusinessDays` covers Mon/Wed/Thu/Fri/Sat/Sun start dates; `formatSettlementDate` renders `DD MMM YYYY`.
+- `src/lib/time.ts` real: `addBusinessDays(date, days)` skips Sat + Sun and rolls weekend start dates forward to the next Monday before adding. `formatSettlementDate` renders `27 May 2026`-style via `Intl.DateTimeFormat('en-GB')`.
+- `src/features/ticket/SummaryPanel.tsx` real per `docs/02 §4.2`: natural-language sentence built from `clientName`, `side`, formatted notional, base/quote CCY split from the pair (`'USDJPY'.slice(0,3)` / `.slice(3)`), and tenor. Three-column key/value strip below: Account / Trade date / Settlement date.
+- `src/features/ticket/DealSummaryPanel.tsx` real per `docs/02 §4.6`: two-column grid with Direction (`SIDE BASE_CCY`), Notional, Account, Trade date, Settlement date. Each `<div data-field="...">` so tests scope cleanly.
+- `TicketPanel` mounts both new panels after `ReasonsPanel`; placeholder note drops FXSW-016 from the "coming soon" list.
+
+**User-directed decisions:** None — `docs/02 §4.2` and `§4.6` were verbatim on the sentence template, the key/value strip, and the field list.
+
+**Agent-directed decisions:**
+- **Two separate components, both rendered in the ticket.** The spec describes the panels separately and there's intentional duplication (Account / Trade date / Settlement date appear in both). Could have unified them; chose not to — the AC names both panels and tests both independently. Future polish ticket can collapse if the duplication grates.
+- **T+2 calculation lives in `src/lib/time.ts`** rather than inline in `DealSummaryPanel`. Reusable; `SummaryPanel` also calls it. CLAUDE.md: "Pricing math lives in /lib/pips.ts. Do not inline pip/margin math in components." — applying the same principle to date math.
+- **Weekend trade-date rollover via `nextBusinessDay` loop on entry**, not via a calendar lookup. Spec doesn't mention rolling — it only says T+2 is from "today" (the trade date) and tests don't directly require it. Added the rollover anyway because Saturday/Sunday `createdAt` is plausible (dev injector could fire on the weekend); without rolling, `addBusinessDays(sat, 2)` would give a Tuesday which is "T+3 actual days" from Monday. Defensive but cheap.
+- **`formatSettlementDate` is a tiny `Intl.DateTimeFormat` wrapper** rather than a hand-rolled formatter. Pair date with the existing `Intl.DateTimeFormat('en-GB')`-based `formatTime` in `lib/format.ts`. `en-GB` matches the EN-GB number-formatting decision from `docs/01-prd.md §4`.
+- **`data-field="..."` on each DealSummary row** rather than testids per field. Same rationale as FXSW-015's `data-reason` — testids stay on container-level elements, structural data-* attributes do the within-component scoping.
+- **`SummaryPanel` uses `<p>` + `<strong>`** for the natural-language sentence rather than a custom `.summary-sentence` wrapper. Semantic HTML; `<strong>` makes the highlighted fields (`Globex Industries`, `SELL 5,000,000 USD`, etc.) read correctly to screen readers.
+- **FXSW-014 test assertion updated.** `TicketPanel.test.tsx` was asserting `toHaveTextContent('USDJPY')` because FXSW-014's placeholder body showed the pair as a single cell. FXSW-016's SummaryPanel splits it into "USD vs JPY" in the sentence + "SELL USD" in DealSummary direction — so the concatenated `USDJPY` string no longer appears. Updated the test to assert `'USD'` and `'JPY'` separately with an inline comment noting the FXSW-014→FXSW-016 layout evolution.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**203 pass / 4 todo**, up from 191 / 4 — 12 new tests across SummaryPanel + DealSummaryPanel + time.ts), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-015 · ReasonsPanel
+**Commit `5198b26`**
+
+- TDD red→green: 3 specified `ReasonsPanel.test.tsx` cases — `['OFF_HOURS']` → one chip with "Outside trading window", `['SIZE_LIMIT', 'CREDIT_LIMIT']` → two chips with the right labels, `[]` → renders nothing (container.firstChild is null).
+- `src/features/ticket/ReasonsPanel.tsx` real per `docs/02 §4.1`: title row "Risk Analysis" (`aria-label` + visible `<h2>`), then one `<li data-reason={r}>` per reason with icon (lucide `Clock` / `Maximize2` / `ShieldAlert` for OFF_HOURS / SIZE_LIMIT / CREDIT_LIMIT), label, and the verbatim one-line explanation from the spec. `data-testid="reasons-panel"` on the `<section>`.
+- `TicketPanel` now mounts `<ReasonsPanel />` in place of the inline "Risk reasons" placeholder list that FXSW-014 used as a temporary stand-in. Existing FXSW-014 test "contains the deal's basic info" still passes because the new component renders "Outside trading window" (label match) — same text, richer markup.
+- Placeholder note in TicketPanel updated to drop FXSW-015 from the "coming soon" list.
+
+**User-directed decisions:** None — `02 §4.1` is verbatim on every label and explanation string.
+
+**Agent-directed decisions:**
+- **Icon picks (lucide).** Spec says "icon + label + explanation" without naming icons; picked `Clock` for OFF_HOURS, `Maximize2` for SIZE_LIMIT, `ShieldAlert` for CREDIT_LIMIT. All amber-tinted (`text-amber`) so they read as warnings without competing with the status pill's color. If FXSW-020 (polish) wants different icons, they're a one-line swap.
+- **`<section role implicit>` + `aria-label="Risk Analysis"`** rather than `role="region"`. The `<h2>` inside already labels the section semantically; the `aria-label` is redundant-but-cheap insurance for tests that bypass the heading.
+- **`data-reason={r}` on each chip** rather than `data-testid="reason-{r}"`. The list is the structure being tested; `data-reason` reads more naturally as "this chip is the X reason" and the FXSW-014 / E2E tests can scope to `[data-reason="OFF_HOURS"]`. testids stay on container-level elements per `08-test-plan.md §4` convention.
+- **Empty-state returns null, not a "no reasons" placeholder.** Spec says "Always visible" but also that the panel exists *because* there are rejection reasons (the ticket is an SI ticket; ESP deals don't open tickets). An empty reasons list shouldn't happen in practice — defending with null instead of a "no reasons" message avoids confusing copy in a state the user shouldn't reach.
+- **No standalone Tailwind chip styling** — used the same border/bg/padding shape as the blotter's Chip (border + elevated bg + small radius) so the look composes with the rest of the ticket without a new visual language for the same primitive.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**191 pass / 4 todo**, up from 188 / 4 — 3 new ReasonsPanel cases), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
+## FXSW-014 · TicketPanel shell + glass overlay
+**Commit `99e9823`**
+
+- TDD red→green: 5 specified `TicketPanel.test.tsx` cases — not rendered when `uiStore.openDealId === null`, rendered when set with the deal's basic info (`data-deal-id`, client, account, pair, side, amount, reason label), Esc keypress calls `uiStore.closeTicket()`, opening fires SI `PickUp` (Initial → PickUpSent → PickedUp via `vi.advanceTimersByTime(ackDelayMs)`), closing does NOT fire `Hold` (deal stays in `PickedUp`).
+- `src/features/ticket/TicketPanel.tsx` real: right-side overlay rendered conditionally on `uiStore.openDealId`. Backdrop is `fixed inset-0 z-40` with an `onClick` that closes; panel itself is `absolute right-0 top-0 ... sm:w-[640px]` with `e.stopPropagation()` so clicks inside don't bubble to the backdrop.
+- Slide-in via two-pass mount: panel starts with `translate-x-full`, an effect schedules `requestAnimationFrame(() => setSlidIn(true))` and flips to `translate-x-0`. Transition is `transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)]` per `05 §2` / `05 §5`. Glass via `bg-bg-glass backdrop-blur-xl backdrop-saturate-150`.
+- Esc handler attached to `document` while open, cleaned up on close.
+- "Fires PickUp on open" is gated by `entry.siState === 'Initial'` — re-opening a deal that's already in `PickedUp` (e.g. user closed without releasing, clicked the row again) doesn't double-fire. Caught by reading the AC carefully: "Opens when the operator clicks a row in `Initial` (SI) state, firing the `PickUp` event."
+- `App.tsx` renders `<TicketPanel />` at the root and applies `opacity-75` + `transition-opacity duration-[240ms]` to the `<main>` (blotters) section when the ticket is open, per `05 §2` "blotters dimmed 25%".
+- Panel body shows status pill (via the existing `StatusCell`), time, client/account/pair/side/amount/tenor grid, and the rejection-reason labels. A small note at the bottom explicitly flags that Reasons / Summary / Pricing / AI Suggestion / Client Summary / Deal Summary / Footer panels land in FXSW-015 through FXSW-021 — so a manual reviewer doesn't think the empty space is a bug.
+
+**User-directed decisions:** None — `02 §1`, `02 §4.8`, `05 §2`, and `05 §5` were prescriptive enough on every aspect (size, slide easing, dim percentage, Esc behavior, no-auto-Hold-on-close).
+
+**Agent-directed decisions:**
+- **Conditional mount, not always-mounted-with-CSS-transform.** AC test "not rendered when `openDealId === null`" implies the testid is absent from DOM when closed. An always-mounted panel translated off-screen would fail that test. Conditional mount keeps the DOM clean at the cost of no slide-out animation (the panel just unmounts when the user closes). Slide-in still works via the two-pass `requestAnimationFrame` pattern.
+- **`PickUp` gated on `siState === 'Initial'`.** Spec language is explicit but easy to miss — the AC test verifies the happy-path firing but doesn't test the re-open-on-PickedUp case. Added the guard anyway because closing-then-reopening is a normal UX flow and double-firing would either be a no-op (siMachine's PickUpSent has no PickUp handler) or, worse, would reset state incorrectly when FXSW-010's full state graph runs.
+- **Stale state guard via `useDealsStore.getState()` inside the effect** rather than reading `entry` from the closure. Reads the live store value at effect-run time, so even if the React render closure is one tick stale, the side-effect uses fresh state. Same pattern used in `dealsBootstrap`.
+- **Panel uses `<div role="dialog" aria-label="Sales Intervention ticket">`** instead of a native `<dialog>` element. The native dialog doesn't compose cleanly with the right-slide-in + backdrop-click-to-close pattern (it has its own backdrop behaviour via `::backdrop`, and `.show()` vs `.showModal()` semantics get in the way). Going with role-based ARIA + manual focus-management hooks for FXSW-018+ when focus-trap-on-open lands.
+- **Responsive: `w-full max-w-full sm:w-[640px]`.** Below the 640px Tailwind breakpoint the ticket takes the full viewport width (mobile pattern). Carries the responsive amendment forward into the new panel without breaking the desktop 640px spec.
+- **Z-index `z-40`** for the backdrop. Tailwind's default scale leaves room for `z-50` on toasts (FXSW-028 territory) — keeping the ticket below toasts in case of overlap.
+- **`data-deal-id` on the panel** even though it's not in the AC's data-* list. Cheap addition that makes the (future) E2E tests for the OFF_HOURS scenario easier to write — they can scope assertions to "the ticket for THIS deal" instead of "the only ticket on the page."
+- **Body content is minimal — header strip + key-value grid + reasons list + "more panels coming" note.** AC says "contains the deal's basic info." The full panel structure from `02 §4.1–4.7` lands in FXSW-015 through FXSW-021. Adding placeholders for those now would invite drift.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**188 pass / 4 todo**, up from 183 / 4 — 5 new TicketPanel cases), e2e ✓ (smoke + happy-path-esp still green), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## Wiki Agent bootstrap (build-agent rule §10 override, user-authorized)
 **Commit `85c476b`**
 
