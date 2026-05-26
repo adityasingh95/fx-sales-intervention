@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-022 · clientProfiles seed data
-**Commit `TBD`**
+**Commit `59fff0e`**
 
 - TDD red→green: **6 `clientProfiles.test.ts` cases** — each of the five named clients from `docs/09 §11` (Acme Corp / Globex Industries / Halcyon Capital / Northwind FX / Polaris Holdings) returns the expected `tier`, `recent30dVolume`, `recent30dAcceptanceRate`, `recentBehaviorFlag`. Sixth case: unknown client name returns a defensive `'new'`-tier profile with neutral defaults rather than throwing.
 - `src/services/suggestion/clientProfiles.ts` real: lookup table keyed by `clientName` (matching the `Deal.clientName` field the engine receives), default fallback that preserves the requested name on the returned `ClientProfile`.
