@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-016 · Summary + DealSummary panels
-**Commit `_pending_`**
+**Commit `096d645`**
 
 - TDD red→green: **3 specified cases** plus 5 supporting cases.
   - `SummaryPanel.test.tsx` (2): Globex SELL 5M USDJPY for SPOT renders the verbatim sentence per `docs/02 §4.2`; the key/value strip shows account + trade date + T+2 settlement.
