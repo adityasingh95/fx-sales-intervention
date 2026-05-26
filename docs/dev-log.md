@@ -32,6 +32,26 @@ Most recent first.
 
 ---
 
+## FXSW-021 · OFF_HOURS_INTERVENTION E2E
+**Commit `_pending_`**
+
+- TDD red→green: full Playwright spec at `tests/e2e/off-hours-intervention.spec.ts` transcribing `docs/07-scenario-pack.md` Scenario 2. Inject → INTERVENE row → click row → ticket slides in with reasons + streaming bid/ask + margin 3 → hold Send Stream 600ms (Playwright's `click({ delay: 700 })`) → `data-si-state` cycles through `QuoteSent` to `Quoted`, status to STREAMING, footer shows Withdraw + Reject → 1.5s elapses → CLIENT_ACCEPT lands → TradeConfirmed + DONE → 5s elapses → row leaves Active, lands in Historic with `data-outcome="Executed"`. Runtime 8.0s (well under the 15s budget).
+- Pins `window.__seedFeed = 42` + `window.__zeroAckDelay = true` via `page.addInitScript` per the test-fidelity rules in `07 Notes`. Zero ack delays make every `*Sent` instant; real wall-clock for the 1.5s `CLIENT_ACCEPT` gate + the 5s blotter-removal rule.
+- All three E2Es now green: smoke (`tests/e2e/smoke.spec.ts`), happy-path-esp, off-hours-intervention. Total Playwright runtime 17.9s on local.
+- **End of Phase 3 per BACKLOG.**
+
+**User-directed decisions:** None — `docs/07 Scenario 2` is verbatim; the only judgement call was on toast + title-prefix assertions (out of scope).
+
+**Agent-directed decisions:**
+- **Toast + document-title-prefix assertions omitted.** The Gherkin scenario asserts on "a toast in the top-right with text containing 'Globex Industries'" and "the document title is prefixed with '● '". Both are notification-layer behaviour (FXSW-028 in Phase 5). Including them now would either need stubs or would fail. The test file's header comment names them as intentionally deferred.
+- **Hold via `click({ delay: 700 })` rather than `dblclick()`.** Both paths exist on HoldButton (FXSW-020 added `onDoubleClick` as an alternative). Picked the hold path for spec fidelity — the Gherkin literally says "clicks Send Stream and holds for 600ms." 700ms instead of 600ms gives a small margin against the timer-vs-pointerup race; even if `pointerUp` arrives 1ms before the `setTimeout` fires, the hold confirm still wins because the timer was already scheduled.
+- **Tolerant timeouts on the timed transitions** (`Quoted`: 1500ms timeout for the CLIENT_ACCEPT gate at +1500ms; `TradeConfirmed`: 3000ms; archived: 6000ms). Each timeout is the spec value plus a generous slack so the test isn't flaky under CI's variable jitter.
+- **Asserts on `data-si-state` + `data-display-status` + `data-outcome`**, not on text content. Per `07 Notes on test fidelity`: "Tests should assert on data-si-state / data-rfs-state attributes and data-testid values, not on text or color."
+- **Implicit reliance on previous-ticket fidelity.** The E2E doesn't directly mount/unmount components — it drives the real app top-to-bottom. So this test functions as an integration check for everything from FXSW-007 (PricingFeed) through FXSW-020 (TicketFooter). If any ticket regresses a contract — `data-deal-id`, `data-si-state`, the reasons-panel label, the margin-input value, the footer button visibility — this E2E catches it. Worth its weight at the end of Phase 3.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**235 pass / 3 todo**, unchanged — the E2E is in Playwright, not Vitest), e2e ✓ (3/3 in 17.9s), build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-020 · TicketFooter + *Sent → *Ack flow
 **Commit `18e0c24`**
 
