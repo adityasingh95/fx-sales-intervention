@@ -32,6 +32,24 @@ Most recent first.
 
 ---
 
+## Wiki Agent bootstrap (build-agent rule §10 override, user-authorized)
+**Commit `_pending_`**
+
+- Wiki Agent first-run session (separate from this build session) flagged three blockers when the human asked it to ingest the Phase 2 summary: (1) summary file wasn't on `main` yet — fixed in PR #4; (2) `wiki/` directory + `WIKI_SCHEMA.md` don't exist, the first-run initialization from `WIKI-SETUP.md` was never executed — Wiki Agent's responsibility to do, not blocked from this side; (3) **role conflict** — the Wiki Agent's session was loading the project-root `CLAUDE.md`, which contains rule §10 forbidding writes to `wiki/`, which would have made it impossible for the Wiki Agent to do its job.
+- Fix for (3): authored `wiki/CLAUDE.md` so Claude Code loads it (closest-CLAUDE.md-up-the-tree) when a session operates inside `wiki/`. The file explicitly states "the project root `CLAUDE.md` does not apply to sessions operating in this directory" and points at `docs/dev-wiki.md` + `docs/WIKI-SETUP.md` as the Wiki Agent's actual contract. It also clarifies the Wiki Agent's write boundaries (`wiki/` + `raw/` only — `docs/`, `src/`, etc. stay read-only for the Wiki Agent).
+- **Build-agent rule §10 says "Never write to `wiki/` or `raw/`."** Writing `wiki/CLAUDE.md` is a deliberate one-time violation of that rule, authorized explicitly by the human as a bootstrap exception. No further writes to `wiki/` or `raw/` from the build agent — the Wiki Agent owns those directories from here on. Once the Wiki Agent runs its first-run flow, it would have created an equivalent `wiki/CLAUDE.md` (or something compatible) as part of initialization anyway; doing it now from the build side unblocks the Wiki Agent's session without requiring it to violate its own scope first.
+
+**User-directed decisions:**
+- **One-time override of build-agent rule §10 to bootstrap `wiki/CLAUDE.md`.** Options surfaced: (a) merge PR #4 only — Wiki Agent handles its own role-conflict resolution; (b) merge + write `wiki/CLAUDE.md` from this side as a scoped override of rule §10. **Chosen:** (b). The Wiki Agent's role-conflict is structural (the existence of project-root `CLAUDE.md` shadows whatever `dev-wiki.md` says about scope); fixing it by writing a single `wiki/CLAUDE.md` from the build side is cheaper than having every future Wiki Agent session start with "ignore the project root rules" instructions.
+
+**Agent-directed decisions:**
+- **`wiki/CLAUDE.md`, not `wiki/.claude/CLAUDE.md`.** Claude Code looks for `CLAUDE.md` directly in the current working directory and parents; the `.claude/` subdirectory is for hook configs etc., not the directive file. Plain `CLAUDE.md` is the correct location.
+- **Explicit "root rule §10 doesn't apply here" wording** rather than leaving it implicit. The override is deliberate, not an oversight; making it explicit means a future reader (human or agent) doesn't have to puzzle out whether the Wiki Agent is breaking the rules or operating within a documented exception.
+- **Includes vendor-neutrality reminder** even though the project-root rule covers it — the wiki is shipped artifact, so the constraint matters more, not less. Cheap belt-and-suspenders.
+- This entry sits at the top of the dev-log (most-recent-first per the file header), one section above the FXSW-013 entry. Not a per-ticket entry — it's a meta-coordination action.
+
+---
+
 ## Mobile/responsive layout (out-of-scope, user-requested)
 **Commit `e5195a7`**
 
