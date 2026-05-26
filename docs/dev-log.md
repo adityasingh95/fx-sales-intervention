@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-030 · Visual polish pass
-**Commit `TBD`**
+**Commit `1befad9`**
 
 - **Button.tsx lift** — `src/components/Button.tsx` real, exporting `Button` (the simple variant) and `HoldButton` (the 600ms-hold-or-double-click variant) with a shared 4-variant style table (`primary` / `secondary` / `danger` / `ghost`) per `docs/05 §3.1`. Lifted from `TicketFooter.tsx` (FXSW-020 inline) and `SuggestionPanel.tsx` (FXSW-026 RejectHoldButton inline) — both consumers now import from the shared module. ~90 lines of duplicated primitive code removed; behavior contract preserved (testids, `data-in-flight`, `data-holding`, `aria-describedby` hint, `holdgrow` keyframe overlay all unchanged).
 - `TicketFooter.tsx` shed: the local `ActionButton`, the local `HoldButton`, the `Variant` type, the `VARIANT_CLASSES` record, and the `HOLD_MS` constant. Imports the shared primitives via aliased names (`Button as ActionButton`) so the existing JSX inside the footer stays unchanged.
