@@ -160,7 +160,7 @@ Hold-to-confirm + double-click pattern: see [components/test-patterns.md](../com
 
 ## Status
 
-Panel shell, all sub-panels, and footer are **stable** as of FXSW-020 (`18e0c24`). The AI Margin Suggestion sub-panel is wired (Phase 4 work is on main) but the wiki entry for it ([ai-margin-suggestion.md](ai-margin-suggestion.md)) is still marked `in-progress` pending the dedicated Phase 4 ingest.
+Panel shell, all sub-panels (including the [AI Margin Suggestion](ai-margin-suggestion.md)), and footer are **stable** as of Phase 4 close (FXSW-014–020 + FXSW-025/026). Hand-off between Reasons → Summary → AI Suggestion → Pricing → ClientSummary → DealSummary → Footer is wired end-to-end; the OFF_HOURS / CREDIT_BREACH / SIZE_LIMIT E2Es exercise the full stack.
 
 ## Sources
 

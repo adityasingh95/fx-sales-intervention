@@ -109,9 +109,9 @@ Reference implementations publish these in a container at `/PRIVATE/FX/SALES/BLO
 
 | Term | Definition |
 |---|---|
-| **Dummy feed** | The in-memory pricing + deal simulator. See `wiki/components/pricing-feed.md` and `wiki/components/deal-feed.md` (pending). |
-| **Scenario** | A pre-canned sequence of events used for demos and E2E tests. See `wiki/scenarios/` (pending). |
-| **Dev Injector** | The hidden control panel at `?dev=1` that lets the operator inject scenarios on demand. See `wiki/features/dev-injector.md` (pending). |
+| **Dummy feed** | The in-memory pricing + deal simulator. See [components/pricing-feed.md](components/pricing-feed.md) and [components/deal-feed.md](components/deal-feed.md). |
+| **Scenario** | A pre-canned sequence of events used for demos and E2E tests. See the [Scenarios section of the index](index.md#scenarios). |
+| **Dev Injector** | The hidden control panel at `?dev=1` that lets the operator inject scenarios on demand. See [features/dev-injector.md](features/dev-injector.md). |
 | **Rejection reason** | The flag indicating why auto-pricing failed. In v1: `OFF_HOURS`, `SIZE_LIMIT`, `CREDIT_LIMIT`. |
 
 ## Source

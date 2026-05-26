@@ -56,7 +56,9 @@ This is **not** a re-implementation of any vendor product. It is a brand-neutral
 
 ## Current state
 
-Phase 2 closed (FXSW-007 → FXSW-013). The pricing feed, deal feed, scenario player, two-machine deal lifecycle, status derivation, live blotters, and the dev injector are wired end-to-end. `HAPPY_PATH_ESP` runs as a passing Playwright E2E. The ticket panel, AI Margin Suggestion, notifications, and polish (Phases 3-5) are not yet built.
+Phase 4 closed (FXSW-022 → FXSW-027). The pricing feed, deal feed, scenario player, two-machine deal lifecycle, status derivation, live blotters, dev injector, full ticket panel with all seven sub-panels, footer actions with hold-to-confirm, the AI Margin Suggestion engine + panel (ready / applied / Undo / credit-decline / computing), and four passing Playwright E2Es (`happy-path-esp`, `off-hours-intervention`, `credit-breach`, `size-limit-margin-tune`) are all wired end-to-end. Total test suite: 296 unit pass / 4 E2E pass + smoke.
+
+Remaining: Phase 5 (FXSW-028 → FXSW-034) — notifications visual layer + audio chime + mute, visual polish, RELEASE_PATH E2E, CI workflow, README + demo recording, GitHub Pages deploy.
 
 ## Where to go next
 
