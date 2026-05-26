@@ -67,3 +67,10 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - wiki/data-models/deal.md: noted marginPips/pricingMode/fixedSide/frozenTick are TicketPanel-owned interim state until FXSW-025 lifts to dealMachine
 ##   - wiki/index.md: status refresh
 ##   Phase 4 work (FXSW-022 through FXSW-027) landed on main but is OUT OF SCOPE for this ingest per user direction; deferred to a separate Phase 4 ingest.
+
+## [2026-05-26] lint | Post-Phase-3 lint pass (focus: data-testid + component naming per user request). Findings:
+##   - LINT-301 (fixed): inject-RESET in src vs reset-session in wiki — name drift in wiki/features/dev-injector.md. Repointed to inject-RESET. Also added missing dev-injector + dev-injector-slot testids.
+##   - LINT-302 (fixed): active-blotter-body + historic-blotter-body testids on src body wrappers, absent from wiki — added to wiki/features/{active,historic}-blotter.md test-contract blocks.
+##   - LINT-303 (deferred): suggestion-factors, suggestion-recompute, suggestion-undo testids exist in Phase 4 src but absent from wiki/features/ai-margin-suggestion.md. Out of scope for Phase 3 ingest; will close with the Phase 4 ingest.
+##   - Component naming drift: clean (every wiki-named component matches a src/ basename).
+##   - Vendor-neutrality, state-machine, scenario, dep-version, cross-reference, orphan-page checks: all clean.

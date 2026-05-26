@@ -35,13 +35,25 @@ The injector is a demo/dev tool, not a trader-facing feature. Hiding it behind `
 ## Test contract
 
 ```html
-<button data-testid="inject-HAPPY_PATH_ESP">…</button>
-<button data-testid="inject-OFF_HOURS_INTERVENTION">…</button>
-<button data-testid="inject-CREDIT_BREACH">…</button>
-<button data-testid="inject-SIZE_LIMIT_MARGIN_TUNE">…</button>
-<button data-testid="inject-RELEASE_PATH">…</button>
-<button data-testid="reset-session">…</button>
+<header>
+  <!-- Slot in App.tsx, gated by ?dev=1 -->
+  <div data-testid="dev-injector-slot">
+    <div data-testid="dev-injector">
+      <button data-testid="inject-HAPPY_PATH_ESP">…</button>
+      <button data-testid="inject-OFF_HOURS_INTERVENTION">…</button>
+      <button data-testid="inject-CREDIT_BREACH">…</button>
+      <button data-testid="inject-SIZE_LIMIT_MARGIN_TUNE">…</button>
+      <button data-testid="inject-RELEASE_PATH">…</button>
+      <button data-testid="inject-RESET">…</button>
+    </div>
+  </div>
+</header>
 ```
+
+- `data-testid="dev-injector-slot"` is the header slot wrapper in `App.tsx`; its presence/absence is how `App.test.tsx` asserts `?dev=1` gating.
+- `data-testid="dev-injector"` is the inject-button row.
+- Per-scenario buttons use `data-testid={\`inject-${id}\`}` (template literal) where `id` is the `ScenarioId` value.
+- **Reset uses `data-testid="inject-RESET"`** (same `inject-*` prefix as the scenario buttons, since the same `<button>` shape is reused — Reset is structurally just another inject-slot rather than a separate testid family).
 
 Each E2E scenario spec drives the first click via the corresponding `data-testid`. See the [Scenarios section of the index](../index.md#scenarios).
 

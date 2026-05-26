@@ -41,13 +41,15 @@ The archive call is idempotent — whichever subscriber (RFS or SI) fires `Remov
 
 ## Test contract
 
-Each row carries:
+The blotter body wrapper carries `data-testid="historic-blotter-body"`. Each row is a `<button>` inside:
 
 ```html
-<button
-  data-deal-id="d_001"
-  data-outcome="Executed"
->
+<div data-testid="historic-blotter-body">
+  <button
+    data-deal-id="d_001"
+    data-outcome="Executed"
+  >
+</div>
 ```
 
 `data-outcome` is the canonical test-assertion attribute, per `docs/07-scenario-pack.md` test fidelity notes.

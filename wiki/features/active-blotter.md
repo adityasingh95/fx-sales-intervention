@@ -67,17 +67,19 @@ When the [ticket panel](ticket.md) is open, the blotters dim to `opacity-75` via
 
 ## Test contract
 
-Each row carries:
+The blotter body wrapper carries `data-testid="active-blotter-body"`. Each row is a `<button>` inside:
 
 ```html
-<button
-  data-deal-id="d_001"
-  data-rfs-state="PickedUp"
-  data-si-state="Quoted"
-  data-display-status="STREAMING"
-  data-dealable="false"
-  data-removing="false"
->
+<div data-testid="active-blotter-body">
+  <button
+    data-deal-id="d_001"
+    data-rfs-state="PickedUp"
+    data-si-state="Quoted"
+    data-display-status="STREAMING"
+    data-dealable="false"
+    data-removing="false"
+  >
+</div>
 ```
 
 Playwright tests assert on `data-si-state` (most informative) and `data-display-status` (user-facing label). Both are stable parts of the test contract — see the [Scenarios section of the index](../index.md#scenarios) for the per-scenario assertions.
