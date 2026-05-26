@@ -32,6 +32,35 @@ Most recent first.
 
 ---
 
+## FXSW-025 · SuggestionPanel ready / applied / Undo
+**Commit `TBD`**
+
+- TDD red→green: **8 `SuggestionPanel.test.tsx` cases** — renders pips + rationale + confidence in `ready` state (per `docs/09 §13`); Apply click switches `data-suggestion-state` to `applied` and updates current margin; Undo restores the previous margin and flips back to `ready`; Why? toggles the factors table; **integration test** wires SuggestionPanel + PricingPanel via a `MarginGlowHarness` and asserts the `data-margin-glow` attribute appears on the margin input then clears after 600ms (the `docs/05 §4.5` "indigo outline animation" called out in the FXSW-025 AC); credit-decline + null suggestion render nothing; a new suggestion prop resets the panel back to `ready` so re-computes get a fresh visit.
+- `src/features/ticket/SuggestionPanel.tsx` real per `docs/02 §4.3` + `docs/05 §4.5`:
+  - Header: `Sparkles` icon (lucide) + "AI Margin Suggestion" + confidence badge (High → `ai-accent` on `ai-bg`, Medium → `text-dim` on `bg-elevated`, Low → `amber` with dotted border).
+  - Body: 32px mono pips number + small "pips" suffix + the rationale string (≤ 120 chars from FXSW-024).
+  - Footer: primary Apply button on `ai-accent` + ghost Why? toggle.
+  - Why? expanded: 3-column factors table (Factor / Δ pips / Note) with `baseline` shown for the tier row instead of `+0`.
+  - `applied` strip: single-line collapsed view with Sparkles + "Applied N pips" + Undo affordance, same `ai-bg` + `ai-border` + `shadow-ai` chrome so the visual hierarchy stays unchanged.
+  - Credit-decline branch is `return null` for now — FXSW-026 swaps in the §7 Reject-shortcut UI.
+- `src/features/ticket/TicketPanel.tsx` wires the panel between ReasonsPanel and SummaryPanel (per `docs/09 §2` "sits between the Reasons Panel and the Pricing Panel"). The previous placeholder note ("AI Suggestion lands in FXSW-022 through FXSW-026") is gone.
+- Suggestion computation: a `useEffect` keyed on `entry + liveTick` computes via `suggestMargin` exactly once per PickedUp visit (gated by a `useRef` flag). The flag clears whenever SI leaves PickedUp so re-entry after Withdraw recomputes. `docs/09 §9`'s recompute-on-volatility-shift and 800ms debounce are FXSW-026 territory.
+
+**User-directed decisions:** None — `docs/02 §4.3`, `docs/05 §4.5`, and `docs/09 §10/§13` together pinned the UI, the interaction model, and the `data-*` test contract.
+
+**Agent-directed decisions:**
+- **Panel takes `suggestion` as a prop and the parent owns the compute lifecycle.** Keeps the panel pure (testable with a static mock) and lets the next ticket's recompute logic live in TicketPanel without disturbing the panel's contract. The alternative — panel pulls its own dependencies (client profile, market context, engine) — would force every test into a full TicketPanel mount.
+- **`appliedFrom: number | null` for Apply state** rather than a boolean + a separate `previousMargin` field. Single source of truth; presence already implies "applied," and the stored value is what Undo restores. Avoids a "applied but previousMargin is undefined" impossible state.
+- **`useEffect([suggestion])` resets internal applied + why state.** Means a new suggestion (different deal, future recompute) always re-expands the panel. Matches the spec intent — once a fresh recommendation arrives, the trader shouldn't have to dig through a stale Applied strip to see it. Tests assert the behaviour directly.
+- **Why? table shows `baseline` (not `+0`) for the Client tier row.** The tier factor has `delta: 0` because it's the starting point, not an adjustment. Surfacing `+0` would read as "tier had no effect" which is the opposite of true. The `09 §13` sketch agrees ("Client tier   baseline gold = 2 pips").
+- **Pricing-glow contract verified end-to-end via the integration harness**, not just via SuggestionPanel's `onApply` call. The doc explicitly calls out the margin-input animation as part of the Apply UX. Trusting only the PricingPanel-side test would leave the wiring untested. The integration test is six lines and provides a strong guarantee.
+- **One-shot compute per PickedUp visit** rather than recompute on every tick or every entry effect. `docs/09 §9` is explicit: "does not recompute on every price tick." A `useRef` boolean is the simplest gate; resets on tick-state leaving PickedUp so re-entry (after Withdraw) gets a fresh number.
+- **The `currentMargin` prop is the source of truth for Undo's "previous value"** rather than something the panel infers from the deal context. Aligns with the FXSW-019 lift of margin state into TicketPanel — the panel reads what the parent already owns.
+- **`text-amber` for low-confidence badge with dotted border**, distinct from the solid `ai-accent`/`text-dim` chips. Communicates "be cautious" without screaming. Matches `docs/05 §4.5` colour pairing.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**290 pass / 0 todo**, up from 282 / 1 — 8 new SuggestionPanel cases, the placeholder `it.todo` is gone). Build clean.
+
+---
+
 ## FXSW-024 · Rationale builder
 **Commit `8b12400`**
 

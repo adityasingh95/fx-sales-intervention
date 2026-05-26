@@ -46,7 +46,7 @@
 | FXSW-022 | clientProfiles seed data | 4 | S | 🔴 | ☑ |
 | FXSW-023 | Suggestion engine (100% branch) | 4 | L | 🔴 | ☑ |
 | FXSW-024 | Rationale builder | 4 | S | 🔴 | ☑ |
-| FXSW-025 | SuggestionPanel ready / applied / Undo | 4 | M | 🟡 | ☐ |
+| FXSW-025 | SuggestionPanel ready / applied / Undo | 4 | M | 🟡 | ☑ |
 | FXSW-026 | SuggestionPanel credit-decline + recompute | 4 | M | 🟡 | ☐ |
 | FXSW-027 | SIZE_LIMIT + CREDIT_BREACH E2E | 4 | S | 🟢 | ☐ |
 | FXSW-028 | Notifications visual layer | 5 | M | 🟡 | ☐ |
