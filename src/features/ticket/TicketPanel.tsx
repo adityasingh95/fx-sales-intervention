@@ -3,10 +3,12 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
-import { formatAmount, formatTime } from '@/lib/format';
+import { formatTime } from '@/lib/format';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
+import DealSummaryPanel from './DealSummaryPanel';
 import ReasonsPanel from './ReasonsPanel';
+import SummaryPanel from './SummaryPanel';
 
 // FXSW-014 shell. Renders only when uiStore.openDealId is set. Slides in
 // from the right via transform: translateX over 240ms per docs/02 §1 +
@@ -89,58 +91,22 @@ export default function TicketPanel() {
           </button>
         </header>
 
-        <div className="flex-1 overflow-auto px-5 py-4">
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <StatusCell status={status} />
-              <span className="font-mono text-xs uppercase tracking-tight text-text-dim">
-                {formatTime(deal.createdAt)}
-              </span>
-            </div>
+        <div className="flex flex-1 flex-col gap-5 overflow-auto px-5 py-4">
+          <div className="flex items-center gap-3">
+            <StatusCell status={status} />
+            <span className="font-mono text-xs uppercase tracking-tight text-text-dim">
+              {formatTime(deal.createdAt)}
+            </span>
+          </div>
 
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Client</div>
-                <div className="text-text">{deal.clientName}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Account</div>
-                <div className="font-mono text-text">{deal.accountCode}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Pair</div>
-                <div className="font-mono uppercase text-text">{deal.pair}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Side</div>
-                <div
-                  className={clsx(
-                    'font-mono font-medium',
-                    deal.side === 'BUY' ? 'text-green' : 'text-red',
-                  )}
-                >
-                  {deal.side}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Amount</div>
-                <div className="font-mono tabular-nums text-text">
-                  {formatAmount(deal.notional, deal.pair)}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-tight text-text-mute">Tenor</div>
-                <div className="font-mono uppercase text-text">{deal.tenor}</div>
-              </div>
-            </div>
+          <ReasonsPanel reasons={rejectionReasons} />
+          <SummaryPanel deal={deal} />
+          <DealSummaryPanel deal={deal} />
 
-            <ReasonsPanel reasons={rejectionReasons} />
-
-            <p className="mt-4 text-xs text-text-mute">
-              Summary, Pricing, AI Suggestion, Client Summary, Deal Summary, and Footer
-              panels land in FXSW-016 through FXSW-021.
-            </p>
-          </section>
+          <p className="mt-2 text-xs text-text-mute">
+            Pricing, AI Suggestion, Client Summary, and Footer panels land in FXSW-017
+            through FXSW-021.
+          </p>
         </div>
       </div>
     </div>

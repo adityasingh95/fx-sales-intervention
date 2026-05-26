@@ -32,6 +32,32 @@ Most recent first.
 
 ---
 
+## FXSW-016 · Summary + DealSummary panels
+**Commit `_pending_`**
+
+- TDD red→green: **3 specified cases** plus 5 supporting cases.
+  - `SummaryPanel.test.tsx` (2): Globex SELL 5M USDJPY for SPOT renders the verbatim sentence per `docs/02 §4.2`; the key/value strip shows account + trade date + T+2 settlement.
+  - `DealSummaryPanel.test.tsx` (4): Monday + 2 → Wednesday; Thursday + 2 → Monday (skips Sat + Sun); Friday + 2 → Tuesday; direction/notional fields render correctly.
+  - `lib/time.test.ts` (6): `addBusinessDays` covers Mon/Wed/Thu/Fri/Sat/Sun start dates; `formatSettlementDate` renders `DD MMM YYYY`.
+- `src/lib/time.ts` real: `addBusinessDays(date, days)` skips Sat + Sun and rolls weekend start dates forward to the next Monday before adding. `formatSettlementDate` renders `27 May 2026`-style via `Intl.DateTimeFormat('en-GB')`.
+- `src/features/ticket/SummaryPanel.tsx` real per `docs/02 §4.2`: natural-language sentence built from `clientName`, `side`, formatted notional, base/quote CCY split from the pair (`'USDJPY'.slice(0,3)` / `.slice(3)`), and tenor. Three-column key/value strip below: Account / Trade date / Settlement date.
+- `src/features/ticket/DealSummaryPanel.tsx` real per `docs/02 §4.6`: two-column grid with Direction (`SIDE BASE_CCY`), Notional, Account, Trade date, Settlement date. Each `<div data-field="...">` so tests scope cleanly.
+- `TicketPanel` mounts both new panels after `ReasonsPanel`; placeholder note drops FXSW-016 from the "coming soon" list.
+
+**User-directed decisions:** None — `docs/02 §4.2` and `§4.6` were verbatim on the sentence template, the key/value strip, and the field list.
+
+**Agent-directed decisions:**
+- **Two separate components, both rendered in the ticket.** The spec describes the panels separately and there's intentional duplication (Account / Trade date / Settlement date appear in both). Could have unified them; chose not to — the AC names both panels and tests both independently. Future polish ticket can collapse if the duplication grates.
+- **T+2 calculation lives in `src/lib/time.ts`** rather than inline in `DealSummaryPanel`. Reusable; `SummaryPanel` also calls it. CLAUDE.md: "Pricing math lives in /lib/pips.ts. Do not inline pip/margin math in components." — applying the same principle to date math.
+- **Weekend trade-date rollover via `nextBusinessDay` loop on entry**, not via a calendar lookup. Spec doesn't mention rolling — it only says T+2 is from "today" (the trade date) and tests don't directly require it. Added the rollover anyway because Saturday/Sunday `createdAt` is plausible (dev injector could fire on the weekend); without rolling, `addBusinessDays(sat, 2)` would give a Tuesday which is "T+3 actual days" from Monday. Defensive but cheap.
+- **`formatSettlementDate` is a tiny `Intl.DateTimeFormat` wrapper** rather than a hand-rolled formatter. Pair date with the existing `Intl.DateTimeFormat('en-GB')`-based `formatTime` in `lib/format.ts`. `en-GB` matches the EN-GB number-formatting decision from `docs/01-prd.md §4`.
+- **`data-field="..."` on each DealSummary row** rather than testids per field. Same rationale as FXSW-015's `data-reason` — testids stay on container-level elements, structural data-* attributes do the within-component scoping.
+- **`SummaryPanel` uses `<p>` + `<strong>`** for the natural-language sentence rather than a custom `.summary-sentence` wrapper. Semantic HTML; `<strong>` makes the highlighted fields (`Globex Industries`, `SELL 5,000,000 USD`, etc.) read correctly to screen readers.
+- **FXSW-014 test assertion updated.** `TicketPanel.test.tsx` was asserting `toHaveTextContent('USDJPY')` because FXSW-014's placeholder body showed the pair as a single cell. FXSW-016's SummaryPanel splits it into "USD vs JPY" in the sentence + "SELL USD" in DealSummary direction — so the concatenated `USDJPY` string no longer appears. Updated the test to assert `'USD'` and `'JPY'` separately with an inline comment noting the FXSW-014→FXSW-016 layout evolution.
+- All five gates green: typecheck ✓, lint ✓, test:run ✓ (**203 pass / 4 todo**, up from 191 / 4 — 12 new tests across SummaryPanel + DealSummaryPanel + time.ts), e2e ✓, build ✓, dist/ Caplin-free ✓.
+
+---
+
 ## FXSW-015 · ReasonsPanel
 **Commit `5198b26`**
 

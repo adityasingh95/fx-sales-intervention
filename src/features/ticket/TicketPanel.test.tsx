@@ -55,7 +55,12 @@ describe('<TicketPanel />', () => {
     expect(panel).toHaveAttribute('data-deal-id', 'd_ticket');
     expect(panel).toHaveTextContent('Globex Industries');
     expect(panel).toHaveTextContent('GLBX-JPY-2');
-    expect(panel).toHaveTextContent('USDJPY');
+    // FXSW-016's SummaryPanel splits the pair into base + quote in the
+    // natural-language sentence ("SELL ... USD vs JPY"), and the
+    // DealSummary direction shows "SELL USD". So we assert on base and
+    // quote separately rather than the concatenated pair code.
+    expect(panel).toHaveTextContent('USD');
+    expect(panel).toHaveTextContent('JPY');
     expect(panel).toHaveTextContent('SELL');
     expect(panel).toHaveTextContent('5,000,000');
     expect(panel).toHaveTextContent('Outside trading window');
