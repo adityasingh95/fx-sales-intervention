@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-028 · Notifications visual layer
-**Commit `TBD`**
+**Commit `227c96f`**
 
 - TDD red→green: **8 new tests** — 2 in `titleFlash.test.ts` (prefix + restore at 5s; repeated calls reset the timer without double-prefixing), 6 in `ToastStack.test.tsx` (toast appears on a fresh SI deal; auto-dismiss at 6s; click opens the ticket + dismisses; re-Release does not re-fire; ESP deals don't trigger; dispatcher also fires the title flash).
 - `src/state/stores/notificationsStore.ts` real (Zustand) — `toasts: Toast[]` plus a `notifiedDealIds: Set<string>` so re-Release of a previously-picked-up deal doesn't re-fire per `docs/02 §5.1`. `reset()` for test cleanup.
