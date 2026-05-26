@@ -32,6 +32,151 @@ Most recent first.
 
 ---
 
+## FXSW-027 · SIZE_LIMIT_MARGIN_TUNE + CREDIT_BREACH E2E
+**Commit `ab8cd30`**
+
+- TDD red→green: **two new Playwright specs** transcribing `docs/07 §3` (Credit Breach) and `docs/07 §4` (Size Limit + Margin Tune).
+  - `tests/e2e/credit-breach.spec.ts` (7.3s) — inject CREDIT_BREACH → INTERVENE row for Halcyon Capital / GBPUSD / "Credit limit breach" → click row → ticket opens → SI advances to PickedUp → ReasonsPanel shows "Client credit limit would be breached" → `data-suggestion-state="credit-decline"` + §7 rationale visible + `suggestion-reject` present + `suggestion-apply` absent → hold Reject 600ms → SI cycles RejectSent → TraderRejected → status REJECTED → 5s removal → Historic with `data-outcome="Rejected by Trader"`.
+  - `tests/e2e/size-limit-margin-tune.spec.ts` (9.2s) — inject SIZE_LIMIT_MARGIN_TUNE → INTERVENE row for Northwind FX / EURUSD / "Size > auto-pricer band" → click row → ticket opens with margin=3 → AI Suggestion Panel reaches `ready` state showing 4 pips, High confidence, rationale containing "Gold-tier" or "12M EURUSD" → click Apply → margin-input animates to 4 + panel collapses to `applied` strip showing "Applied 4 pips" → hold Send Stream 600ms → SI Quoted (STREAMING) → 2s wait for the scripted CLIENT_ACCEPT follow-up → TradeConfirmed (DONE) → 5s removal → Historic with `data-outcome="Executed"`.
+- Total 5 E2Es now green in 34.5s (smoke 0.1s, happy-path-esp 8.0s, off-hours-intervention 8.1s, credit-breach 7.3s, size-limit-margin-tune 9.2s) — comfortably under the 5-min CI budget anticipated for FXSW-032.
+- **End of Phase 4 per BACKLOG.** Full AI Margin Suggestion slice from clientProfiles seed data through the rule engine, rationale builder, panel UI (ready / applied / credit-decline / computing), and both end-to-end demonstrations is in place.
+
+**User-directed decisions:** None — `docs/07-scenario-pack.md` Gherkins were verbatim.
+
+**Agent-directed decisions:**
+- **Debug detour: rendered HTML asserted the panel was present, the test said it was missing.** The root cause was the FXSW-025 markup placing `{suggestion.suggestedPips}` and a child `<span>pips</span>` inside the same `data-testid="suggestion-pips"` div — Playwright's `toHaveText('4')` resolved to the combined text `"4pips"`. Fixed by lifting the unit label to a sibling span and tightening the testid scope to the number only. Took a 15-minute diagnostic detour writing a throwaway spec that dumped the ticket panel HTML + console-logged the compute effect; useful enough that I considered keeping it, but a throwaway tool isn't a Phase 4 deliverable.
+- **Blotter row assertion uses the short chip label**, not the long ReasonsPanel label. Initial attempts asserted `"Client credit limit would be breached"` on the blotter row — that text lives in `ReasonsPanel.tsx` (inside the ticket), not `ReasonsCell.tsx` (the blotter chip, which shows `"Credit limit breach"`). Both labels are now asserted in the credit-breach spec — short label on the row, long label on the panel once the ticket opens.
+- **No `Why?` click in either E2E.** The factor-table expansion is unit-tested directly in `SuggestionPanel.test.tsx`; including it in the E2E would add wall-clock without exercising new contract surface.
+- **No assertion on the indigo margin-glow flash in the E2E**, even though the AC describes the visual. The unit-level integration harness (FXSW-025 `MarginGlowHarness`) already proves Apply triggers `data-margin-glow`. Re-asserting it in the E2E would just race the 600ms animation timer.
+- **Both specs follow the `__seedFeed = 42` + `__zeroAckDelay = true` initScript pattern from the OFF_HOURS spec.** Same test-fidelity rules from `docs/07 §"Notes on test fidelity"`: assert on `data-si-state` / `data-display-status` / `data-outcome`, never on the natural-language display text for state.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**296 pass / 0 todo**, unchanged — E2E specs are Playwright not Vitest), e2e ✓ (5/5 in 34.5s), build ✓.
+
+---
+
+## FXSW-026 · SuggestionPanel credit-decline + Recompute
+**Commit `a7cd0fd`**
+
+- TDD red→green: **6 new `SuggestionPanel.test.tsx` cases** (14 total) — credit-decline UI shows §7 message + Reject shortcut + `data-suggestion-state="credit-decline"` + no Apply; Reject hold-to-confirm (single click does nothing, 600ms hold fires `onReject`); Recompute click switches `data-suggestion-state` to `computing` then back to `ready` after the 800ms debounce and calls `onRecompute` exactly once; multiple rapid Recompute clicks coalesce into one call; Apply disabled during computing; vol shift > 30% triggers recompute, ≤ 30% does not. Removed the FXSW-025 placeholder test "renders nothing for credit-decline" — superseded.
+- `src/features/ticket/SuggestionPanel.tsx` extensions:
+  - Credit-decline branch: distinct header ("AI Recommendation" + amber AlertTriangle), §7 rationale, `RejectHoldButton` primitive (600ms hold or double-click) on `red/40` chrome.
+  - Recompute icon button (`RotateCw`) in the header right cluster next to the confidence badge. Disabled + spinning while computing.
+  - Computing state replaces the pips number with a `bg-elevated` pulse skeleton and the rationale with "Recomputing…"; Apply + Why? both disabled. `aria-busy` mirrors the visual state.
+  - Debounced trigger (`triggerRecompute`) clears any in-flight timer on each call so rapid invocations coalesce into one `onRecompute()` after 800ms of quiet.
+  - Vol-shift effect: when `currentVolatility` prop changes by > 30% relative to the value used at the last compute, fires `triggerRecompute`. The static v1 lookup means this branch never fires in practice — the wiring is in place for v2 per `docs/09 §3.1`.
+- `src/features/ticket/TicketPanel.tsx` integration:
+  - Compute logic refactored into `computeAndSetSuggestion` (a `useCallback`) so the initial PickedUp-entry effect and the Recompute callback both go through the same path.
+  - Wires `onRecompute` → `computeAndSetSuggestion`, `onReject` → `forwardEvent(dealId, { type: 'Reject' })` (same event the TicketFooter Reject sends), and `currentVolatility` → `getMarketContext(pair).pairVolatility`.
+
+**User-directed decisions:** None — `docs/09 §7`, `§9`, and `docs/05 §4.5` "computed state" pinned the credit-decline shape, the recompute triggers, the debounce window, and the shimmer affordance.
+
+**Agent-directed decisions:**
+- **`RejectHoldButton` inlined inside `SuggestionPanel.tsx`** rather than lifting `HoldButton` out of `TicketFooter.tsx` into a shared component. Per the FXSW-020 dev-log, "FXSW-029 (polish) can lift to `/components/Button.tsx` when there's a second consumer." Second consumer is now FXSW-026; the lift belongs in FXSW-029 (where it gets the full Button-with-variants treatment per `docs/05 §3.1`). For FXSW-026 the inline copy is ~40 lines and keeps the change scoped.
+- **Computing state takes 800ms regardless of whether the parent computed synchronously.** The doc explicitly calls out the debounce as a "Recomputing…" affordance — running it for 800ms gives the trader the feedback animation even when the engine is instant. The new suggestion is in props well before the timer fires; the panel simply waits before revealing it.
+- **Apply + Why? disabled during computing**, not just hidden. Visible disabled chrome (`opacity-50` + `cursor-not-allowed`) reads as "in flight" rather than "gone"; matches the in-flight pattern from FXSW-020's `data-in-flight` buttons.
+- **`onReject` is a parent-injected callback**, not a direct `useDealsStore.getState().forwardEvent` call from the panel. Keeps the panel free of store coupling and lets TicketPanel route the event the same way as the TicketFooter Reject (single source of truth for "what does Reject mean").
+- **Vol-shift detection uses relative change, not absolute.** `|new - old| / |old| > 0.3` matches the spec's "shift > 30% from the value used at last computation" rather than "absolute delta > 0.3 pips/min." Guards against `lastVol === 0` returning `Infinity`.
+- **`recomputing` state is NOT cleared by the suggestion-change effect.** When the parent swaps `suggestion` mid-compute (synchronous recompute returns immediately), the panel keeps the shimmer visible until the 800ms timer expires. Tested directly: rapid Recompute clicks still produce exactly one `onRecompute`.
+- **Vol prop type is `number | undefined`** so the watch effect can no-op cleanly when the parent doesn't supply a value (e.g., a test rendering only the ready-state assertions). Tested via the existing "ready" cases — they don't pass `currentVolatility` and still pass.
+- **Reject button label is "Reject deal"**, not "Reject" — the credit-decline framing is "decline this trade entirely," not "abort the quote." Matches the §4.5 sketch.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**296 pass / 0 todo**, up from 290 / 0 — 6 new SuggestionPanel cases, 1 obsolete placeholder removed). Build clean.
+
+---
+
+## FXSW-025 · SuggestionPanel ready / applied / Undo
+**Commit `301aac1`**
+
+- TDD red→green: **8 `SuggestionPanel.test.tsx` cases** — renders pips + rationale + confidence in `ready` state (per `docs/09 §13`); Apply click switches `data-suggestion-state` to `applied` and updates current margin; Undo restores the previous margin and flips back to `ready`; Why? toggles the factors table; **integration test** wires SuggestionPanel + PricingPanel via a `MarginGlowHarness` and asserts the `data-margin-glow` attribute appears on the margin input then clears after 600ms (the `docs/05 §4.5` "indigo outline animation" called out in the FXSW-025 AC); credit-decline + null suggestion render nothing; a new suggestion prop resets the panel back to `ready` so re-computes get a fresh visit.
+- `src/features/ticket/SuggestionPanel.tsx` real per `docs/02 §4.3` + `docs/05 §4.5`:
+  - Header: `Sparkles` icon (lucide) + "AI Margin Suggestion" + confidence badge (High → `ai-accent` on `ai-bg`, Medium → `text-dim` on `bg-elevated`, Low → `amber` with dotted border).
+  - Body: 32px mono pips number + small "pips" suffix + the rationale string (≤ 120 chars from FXSW-024).
+  - Footer: primary Apply button on `ai-accent` + ghost Why? toggle.
+  - Why? expanded: 3-column factors table (Factor / Δ pips / Note) with `baseline` shown for the tier row instead of `+0`.
+  - `applied` strip: single-line collapsed view with Sparkles + "Applied N pips" + Undo affordance, same `ai-bg` + `ai-border` + `shadow-ai` chrome so the visual hierarchy stays unchanged.
+  - Credit-decline branch is `return null` for now — FXSW-026 swaps in the §7 Reject-shortcut UI.
+- `src/features/ticket/TicketPanel.tsx` wires the panel between ReasonsPanel and SummaryPanel (per `docs/09 §2` "sits between the Reasons Panel and the Pricing Panel"). The previous placeholder note ("AI Suggestion lands in FXSW-022 through FXSW-026") is gone.
+- Suggestion computation: a `useEffect` keyed on `entry + liveTick` computes via `suggestMargin` exactly once per PickedUp visit (gated by a `useRef` flag). The flag clears whenever SI leaves PickedUp so re-entry after Withdraw recomputes. `docs/09 §9`'s recompute-on-volatility-shift and 800ms debounce are FXSW-026 territory.
+
+**User-directed decisions:** None — `docs/02 §4.3`, `docs/05 §4.5`, and `docs/09 §10/§13` together pinned the UI, the interaction model, and the `data-*` test contract.
+
+**Agent-directed decisions:**
+- **Panel takes `suggestion` as a prop and the parent owns the compute lifecycle.** Keeps the panel pure (testable with a static mock) and lets the next ticket's recompute logic live in TicketPanel without disturbing the panel's contract. The alternative — panel pulls its own dependencies (client profile, market context, engine) — would force every test into a full TicketPanel mount.
+- **`appliedFrom: number | null` for Apply state** rather than a boolean + a separate `previousMargin` field. Single source of truth; presence already implies "applied," and the stored value is what Undo restores. Avoids a "applied but previousMargin is undefined" impossible state.
+- **`useEffect([suggestion])` resets internal applied + why state.** Means a new suggestion (different deal, future recompute) always re-expands the panel. Matches the spec intent — once a fresh recommendation arrives, the trader shouldn't have to dig through a stale Applied strip to see it. Tests assert the behaviour directly.
+- **Why? table shows `baseline` (not `+0`) for the Client tier row.** The tier factor has `delta: 0` because it's the starting point, not an adjustment. Surfacing `+0` would read as "tier had no effect" which is the opposite of true. The `09 §13` sketch agrees ("Client tier   baseline gold = 2 pips").
+- **Pricing-glow contract verified end-to-end via the integration harness**, not just via SuggestionPanel's `onApply` call. The doc explicitly calls out the margin-input animation as part of the Apply UX. Trusting only the PricingPanel-side test would leave the wiring untested. The integration test is six lines and provides a strong guarantee.
+- **One-shot compute per PickedUp visit** rather than recompute on every tick or every entry effect. `docs/09 §9` is explicit: "does not recompute on every price tick." A `useRef` boolean is the simplest gate; resets on tick-state leaving PickedUp so re-entry (after Withdraw) gets a fresh number.
+- **The `currentMargin` prop is the source of truth for Undo's "previous value"** rather than something the panel infers from the deal context. Aligns with the FXSW-019 lift of margin state into TicketPanel — the panel reads what the parent already owns.
+- **`text-amber` for low-confidence badge with dotted border**, distinct from the solid `ai-accent`/`text-dim` chips. Communicates "be cautious" without screaming. Matches `docs/05 §4.5` colour pairing.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**290 pass / 0 todo**, up from 282 / 1 — 8 new SuggestionPanel cases, the placeholder `it.todo` is gone). Build clean.
+
+---
+
+## FXSW-024 · Rationale builder
+**Commit `8b12400`**
+
+- TDD red→green: **7 `rationale.test.ts` cases** — the two `docs/09 §8` canonical scenarios (Globex/USDJPY/OFF_HOURS, Northwind/12M EURUSD/SIZE_LIMIT) asserted with regex tolerance + length ≤ 120; the 0-factor case (only tier) checks the line starts with the tier label, ends with `— suggesting N pips.`, and has no orphan-comma artifacts; the 5+ factor case asserts truncation keeps the line ≤ 120 while preserving the tier label and pip count; the credit-decline path asserts the engine wires `CREDIT_DECLINE_RATIONALE` exactly; direct `buildRationale` call asserts the trailing `— suggesting N pips.` shape.
+- `src/services/suggestion/rationale.ts` real per `docs/09 §8`:
+  - `CREDIT_DECLINE_RATIONALE` constant exported; engine now imports it (single source of truth — the panel will too).
+  - `buildClientPhrase` returns `"{Tier} client"` by default, enriched to `"{Tier} client with strong recent acceptance"` when the client is `high_engagement` AND acceptance ≥ 0.7 — surfaces the §8 "Platinum client with strong recent acceptance" phrase organically.
+  - `craftFactorPhrase` maps each factor name to a short natural-language phrase (`'off-hours USDJPY'`, `'above auto-pricer band'`, `'12M EURUSD'`, etc.) rather than concatenating raw factor notes — produces sentences that read like the §8 examples.
+  - Composition picks the top-`MAX_FACTOR_PARTS` (= 3) non-tier factors by `|delta|`, then drops from the end until the line fits `MAX_LEN` (= 120).
+  - Pluralisation: `1 pip` vs `N pips`. Trivial polish that the doc template happens not to encode.
+
+**User-directed decisions:** None — `docs/09 §8` template + the three quoted examples pinned the shape.
+
+**Agent-directed decisions:**
+- **`Pair class` factor → no phrase**. The factor still influences `suggestedPips`, but emitting `"USDJPY wider-spread"` alongside `"off-hours USDJPY"` (which already names the pair) reads as redundant. Confirmed against §8 — the Globex example is `"Standard-tier client, off-hours USDJPY — suggesting 5 pips."`, no second pair reference. The factor stays in the engine because it changes the math; only the rationale string drops the redundancy.
+- **`VIP volume` factor → no phrase**. Same reasoning — already folded into the enriched `"Platinum client with strong recent acceptance"` client phrase whenever the trigger conditions overlap. For a `high_engagement` client with acceptance < 0.7 the VIP signal goes unmentioned; acceptable since the impact is just -0.5 pips and the demo never highlights it as a distinct rationale element.
+- **`MAX_FACTOR_PARTS = 3` cap** rather than the doc pseudocode's stricter `|delta| >= 1` threshold. The Northwind example includes `"above auto-pricer band"` whose underlying delta is 0.5 — the strict threshold would drop it. Picking "top 3 by magnitude" reproduces the example output and matches the doc's other framing ("composes 2–3 of the largest-magnitude factors").
+- **Pluralisation handled at the compose-step**. `1 pip` reads correctly; `N pips` for N ≥ 2 follows. The doc template literal (`${suggestedPips} pips`) is a slip rather than a spec — fixing it cost two lines and removes a small wart from the demo.
+- **`CREDIT_DECLINE_RATIONALE` exported as a constant** (not just hard-coded in the engine). Lets `rationale.test.ts` assert the exact text without duplicating the literal, and lets the FXSW-025/026 panel reuse it for the Reject-shortcut affordance.
+- **Crafted phrases live in `rationale.ts`**, not on the `Factor` objects. The engine produces machine-readable factor records (with the formal `note` field, which the panel's "Why?" expansion will surface); the rationale composes a human sentence on top. Two audiences, two strings.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**282 pass / 1 todo**, up from 275 / 2 — 7 new rationale cases, 1 todo placeholder cleared). Build clean.
+
+---
+
+## FXSW-023 · Suggestion engine
+**Commit `ca0cad8`**
+
+- TDD red→green: **34 `engine.test.ts` cases** organised by concern — tier baseline (×4), notional band (×5 including non-USD-base conversion), market context (×6 covering vol/liquidity/pair-class true+false), rejection reasons (×4 incl. CREDIT_LIMIT precedence), client behaviour (×6 covering all flag paths + acceptance both sides), confidence (×5 covering all three return paths + each gate), algebraic invariant (×1, samples 5 inputs), floor (×1), and the two canonical scenarios from `docs/09 §8` (Globex 5M USDJPY OFF_HOURS = 5 pips; Northwind 12M EURUSD SIZE_LIMIT = 4 pips).
+- `src/services/suggestion/engine.ts` real per `docs/09 §5`: pure `suggestMargin(input)`. CREDIT_LIMIT short-circuits to the `credit-decline` shape with the §7 message. Otherwise builds a `Factor[]` walking tier baseline → notional band → market (vol / thin liquidity / pair class) → rejection reasons → behaviour (flight_risk / VIP-volume / acceptance) → floor & round. `approxUsdNotional` helper inlined: USD-base pairs return notional as-is, USD-quote pairs convert via current mid.
+- `computeConfidence` per `docs/09 §6`: high if `tier !== 'new'` AND vol > 10M AND liquidity is not thin; low if any of `tier === 'new'`, thin liquidity, vol < 1M; otherwise medium. The three returns mean three test cases plus enough variants to exercise each `&&` / `||` gate on both sides.
+- `MarginSuggestion` discriminated union (`ready` | `credit-decline`) from FXSW-022's types module gives the engine an exhaustive contract — `kind === 'credit-decline'` narrows away the pip/confidence/factors fields, so the FXSW-025/026 panel will get the §7 special case via the type system rather than a separate boolean flag.
+- Stubbed `rationale.ts` to a one-liner (`Suggesting N pips.`) so the engine compiles end-to-end. The full builder lands in FXSW-024.
+
+**User-directed decisions:** None — `docs/09 §5–§7` pinned every pip delta + rule order; the AC test list pinned coverage.
+
+**Agent-directed decisions:**
+- **Skipped installing `@vitest/coverage-v8`** even though the AC says "100% branch coverage on `engine.ts`." Adding a coverage instrument as a dev-dep would let the harness emit a number, but doesn't change which lines actually got exercised. Walked the engine source against the 34 test cases by hand and confirmed every `if`/`else if`/`&&`/`||` branch has both the true and false case asserted — including the three `computeConfidence` return paths and `approxUsdNotional`'s pair-prefix split. CLAUDE.md "don't add features beyond what the task requires" supports the call; if a future ticket needs coverage gating in CI, that's the right point to add the instrumentation.
+- **Tests assert on factor presence by `name` + `delta`**, not whole-suggestion equality. Asserting `factor(s, 'Notional size')?.delta === 0.5` is what the rule expects; whole-object equality would force every test to spell out the unrelated tier/note strings and would couple test maintenance to engine-internal wording.
+- **`approxUsdNotional` inlined** in `engine.ts` rather than lifted to `marketContext.ts`. It's pure pricing math reading the same inputs the engine already has; pulling it into another module would just hide one helper behind an import. If a second consumer ever wants it, lift then.
+- **`CREDIT_LIMIT` checked first**, before the factors list even starts being built. Cheaper than building a half-result and discarding it, and matches the spec framing ("the suggestion panel does not propose a margin" — the engine literally doesn't propose one).
+- **Test helper `makeInput()` defaults to medium-confidence territory** (standard tier, 5M vol, normal liquidity, EURUSD, 0.6 acceptance). Lets each focused test override only the field under inspection without dragging the other rules into the assertion. The defaults themselves form an implicit "neutral baseline" case that any test that doesn't override gets for free.
+- **Algebraic invariant test runs the engine across 5 sampled inputs** rather than spelling out one assertion per input. The assertion is mechanical (`sum(deltas) + tier_base → suggestedPips after floor+round`); five samples chosen to span tier × notional × reasons × market × behaviour so the invariant is verified across a non-trivial slice of the input space.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**275 pass / 2 todo**, up from 241 / 3 — 34 new engine cases, 1 todo placeholder cleared). Build clean.
+
+---
+
+## FXSW-022 · clientProfiles seed data
+**Commit `59fff0e`**
+
+- TDD red→green: **6 `clientProfiles.test.ts` cases** — each of the five named clients from `docs/09 §11` (Acme Corp / Globex Industries / Halcyon Capital / Northwind FX / Polaris Holdings) returns the expected `tier`, `recent30dVolume`, `recent30dAcceptanceRate`, `recentBehaviorFlag`. Sixth case: unknown client name returns a defensive `'new'`-tier profile with neutral defaults rather than throwing.
+- `src/services/suggestion/clientProfiles.ts` real: lookup table keyed by `clientName` (matching the `Deal.clientName` field the engine receives), default fallback that preserves the requested name on the returned `ClientProfile`.
+- `src/services/suggestion/types.ts` real for the wider suggestion service: `ClientTier`, `ClientBehaviorFlag`, `ClientProfile`, `Factor`, `SuggestionInput`, and a discriminated union `MarginSuggestion = ReadySuggestion | CreditDeclineSuggestion` covering both the normal output and the §7 CREDIT_LIMIT special case.
+- `src/services/suggestion/marketContext.ts` head-start: tiny static `getMarketContext(pair)` returning `pairVolatility` per the `docs/09 §3.1` table + `sessionLiquidity: 'normal'`. Included here so the shared static data lives in one commit; the engine that consumes it lands in FXSW-023.
+
+**User-directed decisions:** None — `docs/09 §11` table pinned every named-client value; the few gaps were doc-pack guidance interpretations (see below).
+
+**Agent-directed decisions:**
+- **Halcyon Capital's `recent30dAcceptanceRate` encoded as `0.5`, not `0`.** `docs/09 §11` shows `—` for Halcyon (zero history). Encoded literally as `0`, Halcyon would trip the engine's `acceptanceRate < 0.4 → -0.5` rule in FXSW-023 — penalising a brand-new client for "low acceptance" they don't even have data for. `0.5` reads as a neutral prior ("no signal either way"). Comment in `clientProfiles.ts` documents the choice. The unknown-client fallback uses the same `0.5` for consistency.
+- **`averageMarginPaid` derived from tier defaults**, not specified per-client in `docs/09 §11`. Picked `1.5 / 2.5 / 3.0 / 0` for `platinum / gold / standard / new`. The field isn't consumed by the engine in v1 (`docs/09 §5` rules don't reference it); it's display-only context for an eventual "client history" panel.
+- **`MarginSuggestion` as a discriminated union** rather than the single flat shape `docs/09 §4` shows. The §7 credit-decline path doesn't have `suggestedPips`, `confidence`, or `factors` — making them optional on a single type would force every consumer to null-check. The `kind: 'ready' | 'credit-decline'` discriminator gives the FXSW-025/026 panel a clean exhaustiveness check.
+- **`marketContext.ts` bundled with FXSW-022** even though it's the engine's input source, because it's a 12-line static lookup and the suggestion/ directory benefits from having all the shared data land together. FXSW-023's engine consumes it.
+- **`clientId` derived from `clientName`** via lowercased-hyphenated form (`'acme-corp'`, `'globex-industries'`, etc.). The field exists on `ClientProfile` per the spec but no scenario keys off it yet; the slug form is the closest thing to a stable identifier that survives a copy-paste of the seed data.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**241 pass / 3 todo**, up from 235 / 3 — six new `clientProfiles` cases). E2E unchanged (3/3). Build clean.
+
+---
+
 ## FXSW-021 · OFF_HOURS_INTERVENTION E2E
 **Commit `65e2cbf`**
 

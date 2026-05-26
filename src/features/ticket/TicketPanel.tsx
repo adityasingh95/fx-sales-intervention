@@ -1,17 +1,22 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { formatTime } from '@/lib/format';
 import type { PriceTick } from '@/services/feed/types';
 import { usePrice } from '@/services/feed/usePrice';
+import { getClientProfile } from '@/services/suggestion/clientProfiles';
+import { suggestMargin } from '@/services/suggestion/engine';
+import { getMarketContext } from '@/services/suggestion/marketContext';
+import type { MarginSuggestion } from '@/services/suggestion/types';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ReasonsPanel from './ReasonsPanel';
+import SuggestionPanel from './SuggestionPanel';
 import SummaryPanel from './SummaryPanel';
 import TicketFooter from './TicketFooter';
 
@@ -42,6 +47,11 @@ export default function TicketPanel() {
   // pricingMode.
   const liveTick = usePrice(entry?.deal.pair ?? 'EURUSD');
   const displayTick = pricingMode === 'fixed' ? frozenTick : liveTick;
+  // AI suggestion (FXSW-025). Computed once per PickedUp visit, snapshotting
+  // the tick at compute time so live ticks don't recompute (per docs/09 §9).
+  // FXSW-026 adds Recompute + vol-shift triggers + the credit-decline UI.
+  const [suggestion, setSuggestion] = useState<MarginSuggestion | null>(null);
+  const suggestionComputed = useRef(false);
 
   // Reset margin + pricing mode whenever a different deal opens.
   useEffect(() => {
@@ -50,8 +60,50 @@ export default function TicketPanel() {
       setPricingMode('streaming');
       setFixedSide(null);
       setFrozenTick(null);
+      setSuggestion(null);
+      suggestionComputed.current = false;
     }
   }, [openDealId, entry]);
+
+  // Synchronous re-usable compute — driven both by the initial PickedUp
+  // entry effect below and by SuggestionPanel's Recompute / vol-shift
+  // callback.
+  const computeAndSetSuggestion = useCallback((): void => {
+    if (!entry || !liveTick) return;
+    const profile = getClientProfile(entry.deal.clientName);
+    const marketStatic = getMarketContext(entry.deal.pair);
+    setSuggestion(
+      suggestMargin({
+        deal: {
+          pair: entry.deal.pair,
+          side: entry.deal.side,
+          notional: entry.deal.notional,
+          defaultMarginPips: entry.deal.defaultMarginPips,
+          rejectionReasons: entry.rejectionReasons,
+        },
+        client: profile,
+        market: {
+          currentBid: liveTick.bid,
+          currentAsk: liveTick.ask,
+          ...marketStatic,
+        },
+      }),
+    );
+  }, [entry, liveTick]);
+
+  // Compute the suggestion on entry to PickedUp. Clears when SI leaves
+  // PickedUp; will recompute on re-entry (e.g. after Withdraw).
+  useEffect(() => {
+    if (!entry || entry.siState !== 'PickedUp') {
+      setSuggestion(null);
+      suggestionComputed.current = false;
+      return;
+    }
+    if (suggestionComputed.current) return;
+    if (!liveTick) return;
+    suggestionComputed.current = true;
+    computeAndSetSuggestion();
+  }, [entry, liveTick, computeAndSetSuggestion]);
 
   // Esc closes. Listener only active while open.
   useEffect(() => {
@@ -131,6 +183,16 @@ export default function TicketPanel() {
           </div>
 
           <ReasonsPanel reasons={rejectionReasons} />
+          <SuggestionPanel
+            suggestion={suggestion}
+            currentMargin={margin}
+            onApply={setMargin}
+            onRecompute={computeAndSetSuggestion}
+            onReject={() =>
+              useDealsStore.getState().forwardEvent(deal.dealId, { type: 'Reject' })
+            }
+            currentVolatility={getMarketContext(deal.pair).pairVolatility}
+          />
           <SummaryPanel deal={deal} />
           <PricingPanel
             pair={deal.pair}
@@ -157,10 +219,6 @@ export default function TicketPanel() {
             pair={deal.pair}
           />
           <DealSummaryPanel deal={deal} />
-
-          <p className="mt-2 text-xs text-text-mute">
-            AI Suggestion lands in FXSW-022 through FXSW-026.
-          </p>
         </div>
         <TicketFooter
           dealId={deal.dealId}
