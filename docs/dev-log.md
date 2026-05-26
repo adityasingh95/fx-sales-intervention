@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-026 · SuggestionPanel credit-decline + Recompute
-**Commit `TBD`**
+**Commit `a7cd0fd`**
 
 - TDD red→green: **6 new `SuggestionPanel.test.tsx` cases** (14 total) — credit-decline UI shows §7 message + Reject shortcut + `data-suggestion-state="credit-decline"` + no Apply; Reject hold-to-confirm (single click does nothing, 600ms hold fires `onReject`); Recompute click switches `data-suggestion-state` to `computing` then back to `ready` after the 800ms debounce and calls `onRecompute` exactly once; multiple rapid Recompute clicks coalesce into one call; Apply disabled during computing; vol shift > 30% triggers recompute, ≤ 30% does not. Removed the FXSW-025 placeholder test "renders nothing for credit-decline" — superseded.
 - `src/features/ticket/SuggestionPanel.tsx` extensions:
