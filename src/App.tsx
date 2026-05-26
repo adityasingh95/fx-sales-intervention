@@ -1,8 +1,11 @@
 import { Volume2 } from 'lucide-react';
+import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
+import TicketPanel from '@/features/ticket/TicketPanel';
+import { useUiStore } from '@/state/stores/uiStore';
 
 function formatClock(d: Date): string {
   return d.toLocaleTimeString('en-GB', { hour12: false });
@@ -24,6 +27,7 @@ function isDevMode(): boolean {
 export default function App() {
   const clock = useSessionClock();
   const dev = isDevMode();
+  const ticketOpen = useUiStore((s) => s.openDealId !== null);
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
@@ -59,7 +63,12 @@ export default function App() {
           </time>
         </div>
       </header>
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main
+        className={clsx(
+          'flex flex-1 flex-col overflow-hidden transition-opacity duration-[240ms]',
+          ticketOpen && 'opacity-75',
+        )}
+      >
         <section className="basis-[55%] overflow-hidden border-b border-border">
           <ActiveBlotter />
         </section>
@@ -67,6 +76,7 @@ export default function App() {
           <HistoricBlotter />
         </section>
       </main>
+      <TicketPanel />
     </div>
   );
 }

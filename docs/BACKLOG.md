@@ -22,33 +22,33 @@
 
 | ID | Title | Phase | Effort | TDD | Status |
 |---|---|---|---|---|---|
-| FXSW-001 | Project scaffolding | 1 | M | 🟡 | ◐ |
+| FXSW-001 | Project scaffolding | 1 | M | 🟡 | ☑ |
 | FXSW-002 | Design tokens + Tailwind config | 1 | S | 🟡 | ☑ |
-| FXSW-003 | Folder structure | 1 | S | — | ☐ |
-| FXSW-004 | prebuild reference-mids script | 1 | S | 🔴 | ☐ |
-| FXSW-005 | State machine skeletons | 1 | M | 🔴 | ☐ |
-| FXSW-006 | AppShell + Header + empty blotter | 1 | M | 🟡 | ☐ |
-| FXSW-007 | PricingFeed with seeded RNG | 2 | M | 🔴 | ☐ |
-| FXSW-008 | DealFeed + scenario player | 2 | M | 🔴 | ☐ |
-| FXSW-009 | dealsStore + machine spawning | 2 | M | 🔴 | ☐ |
-| FXSW-010 | dealMachine cross-model coordination | 2 | L | 🔴 | ☐ |
-| FXSW-011 | statusFromMachines derivation | 2 | S | 🔴 | ☐ |
-| FXSW-012 | Active Blotter live + 5s removal + Historic | 2 | M | 🟡 | ☐ |
-| FXSW-013 | DevInjector + HAPPY_PATH_ESP E2E | 2 | M | 🟢 | ☐ |
-| FXSW-014 | TicketPanel shell + glass overlay | 3 | M | 🟡 | ☐ |
-| FXSW-015 | ReasonsPanel | 3 | S | 🟡 | ☐ |
-| FXSW-016 | Summary + DealSummary panels | 3 | S | 🟡 | ☐ |
-| FXSW-017 | PricingPanel streaming mode | 3 | M | 🟡 | ☐ |
-| FXSW-018 | PricingPanel fixed mode + margin controls | 3 | M | 🟡 | ☐ |
-| FXSW-019 | ClientSummaryPanel | 3 | S | 🔴 | ☐ |
-| FXSW-020 | TicketFooter + *Sent → *Ack flow | 3 | L | 🔴 | ☐ |
-| FXSW-021 | OFF_HOURS_INTERVENTION E2E | 3 | S | 🟢 | ☐ |
-| FXSW-022 | clientProfiles seed data | 4 | S | 🔴 | ☐ |
-| FXSW-023 | Suggestion engine (100% branch) | 4 | L | 🔴 | ☐ |
-| FXSW-024 | Rationale builder | 4 | S | 🔴 | ☐ |
-| FXSW-025 | SuggestionPanel ready / applied / Undo | 4 | M | 🟡 | ☐ |
-| FXSW-026 | SuggestionPanel credit-decline + recompute | 4 | M | 🟡 | ☐ |
-| FXSW-027 | SIZE_LIMIT + CREDIT_BREACH E2E | 4 | S | 🟢 | ☐ |
+| FXSW-003 | Folder structure | 1 | S | — | ☑ |
+| FXSW-004 | prebuild reference-mids script | 1 | S | 🔴 | ☑ |
+| FXSW-005 | State machine skeletons | 1 | M | 🔴 | ☑ |
+| FXSW-006 | AppShell + Header + empty blotter | 1 | M | 🟡 | ☑ |
+| FXSW-007 | PricingFeed with seeded RNG | 2 | M | 🔴 | ☑ |
+| FXSW-008 | DealFeed + scenario player | 2 | M | 🔴 | ☑ |
+| FXSW-009 | dealsStore + machine spawning | 2 | M | 🔴 | ☑ |
+| FXSW-010 | dealMachine cross-model coordination | 2 | L | 🔴 | ☑ |
+| FXSW-011 | statusFromMachines derivation | 2 | S | 🔴 | ☑ |
+| FXSW-012 | Active Blotter live + 5s removal + Historic | 2 | M | 🟡 | ☑ |
+| FXSW-013 | DevInjector + HAPPY_PATH_ESP E2E | 2 | M | 🟢 | ☑ |
+| FXSW-014 | TicketPanel shell + glass overlay | 3 | M | 🟡 | ☑ |
+| FXSW-015 | ReasonsPanel | 3 | S | 🟡 | ☑ |
+| FXSW-016 | Summary + DealSummary panels | 3 | S | 🟡 | ☑ |
+| FXSW-017 | PricingPanel streaming mode | 3 | M | 🟡 | ☑ |
+| FXSW-018 | PricingPanel fixed mode + margin controls | 3 | M | 🟡 | ☑ |
+| FXSW-019 | ClientSummaryPanel | 3 | S | 🔴 | ☑ |
+| FXSW-020 | TicketFooter + *Sent → *Ack flow | 3 | L | 🔴 | ☑ |
+| FXSW-021 | OFF_HOURS_INTERVENTION E2E | 3 | S | 🟢 | ☑ |
+| FXSW-022 | clientProfiles seed data | 4 | S | 🔴 | ☑ |
+| FXSW-023 | Suggestion engine (100% branch) | 4 | L | 🔴 | ☑ |
+| FXSW-024 | Rationale builder | 4 | S | 🔴 | ☑ |
+| FXSW-025 | SuggestionPanel ready / applied / Undo | 4 | M | 🟡 | ☑ |
+| FXSW-026 | SuggestionPanel credit-decline + recompute | 4 | M | 🟡 | ☑ |
+| FXSW-027 | SIZE_LIMIT + CREDIT_BREACH E2E | 4 | S | 🟢 | ☑ |
 | FXSW-028 | Notifications visual layer | 5 | M | 🟡 | ☐ |
 | FXSW-029 | Audio chime + mute + settingsStore | 5 | M | 🔴 | ☐ |
 | FXSW-030 | Visual polish pass | 5 | M | — | ☐ |
