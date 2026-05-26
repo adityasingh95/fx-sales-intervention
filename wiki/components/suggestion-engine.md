@@ -92,7 +92,7 @@ When `rejectionReasons` includes `CREDIT_LIMIT`, the engine returns the credit-d
 { state: 'credit-decline', message: 'Credit limit breach — recommend declining.', ... }
 ```
 
-No `suggestedPips`. The [AI suggestion panel](../features/) shows a Reject shortcut button instead of Apply. Rationale: see [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md).
+No `suggestedPips`. The [AI suggestion panel](../features/ai-margin-suggestion.md) shows a Reject shortcut button instead of Apply. Rationale: see [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md).
 
 ## Algebraic invariant
 

@@ -47,3 +47,10 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ## [2026-05-26] lint | first-run sweep — vendor-neutrality grep clean (zero hits in content pages; rule-definition files retain term by necessity)
 
 ## [2026-05-26] ingest | raw/prs/FXSW-013-phase-2-summary.md (synthesized from docs/dev-log.md + git log; build agent never produced the docs/phase-summaries file the KICKOFF-PROMPT contract called for). Affects no new wiki pages — Phase 2 ticket frontmatter was already inlined on relevant component/feature/scenario pages during the first-run ingest.
+
+## [2026-05-26] lint | First-run lint pass. Findings:
+##   - LINT-001 (fixed): 10 directory-style links (e.g. [...](../features/)) didn't resolve to a specific page. Repointed to specific files or to the corresponding section of wiki/index.md.
+##   - LINT-002 (escalated): docs/BACKLOG.md status column severely stale — only 2 ☑ tickets, but commits + dev-log entries exist for FXSW-001 through FXSW-013 + FXSW-034. Surfaced to user; build agent owes a backlog refresh in next session (wiki write boundary blocks fix).
+##   - LINT-003 (deferred): src/services/feed/referenceMids.json absent locally; expected per ADR-0005 (gitignored build artifact regenerated on predev/prebuild). No action.
+##   - Code-drift on engine.ts pip deltas + clientProfiles.ts: deferred — files not yet implemented (Phase 4).
+##   - Vendor-neutrality grep clean. State-machine drift clean. Dependency versions match package.json. All 5 scenarios match definitions.ts. data-* test contract clean (forward-looking wiki-only attrs are roadmap claims on in-progress pages).

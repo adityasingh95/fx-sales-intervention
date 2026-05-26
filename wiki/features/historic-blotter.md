@@ -35,7 +35,7 @@ Same as the Active Blotter, except:
 
 ## How deals get here
 
-When the SI machine reaches the `Removed` final state (5 seconds after a terminal SI state) — or when the RFS machine reaches `Removed` for ESP deals (where SI stays at `Initial`) — the [dealsStore](../components/) archives the entry from `deals` to `historic`. The outcome label is derived at archival time from the final RFS and SI states.
+When the SI machine reaches the `Removed` final state (5 seconds after a terminal SI state) — or when the RFS machine reaches `Removed` for ESP deals (where SI stays at `Initial`) — the [dealsStore](../components/deals-store.md) archives the entry from `deals` to `historic`. The outcome label is derived at archival time from the final RFS and SI states.
 
 The archive call is idempotent — whichever subscriber (RFS or SI) fires `Removed` first wins; the second is a no-op.
 

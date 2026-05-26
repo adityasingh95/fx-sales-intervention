@@ -29,7 +29,7 @@ interface DealFeed {
 
 ## Why scenario-driven, not auto-generated
 
-Random deal generation in a demo creates noise. Scripted scenarios are reproducible, demoable, and testable. Each scenario has a deterministic data payload (client name, account, pair, notional, reasons) registered in `src/services/scenarios/definitions.ts` — see [scenarios/](../scenarios/).
+Random deal generation in a demo creates noise. Scripted scenarios are reproducible, demoable, and testable. Each scenario has a deterministic data payload (client name, account, pair, notional, reasons) registered in `src/services/scenarios/definitions.ts` — see the [Scenarios section of the index](../index.md#scenarios).
 
 ## Event types
 

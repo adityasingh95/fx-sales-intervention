@@ -11,7 +11,7 @@ ticket: FXSW-027
 
 **ID:** `CREDIT_BREACH`
 
-Demonstrates the trader rejecting a deal that should not be priced, with the AI Margin Suggestion's **credit-decline** guardrail surfacing the recommendation before the trader acts. Exercises the SI reject path (`Initial → PickUpSent → PickedUp → RejectSent → TraderRejected`), [ADR-0007](../decisions/) (credit-breach → recommend decline, not wider pricing), and the Historic outcome `Rejected by Trader`.
+Demonstrates the trader rejecting a deal that should not be priced, with the AI Margin Suggestion's **credit-decline** guardrail surfacing the recommendation before the trader acts. Exercises the SI reject path (`Initial → PickUpSent → PickedUp → RejectSent → TraderRejected`), [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md) (credit-breach → recommend decline, not wider pricing), and the Historic outcome `Rejected by Trader`.
 
 ## Test data
 
@@ -65,7 +65,7 @@ Scenario: Credit-breach GBPUSD deal is rejected by trader
 
 ## AI Suggestion behaviour
 
-The suggestion engine returns the credit-decline shape (`state === 'credit-decline'`, no `suggestedPips`) per [ADR-0007](../decisions/). The [AI Margin Suggestion panel](../features/) renders:
+The suggestion engine returns the credit-decline shape (`state === 'credit-decline'`, no `suggestedPips`) per [ADR-0007](../decisions/ADR-0007-credit-breach-recommend-decline.md). The [AI Margin Suggestion panel](../features/ai-margin-suggestion.md) renders:
 
 > "Credit limit breach — recommend declining."
 

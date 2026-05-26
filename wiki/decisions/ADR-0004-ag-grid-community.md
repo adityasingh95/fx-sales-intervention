@@ -36,7 +36,7 @@ Option 3: A plain flex-row table. AG-Grid never shipped despite being in `packag
 
 ## Why the change
 
-The Phase 2 implementation of [active-blotter.md](../features/active-blotter.md) and [historic-blotter.md](../features/historic-blotter.md) discovered that AG-Grid 31 has no first-class API for per-row `data-*` attributes. The Playwright test contract (see [scenarios/](../scenarios/)) is built on `data-deal-id`, `data-rfs-state`, `data-si-state`, `data-display-status`, `data-dealable`, `data-removing` — all on each row. Implementing those via AG-Grid would have required either:
+The Phase 2 implementation of [active-blotter.md](../features/active-blotter.md) and [historic-blotter.md](../features/historic-blotter.md) discovered that AG-Grid 31 has no first-class API for per-row `data-*` attributes. The Playwright test contract (see the [Scenarios section of the index](../index.md#scenarios)) is built on `data-deal-id`, `data-rfs-state`, `data-si-state`, `data-display-status`, `data-dealable`, `data-removing` — all on each row. Implementing those via AG-Grid would have required either:
 
 - A custom row template (heavy + brittle).
 - Post-render DOM mutation (fragile + hostile to React).

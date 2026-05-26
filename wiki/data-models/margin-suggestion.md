@@ -7,7 +7,7 @@ status: in-progress
 
 # Data model — `MarginSuggestion`
 
-Output of the [suggestion engine](../components/suggestion-engine.md). Consumed by the [AI Margin Suggestion panel](../features/) and observable in the test contract.
+Output of the [suggestion engine](../components/suggestion-engine.md). Consumed by the [AI Margin Suggestion panel](../features/ai-margin-suggestion.md) and observable in the test contract.
 
 ## Shape — `ready` state
 

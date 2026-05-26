@@ -76,7 +76,7 @@ Each row carries:
 >
 ```
 
-Playwright tests assert on `data-si-state` (most informative) and `data-display-status` (user-facing label). Both are stable parts of the test contract — see [scenarios/](../scenarios/) for the per-scenario assertions.
+Playwright tests assert on `data-si-state` (most informative) and `data-display-status` (user-facing label). Both are stable parts of the test contract — see the [Scenarios section of the index](../index.md#scenarios) for the per-scenario assertions.
 
 ## Implementation
 

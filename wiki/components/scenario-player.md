@@ -61,7 +61,7 @@ Five definitions registered in v1:
 | `SIZE_LIMIT_MARGIN_TUNE` | `NEW_SI_DEAL` | `CLIENT_ACCEPT` 2000ms after SI reaches `Quoted` |
 | `RELEASE_PATH` | `NEW_SI_DEAL` | (none — trader must release) |
 
-Full payloads (client, account, pair, side, notional, reasons) live in `src/services/scenarios/definitions.ts` and per-scenario wiki pages under [scenarios/](../scenarios/). The `definitions.test.ts` round-trip verifies the definitions match the docs.
+Full payloads (client, account, pair, side, notional, reasons) live in `src/services/scenarios/definitions.ts` and per-scenario wiki pages — see the [Scenarios section of the index](../index.md#scenarios). The `definitions.test.ts` round-trip verifies the definitions match the docs.
 
 ## State-gate type loosening
 

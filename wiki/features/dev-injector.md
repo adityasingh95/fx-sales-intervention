@@ -43,7 +43,7 @@ The injector is a demo/dev tool, not a trader-facing feature. Hiding it behind `
 <button data-testid="reset-session">…</button>
 ```
 
-Each E2E scenario spec drives the first click via the corresponding `data-testid`. See [scenarios/](../scenarios/).
+Each E2E scenario spec drives the first click via the corresponding `data-testid`. See the [Scenarios section of the index](../index.md#scenarios).
 
 ## Sources
 
