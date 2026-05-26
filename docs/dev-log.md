@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-024 · Rationale builder
-**Commit `TBD`**
+**Commit `8b12400`**
 
 - TDD red→green: **7 `rationale.test.ts` cases** — the two `docs/09 §8` canonical scenarios (Globex/USDJPY/OFF_HOURS, Northwind/12M EURUSD/SIZE_LIMIT) asserted with regex tolerance + length ≤ 120; the 0-factor case (only tier) checks the line starts with the tier label, ends with `— suggesting N pips.`, and has no orphan-comma artifacts; the 5+ factor case asserts truncation keeps the line ≤ 120 while preserving the tier label and pip count; the credit-decline path asserts the engine wires `CREDIT_DECLINE_RATIONALE` exactly; direct `buildRationale` call asserts the trailing `— suggesting N pips.` shape.
 - `src/services/suggestion/rationale.ts` real per `docs/09 §8`:
