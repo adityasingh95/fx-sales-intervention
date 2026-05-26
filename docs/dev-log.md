@@ -33,7 +33,7 @@ Most recent first.
 ---
 
 ## FXSW-027 · SIZE_LIMIT_MARGIN_TUNE + CREDIT_BREACH E2E
-**Commit `TBD`**
+**Commit `ab8cd30`**
 
 - TDD red→green: **two new Playwright specs** transcribing `docs/07 §3` (Credit Breach) and `docs/07 §4` (Size Limit + Margin Tune).
   - `tests/e2e/credit-breach.spec.ts` (7.3s) — inject CREDIT_BREACH → INTERVENE row for Halcyon Capital / GBPUSD / "Credit limit breach" → click row → ticket opens → SI advances to PickedUp → ReasonsPanel shows "Client credit limit would be breached" → `data-suggestion-state="credit-decline"` + §7 rationale visible + `suggestion-reject` present + `suggestion-apply` absent → hold Reject 600ms → SI cycles RejectSent → TraderRejected → status REJECTED → 5s removal → Historic with `data-outcome="Rejected by Trader"`.
