@@ -97,6 +97,28 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - Added ## Tests sections to 9 component pages (pricing-feed, deal-feed, scenario-player, deals-store, rfs-machine, si-machine, deal-machine, status-derivation, suggestion-engine) and 6 feature pages (active-blotter, historic-blotter, ticket, ai-margin-suggestion, notifications, dev-injector). Each section: file path + case count + 1-line category summary. Cross-references to test-patterns.md §N where a pattern is at play.
 ##   - onboarding.md §8 updated to point at test-patterns.md as required reading before first test.
 ##   - wiki/index.md: test-patterns.md added to Components category.
+## [2026-05-26] ingest | docs/phase-summaries/FXSW-033-summary.md + Phase 5 commits (FXSW-028 → FXSW-033). Final-sweep ingest. Affected pages:
+##   - wiki/features/notifications.md: in-progress → stable. Major rewrite covering toast/title-flash/row-flash/WebAudio-chime/mute, dispatcher dedupe via notifiedDealIds Set, audio unlock + lazy AudioContext + factory injection, per-deal one-shot chime via Set-size growth. Tests inventory across 5 test files (20 cases). Known interim + Phase-5-resolved items called out.
+##   - wiki/scenarios/release-path.md: in-progress → stable. Cited commit ad4cade. Documented Release-closes-ticket (one-line addition to TicketFooter handler) vs Esc/backdrop-don't (passive paths). Runtime 0.7s (fastest E2E).
+##   - wiki/features/ticket.md: HoldButton inline note replaced with shared src/components/Button.tsx primitive reference (FXSW-030 lift); cross-reference to AI suggestion panel.
+##   - wiki/features/ai-margin-suggestion.md: "Known interim" duplicate RejectHoldButton item moved to "Resolved during Phase 5" (FXSW-030 lift).
+##   - wiki/overview.md §Current state: Phase 4 closed → Phase 5 closed, full feature list, 316 unit + 6 E2E counts, CI/deploy status, two user-side follow-ups (CI green flip + demo recording).
+##   - wiki/index.md: status refresh — notifications stable, release-path passing E2E, onboarding stable.
+##   - wiki/onboarding.md: REWRITTEN FROM SCRATCH per user direction + schema mandate (FXSW-033 trigger). 15 sections: what this is, demo, architecture, stack, repo, commands, three-agent setup, where-to-start map, testing + patterns, five scenarios, cross-cutting rules, DoD, full build progression, 11 lessons-that-survived, glossary pointer. Status: stable.
+
+## [2026-05-26] lint | FINAL-SWEEP lint pass — all 11 categories, all code-drift checks per WIKI_SCHEMA.md §Lint. Results:
+##   - 1. Vendor neutrality: ✓ clean (zero hits in content pages).
+##   - 2. State machines: ✓ clean (siMachine 11 states + Removed; rfsMachine 6 states + Removed; matches wiki).
+##   - 3. Dependency versions: ✓ clean (react/typescript/vite/tailwindcss/xstate/zustand all match package.json).
+##   - 4. Scenario data: ✓ clean (all 5 scenarios match definitions.ts on client/account/pair/side/notional/reasons).
+##   - 5. Client profiles: ✓ clean (clientProfiles.ts unchanged in Phase 5; last verified clean in Phase 4 lint).
+##   - 6. PIP-DELTA DRIFT (mandatory, engine.ts ↔ suggestion-engine.md): ✓ CLEAN — 13/13 values match. engine.ts unchanged in Phase 5.
+##   - 7. data-testid: ✓ clean. All apparent "drift" findings are false positives — pipe-separated wiki notation (margin-input/plus/mid-cell etc.), runtime testId prop on Button + cells (bid-cell/ask-cell/suggestion-reject), template-literal scenario buttons (inject-{ScenarioId}), dynamic toast-{dealId}, doc placeholder strings.
+##   - 8. Component naming: ✓ mostly clean. IconButton.tsx / NumberInput.tsx / Tooltip.tsx are 1-line `export {}` stubs from FXSW-003 — inventoried in docs/05 §3.1 but never built. Wiki documents what's used.
+##   - 9. Broken links: ✓ clean (zero unresolved file targets).
+##   - 10. Orphan pages: ✓ clean (every page has at least one inbound link).
+##   - LINT-501 (escalated): docs/BACKLOG.md shows FXSW-034 as ☐ but the GitHub Pages deploy workflow shipped at commit 0762c4e in Phase 1 (pulled forward) — see docs/dev-log.md FXSW-034 entry. Wiki agent can't flip the box (write boundary), escalating to build agent for next session.
+
 ## [2026-05-26] schema-update | Refresh stale-state synthesis pages post-merge. Spotted by user. Fixed:
 ##   - overview.md §Current state: "Phase 2 closed" → "Phase 4 closed" with current test suite counts (296 unit + 4 E2E + smoke) and remaining-Phase-5 list.
 ##   - onboarding.md §9 build-progression: Phases 3 + 4 flipped Not-started → Done; Phase 2 demoted from "(current state)" to plain Done.

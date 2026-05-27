@@ -4,8 +4,8 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 
 ## Overview
 
-- [overview.md](overview.md) — product description, goals, personas, in-scope vs out-of-scope, current build state.
-- [onboarding.md](onboarding.md) — synthesized new-engineer guide (in-progress; rewritten end-of-Phase-5).
+- [overview.md](overview.md) — product description, goals, personas, in-scope vs out-of-scope. **Phase 5 closed — build complete, project shippable.**
+- [onboarding.md](onboarding.md) — **stable.** Joining-Monday guide: demo, architecture, stack, repo layout, commands, three-agent setup, where-to-start map, testing, scenarios, conventions, full build progression, lessons learned.
 
 ## Features
 
@@ -13,7 +13,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/historic-blotter.md](features/historic-blotter.md) — terminal deals, outcome derivation, capacity cap.
 - [features/ticket.md](features/ticket.md) — **stable.** SI ticket panel, panel stack (Reasons/Summary/AI/Pricing/ClientSummary/DealSummary/Footer), streaming + fixed pricing modes, hold-to-confirm + double-click footer actions.
 - [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
-- [features/notifications.md](features/notifications.md) — toast / row flash / title flash / WebAudio chime, mute toggle.
+- [features/notifications.md](features/notifications.md) — **stable.** Toast + title flash + row flash + WebAudio chime + mute toggle + dispatcher dedupe.
 - [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1`.
 
 ## Components
@@ -56,7 +56,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [scenarios/off-hours-intervention.md](scenarios/off-hours-intervention.md) — canonical SI happy path. **Passing E2E (FXSW-021).**
 - [scenarios/credit-breach.md](scenarios/credit-breach.md) — AI credit-decline guardrail + trader reject. **Passing E2E (FXSW-027).**
 - [scenarios/size-limit-margin-tune.md](scenarios/size-limit-margin-tune.md) — AI suggestion + Apply. **Passing E2E (FXSW-027).**
-- [scenarios/release-path.md](scenarios/release-path.md) — release back to desk. E2E pending FXSW-031.
+- [scenarios/release-path.md](scenarios/release-path.md) — release back to desk. **Passing E2E (FXSW-031, 0.7s).**
 
 ## Glossary
 

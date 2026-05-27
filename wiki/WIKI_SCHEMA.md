@@ -12,7 +12,7 @@
 
 ## Vendor neutrality rule
 
-The product is brand-neutral. **No vendor names — including "Caplin" — anywhere in `wiki/` or `raw/`.** Page bodies, headings, frontmatter, code blocks, link text, URLs, file names. No exceptions, including for citation/research-grounding URLs. If a fact originated in a vendor doc, paraphrase it from the relevant in-repo `/docs/` file and cite that file instead. Industry-standard FX terminology (RFS, Sales Intervention, the canonical state names) is fine — those are not vendor-proprietary. Enforced per-write by rule §10 in `wiki/CLAUDE.md` and per-lint by `grep -ri caplin wiki/ raw/` returning zero hits.
+The product is brand-neutral. **No vendor names anywhere in `wiki/` or `raw/`.** Page bodies, headings, frontmatter, code blocks, link text, URLs, file names. No exceptions, including for citation/research-grounding URLs. If a fact originated in a vendor doc, paraphrase it from the relevant in-repo `/docs/` file and cite that file instead. Industry-standard FX terminology (RFS, Sales Intervention, the canonical state names) is fine — those are not vendor-proprietary. Enforced per-write by rule §10 in `wiki/CLAUDE.md` and per-lint by a case-insensitive vendor-name grep over `wiki/` and `raw/` returning zero hits.
 
 ## Page categories
 
