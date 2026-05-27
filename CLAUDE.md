@@ -6,130 +6,115 @@ Operational instructions for Claude Code. Auto-loaded at every session start. Ke
 
 A frontend prototype of a **sales-trader workstation for FX manual pricing intervention**. Product name: **FX Sales Workstation** (repo: `fx-sales-intervention`). Single-page React app, in-memory state, simulated pricing feed, no backend.
 
-**The build must not reference Caplin anywhere.** No "Caplin" in UI strings, package metadata, comments, the deployed README, code identifiers, or any user-visible text. The internal spec docs under `/docs` reference Caplin URLs for research grounding only — those are not shipped with the build. If anything in the final bundle (including source maps) mentions Caplin, that is a defect.
+## Brand-neutrality rule
 
-Industry-standard FX terminology that happens to also be used by Caplin (`Quoted`, `PickedUp`, `Executable`, `Sales Intervention`, `RFS`, `Active Deals Blotter`, etc.) is fine and expected — these are not proprietary to Caplin.
+No vendor names may appear anywhere in committed source, documentation, package metadata, comments, UI strings, README content, source-map identifiers, wiki/raw content, or generated build output.
 
-**Source-of-truth docs (research grounding, not shipped):**
-- Overview: https://docs.caplin.com/developer/fx-sales/st-sales-intervention
-- Architecture: https://docs.caplin.com/developer/fx-sales/st-sales-intervention-architecture
-- User interface: https://docs.caplin.com/developer/fx-sales/st-sales-intervention-user-interface
-- Implementation (canonical state names + RFS↔SI relationships): https://docs.caplin.com/developer/fx-sales/st-implementing-sales-intervention
-
-Use the canonical state and event names everywhere in code: `Queued`, `PickedUp`, `Executable`, `Quoted`, `TradeConfirmed`, `TraderRejected`, `ClientRejected`, etc. Do not invent friendlier internal names — the display labels in the UI ("INTERVENE", "DONE") are derived from these via `src/features/blotter/statusFromMachines.ts`.
+Industry-standard FX terminology is allowed and expected: `Queued`, `PickedUp`, `Executable`, `Quoted`, `TradeConfirmed`, `Sales Intervention`, `RFS`, `Active Deals Blotter`, and similar terms are treated as generic workflow terminology.
 
 ## Stack
 
-- **Build:** Vite 5 + TypeScript 5 (strict mode)
-- **UI:** React 18 + Tailwind CSS 3 + `clsx` + `lucide-react` icons
-- **State:** Zustand (UI/transient) + XState (deal lifecycle)
-- **Test:** Vitest + React Testing Library (unit/component) + Playwright (E2E)
+- **Build:** Vite 5 + TypeScript 5 strict mode
+- **UI:** React 18 + Tailwind CSS 3 + `clsx` + `lucide-react`
+- **State:** Zustand for UI/transient state + XState for deal lifecycle
+- **Test:** Vitest + React Testing Library + Playwright
 - **Lint/format:** ESLint + Prettier
 - **Package manager:** pnpm
 
 ## Commands
 
 ```bash
-pnpm install          # install
-pnpm dev              # vite dev server on :5173
-pnpm test             # vitest watch
-pnpm test:run         # vitest single run (used by CI)
-pnpm test:e2e         # playwright headless
-pnpm test:e2e:ui      # playwright UI mode
-pnpm lint             # eslint
-pnpm typecheck        # tsc --noEmit
-pnpm build            # production build
-pnpm preview          # serve production build on :4173
+pnpm install
+pnpm dev
+pnpm test
+pnpm test:run
+pnpm test:e2e
+pnpm test:e2e:ui
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm preview
 ```
 
-CI must pass `lint`, `typecheck`, `test:run`, `test:e2e` before merge.
+CI must pass `lint`, `typecheck`, `test:run`, and `test:e2e` before merge.
 
 ## Folder map
 
-```
+```text
 /src
-  /components       Shared dumb components (Button, Pill, Toast, IconButton)
+  /components       Shared dumb components
   /features
     /blotter        Active + Historic blotters, row cells, status pills
-    /ticket         Spot ticket panels (Reasons, Summary, Pricing, etc.)
+    /ticket         Spot ticket panels
     /notifications  Toast manager + audio player + mute toggle
-    /dev-injector   Dev-only panel to inject scenarios (hidden behind ?dev=1)
+    /dev-injector   Dev-only panel to inject scenarios
   /services
-    /feed           PricingFeed + DealFeed (mock implementations)
-    /scenarios      Pre-canned scenario definitions (see 07-scenario-pack.md)
+    /feed           PricingFeed + DealFeed mock implementations
+    /scenarios      Pre-canned scenario definitions
+    /suggestion     Deterministic AI Margin Suggestion service
   /state
-    /stores         Zustand stores (deals, ui, settings)
-    /machines       XState machines (dealMachine, ticketMachine)
-  /types            Shared TS types (Deal, Quote, Pair, RejectionReason)
-  /lib              Pure utility (pip math, formatters, time helpers)
+    /stores         Zustand stores
+    /machines       XState machines
+  /types            Shared TS types
+  /lib              Pure utility
   /styles           Tailwind config, design tokens
-  App.tsx
-  main.tsx
 /tests
-  /unit             Vitest specs (.test.ts)
-  /e2e              Playwright specs (.spec.ts)
-/docs               This doc pack
+  /unit
+  /e2e
+/docs               Specification and project documentation
+/wiki               Synthesized project knowledge, owned by Wiki Agent
 ```
 
 ## Conventions
 
-- **TypeScript strict.** No `any`. No `// @ts-ignore`. If a type is hard, write the type — don't escape.
-- **No mutation.** All state updates immutable. Zustand stores use `set(state => ({...}))`.
-- **State transitions go through XState.** Never set a deal's status field directly; always send an event to the deal's state machine. See `03-trade-state-model.md`.
+- **TypeScript strict.** No `any`. No `// @ts-ignore`.
+- **No mutation.** State updates must be immutable.
+- **State transitions go through XState.** Never set lifecycle state directly.
 - **Pricing math lives in `/lib/pips.ts`.** Do not inline pip/margin math in components.
-- **No real network calls.** All `fetch`, `WebSocket`, `EventSource` is banned in `/src`. Anything that looks like I/O must go through `services/feed/`.
-- **Money values as `number` in display units, never strings.** Format at the render boundary only.
-- **Files under 300 lines.** Split if larger.
-- **One default export per file** for components, named exports for utilities.
-- **Test colocation:** `Foo.tsx` → `Foo.test.tsx` next to it for component tests; pure logic tests live under `/tests/unit`.
+- **No real network calls in `/src`.** Anything feed-like must go through `services/feed/`.
+- **Money values as numbers in display units, never strings.** Format at render boundary only.
+- **Files under 300 lines** unless a documented exception is warranted.
+- **Test colocation:** component tests sit near components; pure logic tests live under `/tests/unit` or colocated with service/lib code.
 
 ## Critical rules
 
-1. **The product name is "FX Sales Workstation".** No mention of "Caplin" in any shipped artifact (UI text, README on the final repo, comments, package.json, source-map identifiers). Industry-standard FX terms (RFS, Sales Intervention, the state names from `03`) are fine — those are not Caplin-proprietary.
-2. **Never call external pricing APIs.** This is a prototype with a simulated feed.
-3. **Never persist beyond `sessionStorage`**, and even that only for the mute-toggle and the AI-suggestion dismissal flag.
-4. **Audio playback requires a user-gesture unlock.** Wire this on first click anywhere in the app — see `02-functional-spec.md §Notifications`.
-5. **The 5-second removal rule for completed/terminal trades is a real spec requirement** — see `02-functional-spec.md §Active Blotter`.
-6. **Every state change emits the canonical state name** the E2E tests can observe via `data-si-state` and `data-rfs-state` attributes on the row.
-7. **Two machines per deal, not one.** The RFS Trade Model and the Sales Intervention Trade Model are distinct and run in parallel. Implement them as two XState machines coordinated by a parent `dealMachine` actor. See `03-trade-state-model.md §6`.
-8. **`*Sent` states are not skippable.** `PickUpSent`, `QuoteSent`, `WithdrawSent`, `HoldSent`, `RejectSent` each take ~250ms (configurable, zeroable in tests) to simulate backend ack.
-9. **The AI Margin Suggestion is a pure deterministic function**, not a real model call. See `09-suggestion-engine.md`. It must never reference Caplin or any vendor; the in-UI label is "AI Margin Suggestion" or "Suggested Markup".
-10. **Never write to `wiki/` or `raw/`.** Those directories belong to the Wiki Agent (a separate Claude Code session). Your write boundary is `src/`, `tests/`, `scripts/`, `package.json`, and config files at the repo root. If a backlog ticket mentions documentation, that means updating `docs/` — the wiki layer is downstream.
-
-## Hand-off contract with the Wiki Agent
-
-At the end of each phase, after the E2E gate passes, produce your end-of-phase summary in the format defined by `KICKOFF-PROMPT.md`. Save it to `docs/phase-summaries/FXSW-{phase-last-ticket-id}-summary.md` (e.g., `docs/phase-summaries/FXSW-013-summary.md`). This is the source of truth the Wiki Agent will ingest. After saving, your phase is done — the Wiki Agent runs in a separate session and the human invokes it.
-
-(Per-project decision recorded in Phase 0: summaries live in `docs/phase-summaries/` rather than `raw/prs/` so rule §10's write boundary stays strict. The Wiki Agent setup must be told to ingest from this path.)
+1. **Product name:** `FX Sales Workstation`.
+2. **Brand-neutrality:** no vendor names anywhere in committed files or generated output.
+3. **Simulated feed only:** never call external pricing APIs at runtime.
+4. **Persistence:** no persistence beyond `sessionStorage`, limited to small UI preferences.
+5. **Audio unlock:** WebAudio playback requires a user gesture.
+6. **5-second removal rule:** completed/terminal trades stay in Active briefly, then archive to Historic.
+7. **Canonical state names:** state names and `data-*` test attributes must stay stable.
+8. **Two machines per deal:** RFS and Sales Intervention trade models remain distinct, coordinated by a parent deal machine.
+9. **`*Sent` states are not skippable:** simulated acknowledgement states are part of the UX contract.
+10. **AI Margin Suggestion is deterministic:** no real model call in this prototype.
+11. **Build agent write boundary:** do not write to `wiki/` or `raw/`; those are Wiki Agent-owned directories unless an explicit one-time bootstrap exception is recorded.
+12. **Dev-log update:** each implementation task should append a concise entry to `docs/dev-log.md` unless the task is purely metadata cleanup.
 
 ## Before editing X, read Y
 
-- Anything in `/src/state/machines/` → `03-trade-state-model.md`
-- Anything in `/src/services/feed/` → `04-dummy-feed-spec.md`
-- Anything in `/src/services/suggestion/` → `09-suggestion-engine.md`
-- Anything in `/src/features/ticket/SuggestionPanel.tsx` → `09-suggestion-engine.md` + `05-ui-ux-spec.md §4.5`
-- Anything in `/src/features/ticket/` (other) → `02-functional-spec.md §Tickets` + `05-ui-ux-spec.md`
-- Anything in `/src/features/blotter/` → `02-functional-spec.md §Blotters` + `05-ui-ux-spec.md §Blotter`
-- Adding a new scenario → `07-scenario-pack.md`
-- Test file changes → `08-test-plan.md`
+- `/src/state/machines/` → `docs/03-trade-state-model.md`
+- `/src/services/feed/` → `docs/04-dummy-feed-spec.md`
+- `/src/services/suggestion/` → `docs/09-suggestion-engine.md`
+- `/src/features/ticket/SuggestionPanel.tsx` → `docs/09-suggestion-engine.md` + `docs/05-ui-ux-spec.md`
+- `/src/features/ticket/` → `docs/02-functional-spec.md` + `docs/05-ui-ux-spec.md`
+- `/src/features/blotter/` → `docs/02-functional-spec.md` + `docs/05-ui-ux-spec.md`
+- New scenario → `docs/07-scenario-pack.md`
+- Test changes → `docs/08-test-plan.md`
 
-## Definition of done (per task)
+## Definition of done
 
-- TypeScript compiles with no errors and no `any` in changed files.
-- Unit tests for any new pure function in `/lib` or `/state`.
-- Component tests for any new visible behaviour.
-- If the change is in a scenario path, the relevant Playwright test still passes.
-- `data-testid` and `data-deal-status` attributes preserved on testable elements.
+- TypeScript compiles cleanly.
+- Lint passes with zero warnings.
+- Unit/component tests pass.
+- Relevant Playwright tests pass.
 - No console errors or warnings in dev mode.
-- **Append a new entry to `docs/dev-log.md`** in the same in-chat-summary voice as existing entries: terse bullets, code in backticks, gate counts as the last bullet. Split the decisions taken into two clearly-labelled sub-lists:
-  - **User-directed decisions** — decisions where the agent surfaced options via `AskUserQuestion` (or equivalent) and the user picked. Name the options offered and the choice. If there were none in this ticket, write "None — all decisions within doc-pack guidance" so the absence is visible.
-  - **Agent-directed decisions** — decisions the agent took autonomously: architecture trade-offs, spec-vs-toolchain reality reconciliations, idiomatic-pattern picks, anything a future reader would want to see.
-
-  This split is what makes the dev-log presentation material: it shows where the agent had autonomy under doc-pack guidance vs where it correctly escalated to the human. Treat as a per-ticket deliverable, not optional documentation. **Separate from** `docs/phase-summaries/` (Wiki Agent hand-off, see above).
+- Build output is brand-neutral.
 
 ## When in doubt
 
-Ask, in this order:
-1. Is this in the doc pack? Read it.
-2. Is this in the Caplin docs? Cite the URL in your answer.
-3. Is this genuinely ambiguous? Surface it as a question, do not guess.
+Ask in this order:
+
+1. Is this covered in the doc pack?
+2. Is the current code already the source of truth?
+3. Is this genuinely ambiguous?
