@@ -39,7 +39,6 @@ Toggle the bell icon in the header to mute the chime. State persists to
 - Vite 5 + TypeScript 5 (strict, no `any`)
 - React 18 + Tailwind CSS 3 + lucide-react
 - Zustand (UI / transient state) + XState 5 (deal lifecycle)
-- AG-Grid Community 31 (blotters)
 - Vitest + React Testing Library (unit / component)
 - Playwright (E2E, chromium-only, single worker)
 

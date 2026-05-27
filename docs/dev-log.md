@@ -32,6 +32,32 @@ Most recent first.
 
 ---
 
+## Post-Phase 5 cleanup
+**Commit `cfabbdd`**
+
+Project-wide sweep for unused stuff after the build landed. No new feature work, no scope shift, no breaking changes.
+
+- **Deleted 7 stub files** (each was a single-line `export {};` placeholder from the FXSW-003 folder-structure scaffold that the architecture never grew into):
+  - `src/types/pricing.ts` — pricing types live colocated on the consumers (`PriceTick` in `services/feed/types.ts`).
+  - `src/components/Tooltip.tsx` · `src/components/NumberInput.tsx` · `src/components/IconButton.tsx` · `src/components/Toast.tsx` — never extracted; the inline equivalents in PricingPanel / SuggestionPanel / ToastStack carried their own styling.
+  - `src/services/feed/index.ts` — barrel never used; consumers import from `pricingFeed` / `dealFeed` directly.
+  - `src/features/blotter/columns.ts` — leftover from the AG-Grid plan (which we never adopted, see below).
+- **Removed `ag-grid-community` + `ag-grid-react` from `package.json`** + lockfile sync. Never imported, never bundled (`dist/` size unchanged at 240KB). The blotters use a plain flex layout. README + CLAUDE.md "Stack" sections updated to drop the AG-Grid line. The spec/design docs (`01-prd.md`, `06-tech-architecture.md`, `05-ui-ux-spec.md`) keep the AG-Grid mentions as historical record of what was planned — they're not lying, they're describing the ticket-time decision.
+- **Reworded two stale forward-reference comments** that read like work was still pending:
+  - `src/features/notifications/dispatcher.ts` "Audio chime is FXSW-029 — landing alongside…" → past tense, points at the now-shipped `useNotificationSound` hook.
+  - `src/state/stores/dealsStore.ts` "full SI state graph lands in FXSW-010" → past tense, points at `siMachine.ts`.
+
+**User-directed decisions:** The user-authorized cleanup scope was the three bullets above. The fourth option ("skip AG-Grid for now, keep the dep lying around") was offered and declined — user picked the more thorough sweep.
+
+**Agent-directed decisions:**
+- **Spec/design docs kept intact**. `01-prd.md`, `06-tech-architecture.md`, and `05-ui-ux-spec.md` still mention AG-Grid as the originally planned grid library. Those are time-stamped design artifacts, not current-state inventories — rewriting them would erase the "what we considered" record. The dev-log already captured the swap (FXSW-012 lifted blotters onto plain flex). README + CLAUDE.md updates are the only doc-side change because those are read as "this is the current stack."
+- **Lockfile sync rather than a manual edit**. `pnpm install` after the package.json change is the canonical way to keep `pnpm-lock.yaml` consistent; doing it by hand would risk drifting transitive resolutions.
+- **No `--prune` or `--audit` follow-up**. The other deps in `package.json` were all confirmed used during prior phases (lucide-react, clsx, xstate, zustand, the test stack). A blanket audit would be theater.
+- **Wiki/ untouched.** That's the Wiki Agent's directory per CLAUDE.md rule §10. The dev-log + phase summaries are this agent's only documentation surface.
+- All gates green: typecheck ✓, lint ✓, test:run ✓ (**316 pass / 0 todo**, unchanged), e2e ✓ (6/6 in 50.4s), build ✓ (`dist/` 240KB unchanged — confirms AG-Grid was never bundled).
+
+---
+
 ## FXSW-033 · README + demo recording
 **Commit `ba88cca`**
 
