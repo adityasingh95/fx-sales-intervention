@@ -27,6 +27,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test:run
+      - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - name: Upload Playwright traces on failure
