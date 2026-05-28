@@ -7,7 +7,9 @@ dist
 # Test outputs
 coverage
 playwright-report
+playwright-report.json
 test-results
+vitest-report.json
 
 # Editor
 .vscode
