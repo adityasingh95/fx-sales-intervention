@@ -14,6 +14,7 @@ import { getMarketContext } from '@/services/suggestion/marketContext';
 import type { MarginSuggestion } from '@/services/suggestion/types';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
+import type { MarginPair } from '@/types/deal';
 import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
@@ -34,12 +35,25 @@ export default function TicketPanel() {
   const entry = useDealsStore((s) => (openDealId ? s.deals.get(openDealId) : undefined));
   const isV2 = getDevVersion() === 'v2';
   const [slidIn, setSlidIn] = useState(false);
-  // Margin is per-open-deal local state for now. FXSW-025 will source
-  // it from an AI suggestion + Apply, and the deal-machine context
-  // ultimately holds the canonical value (docs/03 §6) — at that point
-  // this lifts into the store. Initialised from the deal's default
-  // (3 pips per the dealFeed payload) when a new deal opens.
-  const [margin, setMargin] = useState<number>(entry?.deal.defaultMarginPips ?? 3);
+  // FXSW-039: dual-margin state. Each side carries an independent pip
+  // markup. v1 keeps both sides equal via the single PricingPanel
+  // input; v2 (FXSW-040) adds a dual-input UI so the trader can diverge
+  // the two. The AI suggestion engine returns a single value applied to
+  // both sides on Apply; Undo restores the prior pair losslessly via
+  // the saved pair below.
+  const defaultPips = entry?.deal.defaultMarginPips ?? 3;
+  const [marginPair, setMarginPair] = useState<MarginPair>({
+    bid: defaultPips,
+    ask: defaultPips,
+  });
+  const [savedPairForUndo, setSavedPairForUndo] = useState<MarginPair | null>(null);
+  // Convenience setter for the single-input v1 UI in PricingPanel —
+  // writes both sides equal. v2's dual UI (FXSW-040) will edit each
+  // side independently.
+  const setMargin = useCallback((n: number) => {
+    setMarginPair({ bid: n, ask: n });
+  }, []);
+  const margin = marginPair.bid;
   // Pricing mode is per-open-deal local state. Lifted from PricingPanel
   // in FXSW-019 so ClientSummaryPanel can read the same display tick.
   const [pricingMode, setPricingMode] = useState<'streaming' | 'fixed'>('streaming');
@@ -59,7 +73,11 @@ export default function TicketPanel() {
   // Reset margin + pricing mode whenever a different deal opens.
   useEffect(() => {
     if (entry) {
-      setMargin(entry.deal.defaultMarginPips);
+      setMarginPair({
+        bid: entry.deal.defaultMarginPips,
+        ask: entry.deal.defaultMarginPips,
+      });
+      setSavedPairForUndo(null);
       setPricingMode('streaming');
       setFixedSide(null);
       setFrozenTick(null);
@@ -189,7 +207,16 @@ export default function TicketPanel() {
           <SuggestionPanel
             suggestion={suggestion}
             currentMargin={margin}
-            onApply={setMargin}
+            onApply={(pips) => {
+              setSavedPairForUndo(marginPair);
+              setMarginPair({ bid: pips, ask: pips });
+            }}
+            onUndo={() => {
+              if (savedPairForUndo) {
+                setMarginPair(savedPairForUndo);
+                setSavedPairForUndo(null);
+              }
+            }}
             onRecompute={computeAndSetSuggestion}
             onReject={() =>
               useDealsStore.getState().forwardEvent(deal.dealId, { type: 'Reject' })
@@ -227,7 +254,7 @@ export default function TicketPanel() {
           />
           <ClientSummaryPanel
             tick={displayTick}
-            margin={margin}
+            marginPair={marginPair}
             notional={deal.notional}
             pair={deal.pair}
           />

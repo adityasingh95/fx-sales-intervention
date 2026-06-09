@@ -5,11 +5,16 @@ import {
   estimatedProfitUsd,
 } from '@/lib/pips';
 import type { Pair, PriceTick } from '@/services/feed/types';
+import type { MarginPair } from '@/types/deal';
 
 // Per docs/02 §4.5: read-only preview of what the client sees + the
 // estimated profit. Updates live in streaming mode; frozen in fixed
 // mode. Parent (TicketPanel) decides which tick (live or frozen) by
 // passing the appropriate one as `tick`.
+//
+// FXSW-039: accepts a MarginPair so bid + ask side markups can differ
+// in v2. v1 callers pass both sides equal (the v1 single PricingPanel
+// input writes both at once), so behaviour is unchanged for v1.
 
 const PROFIT_FMT = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -19,23 +24,28 @@ const PROFIT_FMT = new Intl.NumberFormat('en-US', {
 
 export interface ClientSummaryPanelProps {
   tick: PriceTick | null;
-  margin: number;
+  marginPair: MarginPair;
   notional: number;
   pair: Pair;
 }
 
 export default function ClientSummaryPanel({
   tick,
-  margin,
+  marginPair,
   notional,
   pair,
 }: ClientSummaryPanelProps) {
   const clientBid =
-    tick === null ? null : clientBidFromTrader(tick.bid, margin, pair);
+    tick === null ? null : clientBidFromTrader(tick.bid, marginPair.bid, pair);
   const clientAsk =
-    tick === null ? null : clientAskFromTrader(tick.ask, margin, pair);
+    tick === null ? null : clientAskFromTrader(tick.ask, marginPair.ask, pair);
+  // FXSW-039: still single-line P/L. Use the average of the two side
+  // markups; in v1 (bid === ask) this is exactly the v1 number, in v2
+  // it's a sensible single-line summary until FXSW-041 splits the
+  // display by direction.
+  const blendedMargin = (marginPair.bid + marginPair.ask) / 2;
   const profit =
-    tick === null ? null : estimatedProfitUsd(margin, notional, pair, tick.mid);
+    tick === null ? null : estimatedProfitUsd(blendedMargin, notional, pair, tick.mid);
 
   return (
     <section

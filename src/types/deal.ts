@@ -25,3 +25,9 @@ export type Deal = {
   defaultMarginPips: number;
   createdAt: number;
 };
+
+// Independent bid + ask markups. In v1 the single PricingPanel input
+// keeps both sides equal (the dual UI lands in FXSW-040). The AI
+// suggestion engine produces a single value applied to both sides on
+// Apply; Undo restores the prior pair (FXSW-039 + FXSW-041).
+export type MarginPair = { bid: number; ask: number };

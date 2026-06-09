@@ -16,6 +16,31 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-039 · Dual margin state model
+
+- New type `MarginPair = { bid: number; ask: number }` exported from `@/types/deal`.
+- `TicketPanel` migrates from `margin: number` to `marginPair: MarginPair`. Both sides default to `deal.defaultMarginPips`. A new `savedPairForUndo: MarginPair | null` state captures the pre-apply pair for lossless AI undo.
+- `SuggestionPanel` API extended with optional `onUndo?: () => void`. When provided, Undo delegates restoration to the parent (lossless pair restore); when omitted, falls back to the v1 single-value `onApply(appliedFrom)` path. v1 callers don't need to pass it.
+- `TicketPanel` `onApply` handler: `setSavedPairForUndo(marginPair); setMarginPair({ bid: pips, ask: pips })`. `onUndo` handler restores from `savedPairForUndo`.
+- `ClientSummaryPanel` accepts `marginPair` instead of `margin`. Computes `clientBid = traderBid - marginPair.bid`, `clientAsk = traderAsk + marginPair.ask`. P/L uses the blended average margin as a placeholder until FXSW-041 splits the display by direction.
+- `PricingPanel` API unchanged — TicketPanel synthesizes `margin = marginPair.bid` and translates `setMargin(n)` into `setMarginPair({ bid: n, ask: n })`. Keeps the single-input v1 UI working untouched.
+- v1 behaviour byte-for-byte preserved: single-input writes both sides equal, AI suggestion still works, Undo still restores correctly (because at apply time bid === ask in v1).
+- v2 behaviour: parent owns the pair, dual UI in FXSW-040 will let the trader diverge.
+- 5 ClientSummaryPanel test fixtures migrated from `margin={n}` to `marginPair={{ bid: n, ask: n }}`. 2 new cases assert divergent bid/ask renders correctly and P/L uses the blended average.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (364 pass / 0 todo, +2 new) · test:e2e ✓ (6/6 in 35.3s).
+
+**User-directed decisions:**
+
+- None — within FXSW-039 plan AC.
+
+**Agent-directed decisions:**
+
+- **`MarginPair` lives on `Deal` types module.** Closest semantic home; consumed by TicketPanel + ClientSummaryPanel. Not on suggestion types since the engine still returns a single number.
+- **PricingPanel API unchanged in this ticket.** Single-input v1 UI is still the rendered control; FXSW-040 will swap it for the v2 dual-input. Keeping the API stable here means FXSW-040 can do the API extension in one focused commit.
+- **`onUndo` is optional, not required.** v1 callers (no Undo path in existing tests' Harness) don't have to be touched. The v1 fallback `onApply(appliedFrom)` is preserved as a graceful degradation path.
+- **P/L uses blended average pips.** In v1 (bid === ask) the value is identical to v1's single-margin P/L. In v2 (bid ≠ ask) it represents the "spread" P/L until FXSW-041 splits the display per direction. Avoids leaving a wrong number on screen.
+- **`savedPairForUndo` lives on TicketPanel, not the store.** Per-ticket state, resets on deal-open like every other ticket field. No global persistence needed.
+
 ## FXSW-038 · PricingPanel side-selection UX (v2)
 
 - `PricingPanel.Cell` gains `dimmed` + `disabled` props, surfaced as `data-dimmed="true"` and `data-disabled="true"`. Dimmed = opacity 50; disabled = opacity 35 + `cursor-not-allowed` + no click handler.

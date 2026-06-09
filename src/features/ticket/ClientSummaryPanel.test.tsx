@@ -17,7 +17,7 @@ describe('<ClientSummaryPanel />', () => {
       <ClientSummaryPanel
         pair="EURUSD"
         tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
-        margin={3}
+        marginPair={{ bid: 3, ask: 3 }}
         notional={1_000_000}
       />,
     );
@@ -30,7 +30,7 @@ describe('<ClientSummaryPanel />', () => {
       <ClientSummaryPanel
         pair="USDJPY"
         tick={tickOf('USDJPY', 157.77, 157.78, 157.77)}
-        margin={3}
+        marginPair={{ bid: 3, ask: 3 }}
         notional={5_000_000}
       />,
     );
@@ -41,11 +41,11 @@ describe('<ClientSummaryPanel />', () => {
   it('estimated profit updates when margin changes (re-renders within one frame)', () => {
     const tick = tickOf('EURUSD', 1.085, 1.0852, 1.0851);
     const { rerender } = render(
-      <ClientSummaryPanel pair="EURUSD" tick={tick} margin={3} notional={1_000_000} />,
+      <ClientSummaryPanel pair="EURUSD" tick={tick} marginPair={{ bid: 3, ask: 3 }} notional={1_000_000} />,
     );
     expect(screen.getByTestId('estimated-profit')).toHaveTextContent('$300');
     rerender(
-      <ClientSummaryPanel pair="EURUSD" tick={tick} margin={6} notional={1_000_000} />,
+      <ClientSummaryPanel pair="EURUSD" tick={tick} marginPair={{ bid: 6, ask: 6 }} notional={1_000_000} />,
     );
     expect(screen.getByTestId('estimated-profit')).toHaveTextContent('$600');
     expect(screen.getByTestId('client-bid')).toHaveTextContent('1.0844');
@@ -60,7 +60,7 @@ describe('<ClientSummaryPanel />', () => {
       <ClientSummaryPanel
         pair="EURUSD"
         tick={captured}
-        margin={3}
+        marginPair={{ bid: 3, ask: 3 }}
         notional={1_000_000}
       />,
     );
@@ -73,12 +73,41 @@ describe('<ClientSummaryPanel />', () => {
       <ClientSummaryPanel
         pair="EURUSD"
         tick={null}
-        margin={3}
+        marginPair={{ bid: 3, ask: 3 }}
         notional={1_000_000}
       />,
     );
     expect(screen.getByTestId('client-bid')).toHaveTextContent('—');
     expect(screen.getByTestId('client-ask')).toHaveTextContent('—');
     expect(screen.getByTestId('estimated-profit')).toHaveTextContent('—');
+  });
+
+  // FXSW-039 — divergent bid/ask margins (v2 dual-margin model)
+  it('renders divergent client bid/ask when marginPair.bid !== marginPair.ask', () => {
+    render(
+      <ClientSummaryPanel
+        pair="EURUSD"
+        tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
+        marginPair={{ bid: 2, ask: 5 }}
+        notional={1_000_000}
+      />,
+    );
+    // bid margin 2 → traderBid 1.0850 - 0.0002 = 1.0848
+    expect(screen.getByTestId('client-bid')).toHaveTextContent('1.0848');
+    // ask margin 5 → traderAsk 1.0852 + 0.0005 = 1.0857
+    expect(screen.getByTestId('client-ask')).toHaveTextContent('1.0857');
+  });
+
+  it('blended P/L uses the average margin in v2 when sides differ (placeholder until FXSW-041)', () => {
+    render(
+      <ClientSummaryPanel
+        pair="EURUSD"
+        tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
+        marginPair={{ bid: 4, ask: 6 }}
+        notional={1_000_000}
+      />,
+    );
+    // (4 + 6) / 2 = 5 pips on 1M EUR/USD → $500
+    expect(screen.getByTestId('estimated-profit')).toHaveTextContent('$500');
   });
 });
