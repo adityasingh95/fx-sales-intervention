@@ -11,6 +11,7 @@ const HAPPY_PATH_ESP: Scenario = {
     pair: 'EURUSD',
     side: 'BUY',
     notional: 1_000_000,
+    dealtCcy: 'BASE',
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
@@ -27,6 +28,7 @@ const OFF_HOURS_INTERVENTION: Scenario = {
     pair: 'USDJPY',
     side: 'SELL',
     notional: 5_000_000,
+    dealtCcy: 'BASE',
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
@@ -45,6 +47,7 @@ const CREDIT_BREACH: Scenario = {
     pair: 'GBPUSD',
     side: 'BUY',
     notional: 25_000_000,
+    dealtCcy: 'BASE',
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
@@ -61,6 +64,7 @@ const SIZE_LIMIT_MARGIN_TUNE: Scenario = {
     pair: 'EURUSD',
     side: 'SELL',
     notional: 12_000_000,
+    dealtCcy: 'BASE',
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
@@ -79,11 +83,50 @@ const RELEASE_PATH: Scenario = {
     pair: 'USDINR',
     side: 'BUY',
     notional: 3_000_000,
+    dealtCcy: 'BASE',
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
   rejectionReasons: ['SIZE_LIMIT'],
   followUps: [],
+};
+
+const BOTH_SIDED_INQUIRY: Scenario = {
+  id: 'BOTH_SIDED_INQUIRY',
+  channel: 'SI',
+  deal: {
+    clientName: 'Acme Corp',
+    accountCode: 'ACME-EUR-2',
+    pair: 'EURUSD',
+    side: 'BOTH',
+    dealtCcy: 'BASE',
+    notional: 8_000_000,
+    tenor: 'SPOT',
+    defaultMarginPips: DEFAULT_MARGIN_PIPS,
+  },
+  rejectionReasons: ['SIZE_LIMIT'],
+  followUps: [
+    { trigger: { kind: 'after-si-state', state: 'Quoted', delayMs: 1800 }, event: 'CLIENT_ACCEPT' },
+  ],
+};
+
+const QUOTE_DEALT_INQUIRY: Scenario = {
+  id: 'QUOTE_DEALT_INQUIRY',
+  channel: 'SI',
+  deal: {
+    clientName: 'Northwind FX',
+    accountCode: 'NRTH-JPY-1',
+    pair: 'USDJPY',
+    side: 'SELL',
+    dealtCcy: 'QUOTE',
+    notional: 1_000_000_000,
+    tenor: 'SPOT',
+    defaultMarginPips: DEFAULT_MARGIN_PIPS,
+  },
+  rejectionReasons: ['OFF_HOURS'],
+  followUps: [
+    { trigger: { kind: 'after-si-state', state: 'Quoted', delayMs: 1500 }, event: 'CLIENT_ACCEPT' },
+  ],
 };
 
 export const SCENARIOS: Record<ScenarioId, Scenario> = {
@@ -92,4 +135,6 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
   CREDIT_BREACH,
   SIZE_LIMIT_MARGIN_TUNE,
   RELEASE_PATH,
+  BOTH_SIDED_INQUIRY,
+  QUOTE_DEALT_INQUIRY,
 };

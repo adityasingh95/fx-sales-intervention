@@ -77,13 +77,19 @@ function Row({ entry }: { entry: DealEntry }) {
       <div
         className={clsx(
           'w-[60px] font-mono font-medium',
-          entry.deal.side === 'BUY' ? 'text-green' : 'text-red',
+          entry.deal.side === 'BUY' && 'text-green',
+          entry.deal.side === 'SELL' && 'text-red',
+          entry.deal.side === 'BOTH' && 'text-text-dim',
         )}
       >
         {entry.deal.side}
       </div>
       <div className="w-[120px] text-right">
-        <AmountCell notional={entry.deal.notional} pair={entry.deal.pair} />
+        <AmountCell
+          notional={entry.deal.notional}
+          pair={entry.deal.pair}
+          dealtCcy={entry.deal.dealtCcy}
+        />
       </div>
       <div className="w-[60px] pl-2 font-mono text-xs uppercase text-text-dim">
         {entry.deal.tenor}

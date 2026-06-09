@@ -15,9 +15,17 @@ import { flashDocumentTitle } from '@/features/notifications/titleFlash';
 // `notifiedDealIds` Set is the source of truth for "have we already
 // notified for this deal."
 
-function buildMessage(entry: DealEntry): string {
-  const side = entry.deal.side === 'BUY' ? 'buy' : 'sell';
-  return `New SI request: ${entry.deal.clientName} wants to ${side} ${formatAmount(entry.deal.notional, entry.deal.pair)} ${entry.deal.pair}.`;
+function actionVerb(side: DealEntry['deal']['side']): string {
+  if (side === 'BUY') return 'buy';
+  if (side === 'SELL') return 'sell';
+  return 'trade';
+}
+
+// Exported for unit tests; consumers should use `dispatchNotifications`.
+export function buildMessage(entry: DealEntry): string {
+  const verb = actionVerb(entry.deal.side);
+  const amount = formatAmount(entry.deal.notional, entry.deal.pair, entry.deal.dealtCcy);
+  return `New SI request: ${entry.deal.clientName} wants to ${verb} ${amount} ${entry.deal.pair}.`;
 }
 
 export function dispatchNotifications(deals: ReadonlyMap<string, DealEntry>): void {

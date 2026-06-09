@@ -11,7 +11,8 @@ export interface SummaryPanelProps {
 }
 
 export default function SummaryPanel({ deal }: SummaryPanelProps) {
-  const quote = deal.pair.slice(3);
+  // The "vs" leg is whichever currency the trader is NOT dealing in.
+  const other = deal.dealtCcy === 'BASE' ? deal.pair.slice(3, 6) : deal.pair.slice(0, 3);
   const tradeDate = new Date(deal.createdAt);
   const settlementDate = addBusinessDays(tradeDate, 2);
   return (
@@ -21,11 +22,13 @@ export default function SummaryPanel({ deal }: SummaryPanelProps) {
       className="flex flex-col gap-2"
     >
       <p className="text-sm text-text">
-        Client <strong className="font-medium">{deal.clientName}</strong> wants to{' '}
+        Client <strong className="font-medium">{deal.clientName}</strong>{' '}
+        {deal.side === 'BOTH' ? 'wants two-sided prices on ' : 'wants to '}
         <strong className="font-medium">
-          {deal.side} {formatAmount(deal.notional, deal.pair)}
+          {deal.side === 'BOTH' ? '' : `${deal.side} `}
+          {formatAmount(deal.notional, deal.pair, deal.dealtCcy)}
         </strong>{' '}
-        vs <strong className="font-mono font-medium uppercase">{quote}</strong> for{' '}
+        vs <strong className="font-mono font-medium uppercase">{other}</strong> for{' '}
         <strong className="font-mono font-medium uppercase">{deal.tenor}</strong>{' '}
         settlement.
       </p>

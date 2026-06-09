@@ -1,4 +1,4 @@
-import { formatAmount } from '@/lib/format';
+import { dealtCcyCode, formatAmount } from '@/lib/format';
 import { addBusinessDays, formatSettlementDate } from '@/lib/time';
 import type { Deal } from '@/types/deal';
 
@@ -12,7 +12,7 @@ export interface DealSummaryPanelProps {
 export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
   const tradeDate = new Date(deal.createdAt);
   const settlementDate = addBusinessDays(tradeDate, 2);
-  const base = deal.pair.slice(0, 3);
+  const dealtCode = dealtCcyCode(deal.pair, deal.dealtCcy);
 
   return (
     <section
@@ -27,13 +27,13 @@ export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
         <div data-field="direction">
           <dt className="text-xs uppercase tracking-tight text-text-mute">Direction</dt>
           <dd className="font-mono font-medium text-text">
-            {deal.side} {base}
+            {deal.side} {dealtCode}
           </dd>
         </div>
         <div data-field="notional">
           <dt className="text-xs uppercase tracking-tight text-text-mute">Notional</dt>
           <dd className="font-mono tabular-nums text-text">
-            {formatAmount(deal.notional, deal.pair)}
+            {formatAmount(deal.notional, deal.pair, deal.dealtCcy)}
           </dd>
         </div>
         <div data-field="account">

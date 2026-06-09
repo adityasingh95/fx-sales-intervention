@@ -1,17 +1,23 @@
 import clsx from 'clsx';
+import { getDevVersion } from '@/lib/devVersion';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import { SCENARIO_IDS, type ScenarioId } from '@/types/scenario';
+import {
+  V1_SCENARIO_IDS,
+  V2_SCENARIO_IDS,
+  type ScenarioId,
+} from '@/types/scenario';
 
-// Compact labels for the header chip-style buttons. Long enough to know
-// which scenario, short enough to fit in the header strip.
+// Compact labels for the header chip-style buttons.
 const LABEL: Record<ScenarioId, string> = {
   HAPPY_PATH_ESP: 'Happy ESP',
   OFF_HOURS_INTERVENTION: 'Off Hours',
   CREDIT_BREACH: 'Credit Breach',
   SIZE_LIMIT_MARGIN_TUNE: 'Size + AI',
   RELEASE_PATH: 'Release',
+  BOTH_SIDED_INQUIRY: 'Both-Sided',
+  QUOTE_DEALT_INQUIRY: 'Quote-Dealt',
 };
 
 function injectButtonClasses(): string {
@@ -19,6 +25,10 @@ function injectButtonClasses(): string {
 }
 
 export default function DevInjector() {
+  const devVersion = getDevVersion();
+  const visibleScenarios: readonly ScenarioId[] =
+    devVersion === 'v2' ? [...V1_SCENARIO_IDS, ...V2_SCENARIO_IDS] : V1_SCENARIO_IDS;
+
   const resetSession = (): void => {
     dealFeed.reset();
     for (const entry of useDealsStore.getState().deals.values()) {
@@ -36,7 +46,7 @@ export default function DevInjector() {
       <span className="mr-1 shrink-0 text-[10px] font-medium uppercase tracking-tight text-text-mute">
         Dev
       </span>
-      {SCENARIO_IDS.map((id) => (
+      {visibleScenarios.map((id) => (
         <button
           key={id}
           type="button"

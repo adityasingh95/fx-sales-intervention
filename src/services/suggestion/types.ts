@@ -27,7 +27,7 @@ export type Factor = {
 export type SuggestionInput = {
   deal: {
     pair: string;
-    side: 'BUY' | 'SELL';
+    side: 'BUY' | 'SELL' | 'BOTH';
     notional: number;
     defaultMarginPips: number;
     rejectionReasons: RejectionReason[];

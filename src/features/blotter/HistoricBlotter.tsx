@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { formatTime } from '@/lib/format';
+import { dealtCcyCode, formatTime } from '@/lib/format';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
 
 // Cap per docs/02 §3 Capacity — keep the rendered slice bounded.
@@ -38,14 +38,16 @@ function Row({ entry }: { entry: HistoricEntry }) {
       <div
         className={clsx(
           'w-[60px] font-mono font-medium',
-          entry.deal.side === 'BUY' ? 'text-green' : 'text-red',
+          entry.deal.side === 'BUY' && 'text-green',
+          entry.deal.side === 'SELL' && 'text-red',
+          entry.deal.side === 'BOTH' && 'text-text-dim',
         )}
       >
         {entry.deal.side}
       </div>
       <div className="w-[120px] text-right font-mono tabular-nums">
         {entry.deal.notional.toLocaleString('en-US')}{' '}
-        <span className="text-text-mute">{entry.deal.pair.slice(0, 3)}</span>
+        <span className="text-text-mute">{dealtCcyCode(entry.deal.pair, entry.deal.dealtCcy)}</span>
       </div>
       <div className="w-[60px] pl-2 font-mono text-xs uppercase">{entry.deal.tenor}</div>
       <div className={clsx('flex flex-1 min-w-[160px] items-center', OUTCOME_COLOR[entry.outcome])}>

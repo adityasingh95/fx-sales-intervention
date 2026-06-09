@@ -11,6 +11,7 @@ const makeDeal = (overrides: Partial<Deal> = {}): Deal => ({
   pair: 'EURUSD',
   side: 'BUY',
   notional: 1_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: new Date(2026, 4, 25, 14, 23, 0).getTime(),

@@ -16,6 +16,39 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-037 · Side BOTH + dealtCcy + quoteSideFor + new scenarios (v2)
+
+- `Side` extended from `'BUY' | 'SELL'` to `'BUY' | 'SELL' | 'BOTH'`.
+- `Deal` gains a required `dealtCcy: 'BASE' | 'QUOTE'` field. All 5 v1 scenarios add `dealtCcy: 'BASE'` (unchanged behaviour); 2 new v2 scenarios added.
+- New `src/lib/quoteSide.ts` exports `quoteSideFor(side, dealtCcy): 'BID' | 'ASK' | 'BOTH'` — the canonical BUY/SELL × base/quote → bid/ask truth table.
+- New `src/lib/format.ts` helper `dealtCcyCode(pair, dealtCcy)` returning the 3-letter dealt code. `formatAmount` extended with optional `dealtCcy` param (defaults to `'BASE'` — v1-compatible).
+- New scenarios in `definitions.ts`:
+  - `BOTH_SIDED_INQUIRY` — Acme Corp · EURUSD · BOTH · BASE · 8M EUR · `SIZE_LIMIT`.
+  - `QUOTE_DEALT_INQUIRY` — Northwind FX · USDJPY · SELL · QUOTE · 1B JPY · `OFF_HOURS`.
+- `ScenarioId` splits into `V1_SCENARIO_IDS` + `V2_SCENARIO_IDS`; `SCENARIO_IDS` remains the full list.
+- `DevInjector` branches on `devVersion`: v2 surfaces both new buttons, v1 stays as before.
+- `dispatcher.buildMessage`: BUY → "buy", SELL → "sell", BOTH → "trade"; amount uses dealt currency, so quote-dealt scenarios read "wants to sell 1,000,000,000 JPY USDJPY".
+- Blotter color theming: BOTH renders in neutral `text-text-dim` (not red/green).
+- `ActiveBlotter` + `HistoricBlotter` pass `dealtCcy` through to `AmountCell` / use `dealtCcyCode` for the historic in-row inline render.
+- `SummaryPanel` rewords the sentence for BOTH: "wants two-sided prices on N CCY vs Other"; v1 case "wants to BUY N CCY" preserved.
+- `DealSummaryPanel` uses `dealtCcyCode` for both the Direction strip and the Notional formatting.
+- `SuggestionInput.side` widened to `'BUY' | 'SELL' | 'BOTH'` so TicketPanel can pass through any side; engine ignores side internally so no logic change.
+- 9 component test fixtures updated to include `dealtCcy: 'BASE'`.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (355 pass / 0 todo, +14 across quoteSide + dispatcher + DevInjector + scenarios + buildMessage) · test:e2e ✓ (6/6 in 36.6s).
+
+**User-directed decisions:**
+
+- None — all decisions within Phase 6 plan guidance (BACKLOG FXSW-037 AC + the user-confirmed AskUserQuestion answers).
+
+**Agent-directed decisions:**
+
+- **`dealtCcy` required on `Deal`, not optional.** Adding it as optional would have left every reader doing `?? 'BASE'`. Required + adding it to existing fixtures kept the type clean and forced explicit thinking at every Deal construction site.
+- **Widen `SuggestionInput.side` rather than coerce.** Engine.ts and rationale.ts don't read `side`, so widening to `'BUY' | 'SELL' | 'BOTH'` is byte-for-byte equivalent to the prior contract while admitting BOTH at the call site.
+- **`SummaryPanel` sentence rewrite for BOTH.** "wants to BOTH 8,000,000 EUR" reads poorly; "wants two-sided prices on 8,000,000 EUR vs USD" reads like a trader. V1 case unchanged.
+- **Conditional cross-leg display ("vs" leg).** When base-dealt, "vs" reads the quote code. When quote-dealt, "vs" reads the base. Mirrors how a trader would describe the trade.
+- **Single `dealtCcyCode` helper, not five inlined `slice` calls.** One source of truth, importable from `@/lib/format`.
+- **Split `SCENARIO_IDS` into V1 + V2.** Keeps `SCENARIOS` index complete (for round-trip tests and persistence) while letting the DevInjector pick its own subset per devVersion.
+
 ## FXSW-036 · Resizable blotter divider + sessionStorage persistence (v2)
 
 - New `src/components/ResizeHandle.tsx` — 4px horizontal handle with `cursor-row-resize`, `data-testid="blotter-resize-handle"`, `data-dragging="true"` during active drag, `role="separator"` + aria-valuenow/min/max.

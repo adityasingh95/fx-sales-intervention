@@ -1,4 +1,5 @@
 import type { Pair } from '@/services/feed/types';
+import type { DealtCcy } from '@/types/deal';
 
 const NBSP = ' ';
 
@@ -11,13 +12,22 @@ const TIME_FMT = new Intl.DateTimeFormat('en-GB', {
 
 export const formatTime = (epochMs: number): string => TIME_FMT.format(new Date(epochMs));
 
-// "12,500,000 EUR" — base CCY is the first three letters of the pair.
 const AMOUNT_FMT = new Intl.NumberFormat('en-US');
 
-export const formatAmount = (notional: number, pair: Pair): string => {
-  const base = pair.slice(0, 3);
-  return `${AMOUNT_FMT.format(notional)}${NBSP}${base}`;
-};
+// Returns the 3-letter currency code of the dealt leg of a pair.
+// Base is the first three letters (e.g. EUR in EURUSD); quote is the
+// last three (e.g. JPY in USDJPY).
+export const dealtCcyCode = (pair: Pair, dealtCcy: DealtCcy = 'BASE'): string =>
+  dealtCcy === 'BASE' ? pair.slice(0, 3) : pair.slice(3, 6);
+
+// "12,500,000 EUR" — by default the base CCY of the pair. Pass
+// `dealtCcy='QUOTE'` for quote-dealt notionals (e.g. "1,000,000,000 JPY").
+export const formatAmount = (
+  notional: number,
+  pair: Pair,
+  dealtCcy: DealtCcy = 'BASE',
+): string =>
+  `${AMOUNT_FMT.format(notional)}${NBSP}${dealtCcyCode(pair, dealtCcy)}`;
 
 // Rounding to a pair's display precision (4dp for the dollar majors, 2dp
 // for the JPY/INR pairs) — used by the Rate cell so consumers don't have

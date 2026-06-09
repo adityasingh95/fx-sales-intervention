@@ -50,6 +50,27 @@ const EXPECTED = {
     notional: 3_000_000,
     reasons: ['SIZE_LIMIT'],
   },
+  // FXSW-037 v2 scenarios.
+  BOTH_SIDED_INQUIRY: {
+    channel: 'SI',
+    clientName: 'Acme Corp',
+    accountCode: 'ACME-EUR-2',
+    pair: 'EURUSD',
+    side: 'BOTH',
+    dealtCcy: 'BASE',
+    notional: 8_000_000,
+    reasons: ['SIZE_LIMIT'],
+  },
+  QUOTE_DEALT_INQUIRY: {
+    channel: 'SI',
+    clientName: 'Northwind FX',
+    accountCode: 'NRTH-JPY-1',
+    pair: 'USDJPY',
+    side: 'SELL',
+    dealtCcy: 'QUOTE',
+    notional: 1_000_000_000,
+    reasons: ['OFF_HOURS'],
+  },
 } as const;
 
 describe('SCENARIOS', () => {
@@ -71,6 +92,9 @@ describe('SCENARIOS', () => {
       expect(scenario.rejectionReasons).toEqual(expected.reasons);
       expect(scenario.deal.tenor).toBe('SPOT');
       expect(scenario.deal.defaultMarginPips).toBe(3);
+      // V1 scenarios default to base-dealt; v2 scenarios specify explicitly.
+      const expectedDealtCcy = 'dealtCcy' in expected ? expected.dealtCcy : 'BASE';
+      expect(scenario.deal.dealtCcy).toBe(expectedDealtCcy);
     });
   }
 });
