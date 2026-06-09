@@ -16,6 +16,27 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-041 · Direction-aware P/L display
+
+- `ClientSummaryPanel` new optional `quoteSide?: QuoteSide` prop.
+  - `BID` → single P/L line, `data-testid="pnl-bid"`, uses `marginPair.bid` only.
+  - `ASK` → single P/L line, `data-testid="pnl-ask"`, uses `marginPair.ask` only.
+  - `BOTH` → both P/L values in a single cell, `data-testid="pnl-both"`, side prefixes ("Bid $X · Ask $Y").
+  - Undefined (v1) → falls back to the blended-average single line with the existing `data-testid="estimated-profit"` testid. v1 visual unchanged.
+- `TicketPanel` passes `quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}` when `isV2`, else `undefined`.
+- 3 new ClientSummaryPanel tests for the BID / ASK / BOTH branches; 1 updated v1 fallback test verifies the existing testid is still present and the v2 testids are not.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (374 pass / 0 todo, +3 new) · test:e2e ✓ (6/6 in 35.8s).
+
+**User-directed decisions:**
+
+- None — within FXSW-041 plan AC.
+
+**Agent-directed decisions:**
+
+- **`pnl-both` is a single testid containing both side values** (not separate `pnl-both-bid` + `pnl-both-ask`). The spec sketch reads as one composite cell — easier to assert with `toHaveTextContent`. Future tests can scope into the cell if needed.
+- **Heading label changes from "Est. profit" to "Est. P/L" in v2.** Slightly more trader-natural; v1 keeps the original label for byte-for-byte regression.
+- **Inline `renderProfit()` helper inside the component.** Keeps the four branches readable inline; not worth extracting to a sibling sub-component.
+
 ## FXSW-040 · Dual margin UI (Balance + Zero)
 
 - `PricingPanel` props extended with `marginPair?: MarginPair` + `onMarginPairChange?: (next) => void`. When both are provided, renders the v2 dual UI; otherwise renders the v1 single input.

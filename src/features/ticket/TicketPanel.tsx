@@ -259,6 +259,7 @@ export default function TicketPanel() {
             marginPair={marginPair}
             notional={deal.notional}
             pair={deal.pair}
+            quoteSide={isV2 ? quoteSideFor(deal.side, deal.dealtCcy) : undefined}
           />
           <DealSummaryPanel deal={deal} />
         </div>

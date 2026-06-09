@@ -98,7 +98,7 @@ describe('<ClientSummaryPanel />', () => {
     expect(screen.getByTestId('client-ask')).toHaveTextContent('1.0857');
   });
 
-  it('blended P/L uses the average margin in v2 when sides differ (placeholder until FXSW-041)', () => {
+  it('v1 fallback (no quoteSide prop): blended-margin P/L on a single Est. profit line', () => {
     render(
       <ClientSummaryPanel
         pair="EURUSD"
@@ -109,5 +109,55 @@ describe('<ClientSummaryPanel />', () => {
     );
     // (4 + 6) / 2 = 5 pips on 1M EUR/USD → $500
     expect(screen.getByTestId('estimated-profit')).toHaveTextContent('$500');
+    expect(screen.queryByTestId('pnl-bid')).toBeNull();
+    expect(screen.queryByTestId('pnl-ask')).toBeNull();
+    expect(screen.queryByTestId('pnl-both')).toBeNull();
+  });
+
+  // FXSW-041 — direction-aware P/L
+  it('quoteSide=BID: single pnl-bid line using marginPair.bid only', () => {
+    render(
+      <ClientSummaryPanel
+        pair="EURUSD"
+        tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
+        marginPair={{ bid: 7, ask: 2 }}
+        notional={1_000_000}
+        quoteSide="BID"
+      />,
+    );
+    // 7 pips on 1M EURUSD → $700; ask margin ignored.
+    expect(screen.getByTestId('pnl-bid')).toHaveTextContent('$700');
+    expect(screen.queryByTestId('pnl-ask')).toBeNull();
+    expect(screen.queryByTestId('estimated-profit')).toBeNull();
+  });
+
+  it('quoteSide=ASK: single pnl-ask line using marginPair.ask only', () => {
+    render(
+      <ClientSummaryPanel
+        pair="EURUSD"
+        tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
+        marginPair={{ bid: 7, ask: 2 }}
+        notional={1_000_000}
+        quoteSide="ASK"
+      />,
+    );
+    // 2 pips on 1M EURUSD → $200.
+    expect(screen.getByTestId('pnl-ask')).toHaveTextContent('$200');
+    expect(screen.queryByTestId('pnl-bid')).toBeNull();
+  });
+
+  it('quoteSide=BOTH: pnl-both contains both side P/L values', () => {
+    render(
+      <ClientSummaryPanel
+        pair="EURUSD"
+        tick={tickOf('EURUSD', 1.085, 1.0852, 1.0851)}
+        marginPair={{ bid: 4, ask: 6 }}
+        notional={1_000_000}
+        quoteSide="BOTH"
+      />,
+    );
+    const both = screen.getByTestId('pnl-both');
+    expect(both).toHaveTextContent('$400');
+    expect(both).toHaveTextContent('$600');
   });
 });
