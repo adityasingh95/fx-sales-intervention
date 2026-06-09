@@ -269,6 +269,8 @@ Visual specs:
 - "Why?" button: `ghost` variant.
 - Box-shadow: `--shadow-ai` for the subtle indigo glow.
 
+In v2 (see §11.5), Apply writes the suggested pips to both `marginBid` and `marginAsk` so the dual-margin inputs both reflect the suggestion. The engine still returns a single integer; the panel does not change shape.
+
 "Why?" expanded state inserts a small table between the rationale and the buttons:
 
 ```
@@ -367,7 +369,7 @@ Optimised for 1440×900 and up (the full layout fits without horizontal scroll).
 - Each blotter (Active + Historic) wraps its column-header row and body in a single horizontally-scrollable container at `min-w-[1100px]` / `min-w-[920px]` respectively. Column headers stick to the top, rows stay aligned.
 - Title and clock font sizes step down one tier below the Tailwind `sm:` breakpoint (640px).
 
-Card-stacked mobile redesign (each row as a tap-to-expand card with key fields above the fold) is explicitly out — the horizontal-scroll pattern preserves the trader-blotter aesthetic and keeps one layout in the codebase. See `dev-log.md` "Mobile/responsive layout" entry for the decision trail.
+Card-stacked mobile redesign (each row as a tap-to-expand card with key fields above the fold) was deferred during the v1 ship but is reinstated in v2 (`?dev=v2`). See §11.4 for the v2 mobile layout and the dev-log "v2 mobile reversal" entry for the decision trail. The v1 horizontal-scroll behaviour is preserved on `main` for backwards compatibility.
 
 ## 10. Things explicitly to avoid
 
@@ -380,4 +382,99 @@ Card-stacked mobile redesign (each row as a tap-to-expand card with key fields a
 - More than one font family beyond `--font-sans` and `--font-mono`.
 - Any third-party UI kit (Material UI, Chakra, Mantine, Ant Design) — Tailwind + the components inventoried in §3 is sufficient.
 - Marketing-app language anywhere. The app is for professionals; the copy should be clipped and confident.
+
+## 11. v2 enhancements (behind `?dev=v2`)
+
+Phase 6 UX changes live behind the `?dev=v2` URL gate. v1 behaviour is preserved on `main`. Functional definitions for v2 are in `02-functional-spec.md` §7; this section covers visual treatment.
+
+### 11.1 Resizable blotter divider
+
+A 4px-tall horizontal handle sits between the Active and Historic blotter sections. Visual:
+
+- Default: `--color-border` background, full width.
+- Hover: `--color-border-strong` background, `cursor: row-resize`.
+- Active drag: `--color-border-focus` background, the handle stays focused until pointer release.
+- Persistence: split percentage is stored in `settingsStore.blotterSplit` (sessionStorage), default 55 (representing 55% Active / 45% Historic).
+- Clamp: 20% ≤ split ≤ 80%.
+
+Both blotter bodies retain `overflow-y: auto`. Scrollbar styling matches the existing dark-trading aesthetic (1px width, `--color-border-strong` thumb).
+
+`data-testid="blotter-resize-handle"` for E2E. Dragging emits `pointerdown` → `pointermove` updates basis live (no animation during drag) → `pointerup` persists.
+
+### 11.2 Side selection — dim and disabled states
+
+The Pricing Panel `Cell` component picks up two new attributes:
+
+- `data-dimmed="true"` — applied to the non-selected side in fixed mode. Opacity 0.5, border drops one tier (e.g. `--color-border` → `--color-border` with reduced contrast). Price text still updates.
+- `data-disabled="true"` — applied to the non-quoteable side when the request is one-sided (BUY base → BID cell disabled, SELL base → ASK cell disabled, etc., per §7.3 of the functional spec). Opacity 0.35, `cursor: not-allowed`, no click handler.
+
+The selected (focused) side keeps the existing `--color-border-focus` outline + indigo box-shadow.
+
+### 11.3 Dual-side margin inputs
+
+Replaces the single-row `[−][input][+]` margin control with two rows:
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ Margin Bid                                                    │
+│  [ − ]   ┌────────┐   [ + ]                                   │
+│          │   3    │  pips                                     │
+│          └────────┘                                           │
+│                                                               │
+│   [ Balance ]    [ Zero ]                                     │
+│                                                               │
+│ Margin Ask                                                    │
+│  [ − ]   ┌────────┐   [ + ]                                   │
+│          │   3    │  pips                                     │
+│          └────────┘                                           │
+└───────────────────────────────────────────────────────────────┘
+```
+
+Both inputs reuse the existing margin input visual style (mono, 32×32 stepper buttons). Balance and Zero use the `Button` primitive in `secondary` and `ghost` variants respectively. Both buttons sit on a single row aligned to the centre between the two inputs.
+
+`data-testid` set:
+
+- `margin-input-bid` / `margin-input-ask`
+- `margin-plus-bid` / `margin-minus-bid` / `margin-plus-ask` / `margin-minus-ask`
+- `margin-balance` / `margin-zero`
+
+The 600ms indigo glow on programmatic margin change (AI Apply) animates **both** inputs simultaneously.
+
+### 11.4 Mobile card-stack blotters
+
+Below the `md` Tailwind breakpoint (768px):
+
+- `min-w-[1100px]` / `min-w-[920px]` are removed.
+- Rows render as `<div>` cards instead of horizontal rows. Card spacing: `--space-3` between cards, `--space-2` between rows within a card.
+- Active card layout:
+  ```
+  ┌──────────────────────────────────────────────────────────┐
+  │ [INTERVENE]   5,000,000 USD   USDJPY                     │
+  │ Globex Industries · SELL · Outside trading window        │
+  └──────────────────────────────────────────────────────────┘
+  ```
+- Historic card layout:
+  ```
+  ┌──────────────────────────────────────────────────────────┐
+  │ 17:06:33   5,000,000 USD   USDJPY                        │
+  │ Globex Industries · Executed                             │
+  └──────────────────────────────────────────────────────────┘
+  ```
+- Tapping a card opens the ticket panel as a full-width overlay (existing v1 behaviour on mobile).
+- `data-testid="active-blotter-body"` / `data-testid="historic-blotter-body"` and `data-deal-id` are preserved on the card containers so existing tests keep working.
+
+### 11.5 AI suggestion + dual margin
+
+AI Margin Suggestion behaviour is documented in `09-suggestion-engine.md` §15. Visually no change to the panel itself; Apply now writes the suggested pips to both bid and ask inputs and triggers the 600ms glow on both. Undo restores the prior pair.
+
+## 12. v2 versioning gate — `?dev=v2`
+
+A new module `src/lib/devVersion.ts` exports:
+
+```ts
+export type DevVersion = 'v1' | 'v2';
+export const devVersion: DevVersion = /* parses ?dev=v2 from window.location.search */;
+```
+
+Components import and branch on `devVersion`. No `v2Enabled` prop is threaded through the tree. `?dev=v2` is a superset of `?dev=1` (the dev injector remains active). Tests assert that with no query string or with `?dev=1`, v1 behaviour is byte-for-byte preserved.
 - Vendor names in any user-visible string (see CLAUDE.md critical rule §1).

@@ -28,3 +28,15 @@ Hard constraints:
 - Do not write to `wiki/` or `raw/` unless explicitly instructed.
 
 When a requirement is ambiguous, stop and ask. When you make an implementation decision, record whether it was user-directed or agent-directed in the dev log.
+
+## Phase 6 — branch + version gate
+
+Phases 1–5 shipped on `main`. Phase 6 (FXSW-035 → FXSW-042) lives on the long-lived `dev/v2` branch and ships behind the `?dev=v2` URL gate. `main` is **not** to be touched by Phase 6 tickets. Build agents picking up Phase 6 work:
+
+- Start from `dev/v2` (branch from `origin/main` if not yet present locally).
+- Land each ticket on `dev/v2` directly (no separate per-ticket branches).
+- Preserve every v1 path; gate new behaviour on `devVersion === 'v2'` from `src/lib/devVersion.ts`.
+- Tests assert both that `?dev=v2` enables the new behaviour AND that no-query / `?dev=1` produces the v1 baseline byte-for-byte.
+- The end-of-phase summary file is `docs/phase-summaries/FXSW-042-summary.md`.
+
+Promotion of `dev/v2` to `main` is a separate decision and a separate phase.

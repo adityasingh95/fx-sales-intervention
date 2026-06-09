@@ -297,4 +297,19 @@ The suggestion engine is a pure function and is the most-tested part of the prot
 - Historical fill outcomes feedback loop.
 - A/B comparison view ("with vs without AI").
 - Confidence intervals / probability of acceptance prediction.
+
+## 15. Integration with the v2 dual-margin model
+
+In v2 the Pricing Panel has two independent margin inputs (bid + ask) instead of one. The suggestion engine API is **unchanged**: `computeSuggestion(...)` still returns a single integer `suggestedPips`.
+
+The panel consumes that single value as follows:
+
+- **Apply** writes `suggestedPips` to both `marginBid` and `marginAsk`. The trader then nudges either side independently if desired.
+- **Undo** restores the **pair** that was in place before Apply (both prior values), not a single number.
+- The 600ms indigo glow animation triggers on **both** input cells simultaneously.
+- The suggestion is direction-aware only insofar as it always recommends a markup magnitude — never a sign or a side. Direction inference happens in the Pricing Panel via `quoteSideFor(side, dealtCcy)`, not in the engine.
+
+The engine's internal pip-delta values (tier baseline, notional band, market deltas, behaviour deltas, confidence thresholds) are unchanged. The pure-function contract from §3 is preserved, which keeps the test surface (34 unit tests + 7 rationale tests + 6 client-profile tests) intact across the v2 migration.
+
+Future v2.x work could optionally return a `{ bidPips, askPips }` shape to model asymmetric tier-based skews; intentionally deferred for the v2 phase to keep the engine API stable for the Wiki Agent's code-drift checks.
 - Audit log of overrides (could be valuable for v2 — "trader overrode AI in 23% of cases this week").
