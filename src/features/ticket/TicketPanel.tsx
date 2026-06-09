@@ -3,7 +3,9 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
+import { getDevVersion } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
+import { quoteSideFor } from '@/lib/quoteSide';
 import type { PriceTick } from '@/services/feed/types';
 import { usePrice } from '@/services/feed/usePrice';
 import { getClientProfile } from '@/services/suggestion/clientProfiles';
@@ -30,6 +32,7 @@ import TicketFooter from './TicketFooter';
 export default function TicketPanel() {
   const openDealId = useUiStore((s) => s.openDealId);
   const entry = useDealsStore((s) => (openDealId ? s.deals.get(openDealId) : undefined));
+  const isV2 = getDevVersion() === 'v2';
   const [slidIn, setSlidIn] = useState(false);
   // Margin is per-open-deal local state for now. FXSW-025 will source
   // it from an AI suggestion + Apply, and the deal-machine context
@@ -208,6 +211,16 @@ export default function TicketPanel() {
               setFixedSide(side);
               setFrozenTick(liveTick);
             }}
+            onExitFixed={
+              isV2
+                ? () => {
+                    setPricingMode('streaming');
+                    setFixedSide(null);
+                    setFrozenTick(null);
+                  }
+                : undefined
+            }
+            quoteSide={isV2 ? quoteSideFor(deal.side, deal.dealtCcy) : 'BOTH'}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}

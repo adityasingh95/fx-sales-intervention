@@ -195,6 +195,173 @@ describe('<PricingPanel />', () => {
       expect(seen.at(-1)).toBe(1);
     });
 
+    // FXSW-038 — v2 side-selection UX
+    it('v2 fixed mode: clicking ASK dims the BID cell via data-dimmed', () => {
+      function V2Harness() {
+        return (
+          <PricingPanel
+            pair="EURUSD"
+            liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+            frozenTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+            pricingMode="fixed"
+            fixedSide="ask"
+            margin={3}
+            onMarginChange={() => {}}
+            onEnterFixed={() => {}}
+            onRefresh={() => {}}
+            quoteSide="BOTH"
+          />
+        );
+      }
+      render(<V2Harness />);
+      expect(screen.getByTestId('bid-cell')).toHaveAttribute('data-dimmed', 'true');
+      expect(screen.getByTestId('ask-cell')).toHaveAttribute('data-focused', 'true');
+      expect(screen.getByTestId('ask-cell')).not.toHaveAttribute('data-dimmed');
+    });
+
+    it('v2 re-click toggle: clicking the focused side again calls onExitFixed', () => {
+      const onExitFixed = vi.fn();
+      const onEnterFixed = vi.fn();
+      render(
+        <PricingPanel
+          pair="EURUSD"
+          liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          frozenTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          pricingMode="fixed"
+          fixedSide="bid"
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={onEnterFixed}
+          onExitFixed={onExitFixed}
+          onRefresh={() => {}}
+        />,
+      );
+      act(() => {
+        fireEvent.click(screen.getByTestId('bid-cell'));
+      });
+      expect(onExitFixed).toHaveBeenCalledOnce();
+      expect(onEnterFixed).not.toHaveBeenCalled();
+    });
+
+    it('v2 re-click toggle: clicking the OTHER side enters fixed for that side (not exit)', () => {
+      const onExitFixed = vi.fn();
+      const onEnterFixed = vi.fn();
+      render(
+        <PricingPanel
+          pair="EURUSD"
+          liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          frozenTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          pricingMode="fixed"
+          fixedSide="bid"
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={onEnterFixed}
+          onExitFixed={onExitFixed}
+          onRefresh={() => {}}
+        />,
+      );
+      act(() => {
+        fireEvent.click(screen.getByTestId('ask-cell'));
+      });
+      expect(onEnterFixed).toHaveBeenCalledWith('ask');
+      expect(onExitFixed).not.toHaveBeenCalled();
+    });
+
+    it('v2 quoteSide=ASK: BID cell is disabled (data-disabled) and ignores clicks', () => {
+      const onEnterFixed = vi.fn();
+      render(
+        <PricingPanel
+          pair="USDJPY"
+          liveTick={{ pair: 'USDJPY', bid: 157.76, mid: 157.77, ask: 157.78, timestamp: 0 }}
+          frozenTick={null}
+          pricingMode="streaming"
+          fixedSide={null}
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={onEnterFixed}
+          onRefresh={() => {}}
+          quoteSide="ASK"
+        />,
+      );
+      expect(screen.getByTestId('bid-cell')).toHaveAttribute('data-disabled', 'true');
+      expect(screen.getByTestId('ask-cell')).not.toHaveAttribute('data-disabled');
+      act(() => {
+        fireEvent.click(screen.getByTestId('bid-cell'));
+      });
+      expect(onEnterFixed).not.toHaveBeenCalled();
+      // The clickable side still works.
+      act(() => {
+        fireEvent.click(screen.getByTestId('ask-cell'));
+      });
+      expect(onEnterFixed).toHaveBeenCalledWith('ask');
+    });
+
+    it('v2 quoteSide=BID: ASK cell is disabled', () => {
+      render(
+        <PricingPanel
+          pair="EURUSD"
+          liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          frozenTick={null}
+          pricingMode="streaming"
+          fixedSide={null}
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={() => {}}
+          onRefresh={() => {}}
+          quoteSide="BID"
+        />,
+      );
+      expect(screen.getByTestId('ask-cell')).toHaveAttribute('data-disabled', 'true');
+      expect(screen.getByTestId('bid-cell')).not.toHaveAttribute('data-disabled');
+    });
+
+    it('v1 default (no quoteSide prop): both cells clickable, no disabled state', () => {
+      const onEnterFixed = vi.fn();
+      render(
+        <PricingPanel
+          pair="EURUSD"
+          liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          frozenTick={null}
+          pricingMode="streaming"
+          fixedSide={null}
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={onEnterFixed}
+          onRefresh={() => {}}
+        />,
+      );
+      expect(screen.getByTestId('bid-cell')).not.toHaveAttribute('data-disabled');
+      expect(screen.getByTestId('ask-cell')).not.toHaveAttribute('data-disabled');
+      act(() => {
+        fireEvent.click(screen.getByTestId('bid-cell'));
+      });
+      expect(onEnterFixed).toHaveBeenCalledWith('bid');
+    });
+
+    it('v1 (no onExitFixed): re-clicking focused side calls onEnterFixed again (v1 behaviour preserved)', () => {
+      const onEnterFixed = vi.fn();
+      render(
+        <PricingPanel
+          pair="EURUSD"
+          liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          frozenTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+          pricingMode="fixed"
+          fixedSide="bid"
+          margin={3}
+          onMarginChange={() => {}}
+          onEnterFixed={onEnterFixed}
+          onRefresh={() => {}}
+        />,
+      );
+      act(() => {
+        fireEvent.click(screen.getByTestId('bid-cell'));
+      });
+      // No onExitFixed prop means the v1 path is taken: re-click on the
+      // focused side falls through to onEnterFixed (parent's handler is
+      // idempotent — setting the same state has no visible effect).
+      expect(onEnterFixed).toHaveBeenCalledWith('bid');
+    });
+
     it('programmatic margin update (FXSW-025 Apply simulation) animates data-margin-glow for 600ms', () => {
       function ControlledHarness({ value }: { value: number }) {
         return (

@@ -61,7 +61,7 @@ This sanitized backlog preserves the completed ticket map and current delivery s
 | FXSW-035 | `devVersion` parser + `?dev=v2` URL gate | 6 | Done |
 | FXSW-036 | Resizable blotter divider + sessionStorage persistence (v2) | 6 | Done |
 | FXSW-037 | Extend `Side` to BOTH; add `dealtCcy`; `quoteSideFor` helper; BOTH + quote-dealt scenarios; DevInjector entries | 6 | Done |
-| FXSW-038 | PricingPanel side-selection UX: dim, re-click-toggle, disabled side (v2) | 6 | Open |
+| FXSW-038 | PricingPanel side-selection UX: dim, re-click-toggle, disabled side (v2) | 6 | Done |
 | FXSW-039 | Dual margin state model — replace `margin: number` with `{ marginBid, marginAsk }` (v2) | 6 | Open |
 | FXSW-040 | Dual margin UI — two inputs + Balance + Zero buttons (v2) | 6 | Open |
 | FXSW-041 | Direction-aware P/L display via `quoteSideFor` (v2) | 6 | Open |

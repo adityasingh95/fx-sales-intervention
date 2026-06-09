@@ -16,6 +16,30 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-038 · PricingPanel side-selection UX (v2)
+
+- `PricingPanel.Cell` gains `dimmed` + `disabled` props, surfaced as `data-dimmed="true"` and `data-disabled="true"`. Dimmed = opacity 50; disabled = opacity 35 + `cursor-not-allowed` + no click handler.
+- `PricingPanel` accepts two new optional props: `onExitFixed?: () => void` (re-click toggle target) and `quoteSide?: QuoteSide` (default `'BOTH'` = v1 behaviour).
+- New `handleCellClick(side)` rule:
+  1. If `quoteSide` restricts that side (`ASK` ⇒ BID blocked, `BID` ⇒ ASK blocked), no-op.
+  2. Else if already in fixed mode for that side AND `onExitFixed` provided, exit.
+  3. Else enter fixed for that side.
+- `TicketPanel` wires the v2 path: `isV2 = getDevVersion() === 'v2'`. When v2, passes `quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}` + an `onExitFixed` that resets pricing mode to streaming. v1 omits both — identical to prior behaviour.
+- Visual verification at `?dev=v2`: OFF_HOURS (SELL USD USDJPY) → dim is striking, easy to scan. QUOTE_DEALT (SELL JPY USDJPY) → BID disabled at ~35% opacity, only ASK clickable.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (362 pass / 0 todo, +7 new PricingPanel cases for dim/disabled/re-click/v1-regression/quoteSide=BID/ASK) · test:e2e ✓ (6/6 in 36.5s).
+
+**User-directed decisions:**
+
+- None — all decisions within FXSW-038 plan AC.
+
+**Agent-directed decisions:**
+
+- **`quoteSide` as an optional prop with default `'BOTH'`.** Lets v1 callers pass no prop and get the v1 "any side clickable" behaviour for free. v2's TicketPanel passes the computed `quoteSideFor` result.
+- **`onExitFixed?: () => void` is optional.** v1 callers don't pass it; the re-click-to-streaming behaviour is opt-in for v2 only. v1's re-click-same-side path falls through to `onEnterFixed` (parent's setter is idempotent — no visible effect).
+- **Disabled cells render the live tick value, not em-dash.** The trader still wants to see the other side of the market even when they can't quote on it.
+- **No new test harness.** Existing PricingPanel.test.tsx had the Harness pattern; new v2 cases inline the props (smaller test surface).
+- **`Cell.onClick = disabled ? undefined : onClick`.** Cleaner than a no-op handler. Combined with `aria-disabled` + cursor-not-allowed for affordance.
+
 ## FXSW-037 · Side BOTH + dealtCcy + quoteSideFor + new scenarios (v2)
 
 - `Side` extended from `'BUY' | 'SELL'` to `'BUY' | 'SELL' | 'BOTH'`.

@@ -2,12 +2,16 @@ import clsx from 'clsx';
 import { Minus, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatRate } from '@/lib/format';
+import type { QuoteSide } from '@/lib/quoteSide';
 import type { Pair, PriceTick } from '@/services/feed/types';
 
 // FXSW-017 (streaming) + FXSW-018 (fixed mode + margin controls), refactored
 // in FXSW-019 to lift pricing-mode state up to the parent so both this
-// panel and ClientSummaryPanel see the same display tick.
-// Spec: docs/02 §4.4 + docs/05 §4.
+// panel and ClientSummaryPanel see the same display tick. FXSW-038 adds
+// v2 side-selection UX: dim the non-selected side, re-click the selected
+// side to return to streaming, disable the non-quoteable side when the
+// request is one-sided.
+// Spec: docs/02 §4.4 + docs/05 §4 + docs/02 §7.1.
 
 const STALE_MS = 3000;
 const FLASH_MS = 80;
@@ -27,7 +31,14 @@ export interface PricingPanelProps {
   margin: number;
   onMarginChange: (next: number) => void;
   onEnterFixed: (side: Side) => void;
+  // v2: when defined, re-clicking the currently focused cell returns to
+  // streaming mode. v1 omits the prop and re-click is a no-op.
+  onExitFixed?: () => void;
   onRefresh: () => void;
+  // v2: restricts which side(s) the trader can quote on, based on the
+  // client request's direction × dealt currency. Defaults to BOTH (no
+  // restriction, v1-compatible).
+  quoteSide?: QuoteSide;
 }
 
 export default function PricingPanel({
@@ -39,7 +50,9 @@ export default function PricingPanel({
   margin,
   onMarginChange,
   onEnterFixed,
+  onExitFixed,
   onRefresh,
+  quoteSide = 'BOTH',
 }: PricingPanelProps) {
   const prevBid = useRef<number | null>(null);
   const prevAsk = useRef<number | null>(null);
@@ -106,6 +119,16 @@ export default function PricingPanel({
     onMarginChange(Math.max(MIN_MARGIN, margin + delta));
   };
 
+  const handleCellClick = (side: Side): void => {
+    if (side === 'bid' && quoteSide === 'ASK') return;
+    if (side === 'ask' && quoteSide === 'BID') return;
+    if (pricingMode === 'fixed' && fixedSide === side && onExitFixed) {
+      onExitFixed();
+      return;
+    }
+    onEnterFixed(side);
+  };
+
   const displayTick = pricingMode === 'fixed' ? frozenTick : liveTick;
   const showValues = displayTick !== null && (pricingMode === 'fixed' || !stale);
 
@@ -137,8 +160,10 @@ export default function PricingPanel({
           label="Bid"
           flash={pricingMode === 'streaming' ? bidFlash : null}
           focused={fixedSide === 'bid'}
+          dimmed={fixedSide === 'ask'}
+          disabled={quoteSide === 'ASK'}
           value={showValues ? formatRate(displayTick.bid, pair) : '—'}
-          onClick={() => onEnterFixed('bid')}
+          onClick={() => handleCellClick('bid')}
         />
         <div data-testid="mid-cell" className="flex flex-col items-center">
           <span className="font-mono text-base tabular-nums text-text-dim">
@@ -153,8 +178,10 @@ export default function PricingPanel({
           label="Ask"
           flash={pricingMode === 'streaming' ? askFlash : null}
           focused={fixedSide === 'ask'}
+          dimmed={fixedSide === 'bid'}
+          disabled={quoteSide === 'BID'}
           value={showValues ? formatRate(displayTick.ask, pair) : '—'}
-          onClick={() => onEnterFixed('ask')}
+          onClick={() => handleCellClick('ask')}
         />
       </div>
 
@@ -210,24 +237,40 @@ interface CellProps {
   label: string;
   flash: FlashDir;
   focused: boolean;
+  dimmed?: boolean;
+  disabled?: boolean;
   value: string;
   onClick: () => void;
 }
 
-function Cell({ testId, label, flash, focused, value, onClick }: CellProps) {
+function Cell({
+  testId,
+  label,
+  flash,
+  focused,
+  dimmed = false,
+  disabled = false,
+  value,
+  onClick,
+}: CellProps) {
   return (
     <button
       type="button"
       data-testid={testId}
       data-flash={flash ?? undefined}
       data-focused={focused ? 'true' : undefined}
-      onClick={onClick}
+      data-dimmed={dimmed ? 'true' : undefined}
+      data-disabled={disabled ? 'true' : undefined}
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled || undefined}
       className={clsx(
         'flex flex-1 flex-col items-center rounded-sm border bg-bg-elevated px-3 py-2 transition-colors duration-[80ms]',
         focused && 'border-border-focus shadow-[0_0_0_1px_rgba(99,102,241,0.5)]',
         !focused && flash === 'up' && 'border-green',
         !focused && flash === 'down' && 'border-red',
         !focused && !flash && 'border-border',
+        dimmed && !disabled && 'opacity-50',
+        disabled && 'cursor-not-allowed opacity-[0.35]',
       )}
     >
       <span className="font-mono text-2xl tabular-nums text-text">{value}</span>
