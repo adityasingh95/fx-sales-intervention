@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatRate } from '@/lib/format';
 import type { QuoteSide } from '@/lib/quoteSide';
 import type { Pair, PriceTick } from '@/services/feed/types';
+import type { MarginPair } from '@/types/deal';
 
 // FXSW-017 (streaming) + FXSW-018 (fixed mode + margin controls), refactored
 // in FXSW-019 to lift pricing-mode state up to the parent so both this
@@ -39,6 +40,11 @@ export interface PricingPanelProps {
   // client request's direction × dealt currency. Defaults to BOTH (no
   // restriction, v1-compatible).
   quoteSide?: QuoteSide;
+  // FXSW-040 v2: when both are defined, the dual-input UI renders
+  // (independent bid + ask margins, Balance, Zero). When absent, the
+  // v1 single-input UI renders driven by `margin` + `onMarginChange`.
+  marginPair?: MarginPair;
+  onMarginPairChange?: (next: MarginPair) => void;
 }
 
 export default function PricingPanel({
@@ -53,7 +59,10 @@ export default function PricingPanel({
   onExitFixed,
   onRefresh,
   quoteSide = 'BOTH',
+  marginPair,
+  onMarginPairChange,
 }: PricingPanelProps) {
+  const useDualMargin = marginPair !== undefined && onMarginPairChange !== undefined;
   const prevBid = useRef<number | null>(null);
   const prevAsk = useRef<number | null>(null);
   const [bidFlash, setBidFlash] = useState<FlashDir>(null);
@@ -185,50 +194,194 @@ export default function PricingPanel({
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-tight text-text-mute">
-          Margin
-        </span>
-        <button
-          type="button"
-          data-testid="margin-minus"
-          aria-label="Decrease margin"
-          onClick={() => adjust(-1)}
-          disabled={margin <= MIN_MARGIN}
-          className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
-        >
-          <Minus size={14} aria-hidden />
-        </button>
-        <input
-          type="number"
-          data-testid="margin-input"
-          data-margin-glow={marginGlow ? 'true' : undefined}
-          value={margin}
-          min={MIN_MARGIN}
-          step={1}
-          onChange={(e) => {
-            const n = Math.floor(Number(e.target.value));
-            if (Number.isFinite(n)) onMarginChange(Math.max(MIN_MARGIN, n));
-          }}
-          className={clsx(
-            'h-8 w-16 rounded-sm border bg-bg-elevated text-center font-mono text-sm text-text outline-none transition-all duration-[200ms]',
-            marginGlow
-              ? 'border-ai-accent shadow-[0_0_0_2px_rgba(129,140,248,0.35)]'
-              : 'border-border',
-          )}
+      {useDualMargin ? (
+        <DualMarginControls
+          marginPair={marginPair}
+          onMarginPairChange={onMarginPairChange}
+          marginGlow={marginGlow}
         />
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-tight text-text-mute">
+            Margin
+          </span>
+          <button
+            type="button"
+            data-testid="margin-minus"
+            aria-label="Decrease margin"
+            onClick={() => adjust(-1)}
+            disabled={margin <= MIN_MARGIN}
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
+          >
+            <Minus size={14} aria-hidden />
+          </button>
+          <input
+            type="number"
+            data-testid="margin-input"
+            data-margin-glow={marginGlow ? 'true' : undefined}
+            value={margin}
+            min={MIN_MARGIN}
+            step={1}
+            onChange={(e) => {
+              const n = Math.floor(Number(e.target.value));
+              if (Number.isFinite(n)) onMarginChange(Math.max(MIN_MARGIN, n));
+            }}
+            className={clsx(
+              'h-8 w-16 rounded-sm border bg-bg-elevated text-center font-mono text-sm text-text outline-none transition-all duration-[200ms]',
+              marginGlow
+                ? 'border-ai-accent shadow-[0_0_0_2px_rgba(129,140,248,0.35)]'
+                : 'border-border',
+            )}
+          />
+          <button
+            type="button"
+            data-testid="margin-plus"
+            aria-label="Increase margin"
+            onClick={() => adjust(1)}
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+          >
+            <Plus size={14} aria-hidden />
+          </button>
+          <span className="text-xs text-text-mute">pips</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// FXSW-040 — v2 dual-margin block. Two `[label][−][input][+]` rows plus
+// Balance + Zero shortcut buttons between them.
+interface DualMarginControlsProps {
+  marginPair: MarginPair;
+  onMarginPairChange: (next: MarginPair) => void;
+  marginGlow: boolean;
+}
+
+function DualMarginControls({
+  marginPair,
+  onMarginPairChange,
+  marginGlow,
+}: DualMarginControlsProps) {
+  const setSide = (side: 'bid' | 'ask', value: number): void => {
+    const clamped = Math.max(MIN_MARGIN, Math.floor(value));
+    onMarginPairChange(
+      side === 'bid'
+        ? { bid: clamped, ask: marginPair.ask }
+        : { bid: marginPair.bid, ask: clamped },
+    );
+  };
+
+  const handleBalance = (): void => {
+    const avg = Math.round((marginPair.bid + marginPair.ask) / 2);
+    const clamped = Math.max(MIN_MARGIN, avg);
+    onMarginPairChange({ bid: clamped, ask: clamped });
+  };
+
+  const handleZero = (): void => {
+    onMarginPairChange({ bid: 0, ask: 0 });
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <MarginRow
+        label="Bid"
+        testIdSuffix="bid"
+        value={marginPair.bid}
+        onChange={(n) => setSide('bid', n)}
+        glow={marginGlow}
+      />
+      <div className="flex items-center justify-center gap-2">
         <button
           type="button"
-          data-testid="margin-plus"
-          aria-label="Increase margin"
-          onClick={() => adjust(1)}
-          className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+          data-testid="margin-balance"
+          onClick={handleBalance}
+          className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
         >
-          <Plus size={14} aria-hidden />
+          Balance
         </button>
-        <span className="text-xs text-text-mute">pips</span>
+        <button
+          type="button"
+          data-testid="margin-zero"
+          onClick={handleZero}
+          className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-red/60 hover:text-text"
+        >
+          Zero
+        </button>
       </div>
-    </section>
+      <MarginRow
+        label="Ask"
+        testIdSuffix="ask"
+        value={marginPair.ask}
+        onChange={(n) => setSide('ask', n)}
+        glow={marginGlow}
+      />
+    </div>
+  );
+}
+
+interface MarginRowProps {
+  label: string;
+  testIdSuffix: 'bid' | 'ask';
+  value: number;
+  onChange: (next: number) => void;
+  glow: boolean;
+}
+
+function MarginRow({ label, testIdSuffix, value, onChange, glow }: MarginRowProps) {
+  const minusDisabled = value <= 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-12 text-xs font-medium uppercase tracking-tight text-text-mute">
+        {label}
+      </span>
+      <button
+        type="button"
+        data-testid={`margin-minus-${testIdSuffix}`}
+        aria-label={`Decrease ${label.toLowerCase()} margin`}
+        onClick={() => onChange(value - 1)}
+        disabled={minusDisabled}
+        className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
+      >
+        <Minus size={14} aria-hidden />
+      </button>
+      <input
+        type="number"
+        data-testid={`margin-input-${testIdSuffix}`}
+        data-margin-glow={glow ? 'true' : undefined}
+        value={value}
+        min={0}
+        step={1}
+        onChange={(e) => {
+          const n = Math.floor(Number(e.target.value));
+          if (Number.isFinite(n)) onChange(n);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            onChange(value + 1);
+          } else if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            onChange(value - 1);
+          }
+        }}
+        className={clsx(
+          'h-8 w-16 rounded-sm border bg-bg-elevated text-center font-mono text-sm text-text outline-none transition-all duration-[200ms]',
+          glow
+            ? 'border-ai-accent shadow-[0_0_0_2px_rgba(129,140,248,0.35)]'
+            : 'border-border',
+        )}
+      />
+      <button
+        type="button"
+        data-testid={`margin-plus-${testIdSuffix}`}
+        aria-label={`Increase ${label.toLowerCase()} margin`}
+        onClick={() => onChange(value + 1)}
+        className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+      >
+        <Plus size={14} aria-hidden />
+      </button>
+      <span className="text-xs text-text-mute">pips</span>
+    </div>
   );
 }
 

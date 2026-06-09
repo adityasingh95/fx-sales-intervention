@@ -248,6 +248,8 @@ export default function TicketPanel() {
                 : undefined
             }
             quoteSide={isV2 ? quoteSideFor(deal.side, deal.dealtCcy) : 'BOTH'}
+            marginPair={isV2 ? marginPair : undefined}
+            onMarginPairChange={isV2 ? setMarginPair : undefined}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}

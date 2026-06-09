@@ -16,6 +16,31 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-040 · Dual margin UI (Balance + Zero)
+
+- `PricingPanel` props extended with `marginPair?: MarginPair` + `onMarginPairChange?: (next) => void`. When both are provided, renders the v2 dual UI; otherwise renders the v1 single input.
+- New `DualMarginControls` sub-component with two `[label][−][input][+]` rows (Bid above, Ask below) and Balance + Zero shortcut buttons centered between them.
+- New testids: `margin-input-bid`, `margin-input-ask`, `margin-plus-bid` / `-ask`, `margin-minus-bid` / `-ask`, `margin-balance`, `margin-zero`.
+- `Balance` button: `Math.round((bid + ask) / 2)`, both sides set to that. Odd sums round to nearest integer.
+- `Zero` button: both sides → 0.
+- Per-side keyboard `+`/`-` (on focused input): adjusts only that side. Document-level keyboard handler still active in streaming mode for global +/-, but now only fires when no input has focus (existing `e.target instanceof HTMLInputElement` guard).
+- `TicketPanel` passes `marginPair` + `setMarginPair` to PricingPanel only when `isV2`; v1 wiring unchanged.
+- v1 input continues to render at no-query / `?dev=1` (single field). v2 input renders the dual UI.
+- Manual visual verification: BID 7 / ASK 2 produces Client Bid 157.69 + Client Ask 157.79 + blended P/L $1,426; Balance equalizes to 5/5; Zero clears both.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (371 pass / 0 todo, +7 new — dual UI render, +/- per side, Balance even + odd-rounding, Zero, independent edit, focused-input keyboard) · test:e2e ✓ (6/6 in 36.2s).
+
+**User-directed decisions:**
+
+- None — within FXSW-040 plan AC.
+
+**Agent-directed decisions:**
+
+- **`DualMarginControls` + `MarginRow` extracted as sibling sub-components, not inlined.** Keeps `PricingPanel` readable; mirrors the existing `Cell` sub-component pattern.
+- **Discriminator is presence of both `marginPair` + `onMarginPairChange`.** Not a `devVersion` import inside PricingPanel — keeps the panel pure of routing concerns and testable in isolation.
+- **Per-input keyboard handler on `<input onKeyDown>`, not document-level.** When a v2 user is typing in either bid or ask input, only that side adjusts; the document-level handler skips because target is an `HTMLInputElement`. Keeps the v1 panel-focused keyboard shortcut working when no input has focus.
+- **Minimum margin on dual UI is 0, not 1.** Zero button needs to be effective. The single-input v1 keeps `MIN_MARGIN=1` for backwards compat. Each side's `−` button disables at 0.
+- **Balance + Zero buttons sit on a centered single row between the two side rows.** Visually mirrors "this affects both sides equally".
+
 ## FXSW-039 · Dual margin state model
 
 - New type `MarginPair = { bid: number; ask: number }` exported from `@/types/deal`.
