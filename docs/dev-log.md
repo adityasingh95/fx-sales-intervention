@@ -16,6 +16,32 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-042 · Mobile card-stack blotters (v2)
+
+- New hook `src/lib/useIsMobile.ts` — `matchMedia('(max-width: 767px)')` listener with SSR-safe defaults.
+- `ActiveBlotter` + `HistoricBlotter` branch on `getDevVersion() === 'v2' && isMobile`. When true, render a card-stack layout instead of the `min-w-[1100px]` / `min-w-[920px]` table.
+- New `ActiveCard` sub-component: row 1 [status pill | amount + ccy | pair], row 2 [client | side | reasons]. Tap opens the ticket via the existing `openTicket(dealId)`.
+- New `HistoricCard` sub-component: row 1 [time | amount + ccy | pair], row 2 [client | outcome].
+- `data-testid="active-blotter-body"` + `data-testid="historic-blotter-body"` + `data-deal-id` preserved on the card-body containers, so existing tests + e2es keep passing.
+- v1 (no-query / `?dev=1`) at any viewport renders the original horizontal-scroll table — byte-for-byte unchanged.
+- v2 at md+ also renders the table; only at < md does the card layout activate.
+- Tests:
+  - `useIsMobile` covers matchMedia true/false/missing.
+  - ActiveBlotter v2-mobile + v1-mobile assertions added (5 new tests across both files).
+- Visual verification at 375×812: v2 shows two stacked cards (Off-Hours + Both-Sided) with all key fields visible, no horizontal scroll; v1 retains the cropped-table behaviour as required by the v1 contract.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (379 pass / 0 todo, +5 new) · test:e2e ✓ (6/6 in 36.2s).
+
+**User-directed decisions:**
+
+- None — within FXSW-042 plan AC.
+
+**Agent-directed decisions:**
+
+- **JS-driven branching via `useIsMobile` instead of Tailwind `md:hidden`.** Two reasons: (1) jsdom doesn't apply CSS media queries, so test assertions wouldn't be meaningful with CSS-only approach; (2) only one body element renders, so the existing `screen.getByTestId('active-blotter-body')` lookups stay unambiguous (no double-find).
+- **`useIsMobile` lives in `src/lib/` alongside `devVersion.ts`.** General-purpose hook, not blotter-specific. Cheap to reuse for any future mobile-only UI.
+- **Card outcome text aligned right via `ml-auto`.** Mirrors the desktop table's right-aligned outcome column visually.
+- **No new e2e spec.** Mobile rendering is a CSS + JS-detection feature; the unit tests assert the JS branch + DOM structure; manual verification (screenshotted in dev-log) covers the live behaviour.
+
 ## FXSW-041 · Direction-aware P/L display
 
 - `ClientSummaryPanel` new optional `quoteSide?: QuoteSide` prop.

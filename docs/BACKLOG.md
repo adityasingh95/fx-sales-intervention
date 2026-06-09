@@ -65,7 +65,7 @@ This sanitized backlog preserves the completed ticket map and current delivery s
 | FXSW-039 | Dual margin state model — replace `margin: number` with `{ marginBid, marginAsk }` (v2) | 6 | Done |
 | FXSW-040 | Dual margin UI — two inputs + Balance + Zero buttons (v2) | 6 | Done |
 | FXSW-041 | Direction-aware P/L display via `quoteSideFor` (v2) | 6 | Done |
-| FXSW-042 | Mobile card-stack blotters at < md breakpoint (v2) | 6 | Open |
+| FXSW-042 | Mobile card-stack blotters at < md breakpoint (v2) | 6 | Done |
 
 ## Phase summaries
 

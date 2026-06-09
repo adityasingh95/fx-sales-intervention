@@ -1,5 +1,7 @@
 import clsx from 'clsx';
+import { getDevVersion } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { isHistoric, useActiveDeals, type DealEntry } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import AmountCell from './AmountCell';
@@ -106,31 +108,107 @@ function Row({ entry }: { entry: DealEntry }) {
 
 export function ActiveBlotter() {
   const deals = useActiveDeals();
+  const isV2 = getDevVersion() === 'v2';
+  const isMobile = useIsMobile();
+  // v1 + desktop OR v2 + desktop: horizontal-scroll table.
+  // v2 + mobile: card stack (no horizontal scroll). v1 + mobile keeps the
+  // table per the v1 ship contract.
+  const useCards = isV2 && isMobile;
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
         <span className="mr-3 font-sans">Active Deals</span>
       </div>
       <div className="flex-1 overflow-auto">
-        <div className="min-w-[1100px]">
-          <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
-            {columns.map((col) => (
-              <div key={col.key} className={col.width}>
-                {col.label}
-              </div>
-            ))}
-          </div>
-          <div data-testid="active-blotter-body">
+        {useCards ? (
+          <div
+            data-testid="active-blotter-body"
+            className="flex flex-col gap-2 px-3 py-2"
+          >
             {deals.length === 0 ? (
-              <div className="flex h-32 items-center justify-center px-4 py-8 text-sm text-text-mute">
-                No active deals. Use the dev injector (top right) to start a scenario.
+              <div className="flex h-32 items-center justify-center text-sm text-text-mute">
+                No active deals. Use the dev injector to start a scenario.
               </div>
             ) : (
-              deals.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
+              deals.map((entry) => <ActiveCard key={entry.deal.dealId} entry={entry} />)
             )}
           </div>
-        </div>
+        ) : (
+          <div className="min-w-[1100px]">
+            <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
+              {columns.map((col) => (
+                <div key={col.key} className={col.width}>
+                  {col.label}
+                </div>
+              ))}
+            </div>
+            <div data-testid="active-blotter-body">
+              {deals.length === 0 ? (
+                <div className="flex h-32 items-center justify-center px-4 py-8 text-sm text-text-mute">
+                  No active deals. Use the dev injector (top right) to start a scenario.
+                </div>
+              ) : (
+                deals.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// FXSW-042 — mobile card-stack row. Two-line layout:
+//   Row 1: [status pill] [amount + ccy] [pair]
+//   Row 2: [client] · [side] · [reasons chips]
+// Tap opens the ticket (same handler as the desktop row).
+function ActiveCard({ entry }: { entry: DealEntry }) {
+  const status = derivedStatus(entry.rfsState, entry.siState, entry.dealable);
+  const openTicket = useUiStore((s) => s.openTicket);
+  const removing = isHistoric(entry.siState);
+  return (
+    <button
+      type="button"
+      onClick={() => openTicket(entry.deal.dealId)}
+      data-deal-id={entry.deal.dealId}
+      data-si-state={entry.siState}
+      data-rfs-state={entry.rfsState}
+      data-display-status={status}
+      data-dealable={entry.dealable ? 'true' : 'false'}
+      data-removing={removing ? 'true' : 'false'}
+      className={clsx(
+        'flex w-full flex-col gap-1.5 rounded-md border border-l-4 border-border bg-bg-panel px-3 py-2 text-left transition-opacity hover:bg-bg-row-hover',
+        BAR_FOR[status],
+        removing && 'opacity-60',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <StatusCell status={status} />
+        <span className="font-mono tabular-nums text-text">
+          <AmountCell
+            notional={entry.deal.notional}
+            pair={entry.deal.pair}
+            dealtCcy={entry.deal.dealtCcy}
+          />
+        </span>
+        <span className="font-mono text-xs uppercase text-text-dim">{entry.deal.pair}</span>
+      </div>
+      <div className="flex items-center gap-2 text-xs">
+        <span className="truncate text-text">{entry.deal.clientName}</span>
+        <span
+          className={clsx(
+            'font-mono font-medium',
+            entry.deal.side === 'BUY' && 'text-green',
+            entry.deal.side === 'SELL' && 'text-red',
+            entry.deal.side === 'BOTH' && 'text-text-dim',
+          )}
+        >
+          {entry.deal.side}
+        </span>
+        <span className="flex flex-1 justify-end overflow-hidden">
+          <ReasonsCell reasons={entry.rejectionReasons} />
+        </span>
+      </div>
+    </button>
   );
 }
