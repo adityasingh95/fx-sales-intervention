@@ -16,6 +16,28 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-036 · Resizable blotter divider + sessionStorage persistence (v2)
+
+- New `src/components/ResizeHandle.tsx` — 4px horizontal handle with `cursor-row-resize`, `data-testid="blotter-resize-handle"`, `data-dragging="true"` during active drag, `role="separator"` + aria-valuenow/min/max.
+- New `src/lib/resizeMath.ts` — pure `computeNewSplit(initialSplit, initialClientY, currentClientY, containerHeight)` with `BLOTTER_SPLIT_MIN=20` / `BLOTTER_SPLIT_MAX=80`. Extracted from the component file so react-refresh stays happy.
+- `settingsStore.ts` extended with `blotterSplit: number` (default 55) + `setBlotterSplit(n)`; persists under `si.blotterSplit` in sessionStorage; malformed stored values fall back to default.
+- `App.tsx` branches on `devVersion`: v1 keeps static `flexBasis: 55%`/`45%`; v2 reads `useSettingsStore.blotterSplit`, uses `ResizeObserver` to track main container height, renders `<ResizeHandle>` between the two sections.
+- jsdom polyfill: no-op `ResizeObserver` in `src/test-setup.ts` so component tests don't crash.
+- Manual visual verification at `?dev=v2` on `pnpm dev` — drag works, clamps engage at 20%/80%, sessionStorage persists across reload. v1 (`?dev=1`) byte-for-byte unchanged per e2e suite (6/6 in 36.3s).
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (341 pass / 0 todo, +16 new across resize math + handle component + settings store + App) · test:e2e ✓ (6/6 in 36.3s).
+
+**User-directed decisions:**
+
+- None — within Phase 6 plan guidance (`05-ui-ux-spec.md §11.1` + BACKLOG FXSW-036 AC).
+
+**Agent-directed decisions:**
+
+- **Update store on every `pointermove` rather than commit on `pointerup`.** The plan said "Drag updates split on pointermove, persists on pointerup". Simpler implementation: writing to sessionStorage on every move is ~60Hz which is cheap, and avoids needing local component state to track the in-progress drag. Visual feedback is live, and a sudden tab close still preserves the latest position.
+- **`ResizeObserver` over `window.resize` listener.** More accurate (catches main-element resize from ticket-open opacity transitions, future flex changes) and is the modern idiomatic API. Polyfilled as a no-op for jsdom.
+- **MouseEvent dispatch + `act` wrapper in tests instead of `fireEvent.pointerDown`.** jsdom's `PointerEvent` constructor drops `clientY` from the init dict. Tests dispatch `new MouseEvent('pointerdown', { clientY, bubbles })` which jsdom honours.
+- **Constants + pure fn live in `src/lib/resizeMath.ts`, not `ResizeHandle.tsx`.** react-refresh ESLint rule requires component files export only components. Moving the math out also makes it directly importable by future consumers (e.g. a horizontal blotter splitter in v3 etc.).
+- **No `border-b border-border` on the Active section in v2.** The 4px resize handle is the visual divider; a double border would look chunky.
+
 ## FXSW-035 · `devVersion` parser + `?dev=v2` URL gate
 
 - New module `src/lib/devVersion.ts` with `type DevVersion = 'v1' | 'v2'`, pure `parseDevVersion(search)`, and SSR-safe `getDevVersion()` wrapper.

@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import ResizeHandle from '@/components/ResizeHandle';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
@@ -7,6 +8,8 @@ import MuteToggle from '@/features/notifications/MuteToggle';
 import ToastStack from '@/features/notifications/ToastStack';
 import { useNotificationSound } from '@/features/notifications/useNotificationSound';
 import TicketPanel from '@/features/ticket/TicketPanel';
+import { getDevVersion } from '@/lib/devVersion';
+import { useSettingsStore } from '@/state/stores/settingsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 
 function formatClock(d: Date): string {
@@ -30,9 +33,29 @@ export default function App() {
   const clock = useSessionClock();
   const dev = isDevMode();
   const ticketOpen = useUiStore((s) => s.openDealId !== null);
+  const devVersion = getDevVersion();
   // FXSW-029: hook drives the WebAudio chime + autoplay-unlock listener
   // for the lifetime of the app. No-op output; side-effects only.
   useNotificationSound();
+
+  const isV2 = devVersion === 'v2';
+  const blotterSplit = useSettingsStore((s) => s.blotterSplit);
+  const setBlotterSplit = useSettingsStore((s) => s.setBlotterSplit);
+
+  const mainRef = useRef<HTMLElement | null>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!isV2 || !mainRef.current) return;
+    const el = mainRef.current;
+    const update = () => setContainerHeight(el.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isV2]);
+
+  const activeBasis = isV2 ? `${blotterSplit}%` : '55%';
+  const historicBasis = isV2 ? `${100 - blotterSplit}%` : '45%';
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
@@ -63,15 +86,32 @@ export default function App() {
         </div>
       </header>
       <main
+        ref={mainRef}
         className={clsx(
           'flex flex-1 flex-col overflow-hidden transition-opacity duration-[240ms]',
           ticketOpen && 'opacity-75',
         )}
       >
-        <section className="basis-[55%] overflow-hidden border-b border-border">
+        <section
+          className={clsx(
+            'overflow-hidden',
+            !isV2 && 'border-b border-border',
+          )}
+          style={{ flexBasis: activeBasis }}
+        >
           <ActiveBlotter />
         </section>
-        <section className="basis-[45%] overflow-hidden">
+        {isV2 && (
+          <ResizeHandle
+            split={blotterSplit}
+            onSplitChange={setBlotterSplit}
+            containerHeight={containerHeight}
+          />
+        )}
+        <section
+          className="overflow-hidden"
+          style={{ flexBasis: historicBasis }}
+        >
           <HistoricBlotter />
         </section>
       </main>

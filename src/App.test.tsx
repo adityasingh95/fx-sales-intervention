@@ -33,4 +33,16 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByTestId('dev-injector-slot')).toBeInTheDocument();
   });
+
+  // FXSW-036: v2 resize handle
+  it('does NOT render the blotter resize handle in v1', () => {
+    render(<App />);
+    expect(screen.queryByTestId('blotter-resize-handle')).toBeNull();
+  });
+
+  it('renders the blotter resize handle at ?dev=v2', () => {
+    window.history.replaceState({}, '', '/?dev=v2');
+    render(<App />);
+    expect(screen.getByTestId('blotter-resize-handle')).toBeInTheDocument();
+  });
 });
