@@ -125,3 +125,14 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - features/ticket.md: dropped the stale "AI panel wiki still in-progress pending Phase 4 ingest" line — AI panel is now stable; replaced with a clean stable-state description.
 ##   - glossary.md: dropped three "(pending)" notes on dummy-feed / scenarios / dev-injector cross-references — those pages all exist now; repointed to live wiki links.
 ##   in-progress statuses confirmed correct on: onboarding.md (schema-mandated rewrite-at-end-of-Phase-5), notifications.md (Phase 5), release-path.md (FXSW-031 Phase 5).
+
+## [2026-06-10] ingest | Phase 6.1 UX feedback pass (commits fc149cd, 0fc2d0d, 77c2f96, f413e4f) — source docs/phase-summaries/FXSW-042-followup-summary.md + dev-log Phase 6.1 entry.
+##   - NEW components/dev-injector.md — dev-version scenario gating + v2 mobile Dev▾ popover (fixed positioning, getBoundingClientRect, overflow-clip escape).
+##   - NEW components/resize-handle.md — v2 blotter split: containerRef live-read event contract + App.tsx grow-weighted-flex layout contract (percentage flex-basis quirk under stretched parent).
+##   - features/ticket.md — Refresh always-rendered/disabled-outside-fixed (supersedes FXSW-018 "only in fixed mode"); v2 dual-margin under-cell layout (MarginRow under each price cell, Balance+Zero centered below, native spinner suppressed); mobile footer compaction + "Stream" label.
+##   - features/ai-margin-suggestion.md — note Pricing Panel Refresh always-visible/disabled-in-streaming.
+##   - features/dev-injector.md — ?dev=v2 scenarios, Hold/Release rename, mobile popover; cross-ref to component page.
+##   - components/scenario-player.md — CLIENT_ACCEPT_OR_REJECT FollowUpEvent (Math.random()<0.5 in buildFollowUpEvent); CREDIT_BREACH + RELEASE_PATH follow-up rows; v2 scenario set note.
+##   - scenarios/credit-breach.md — randomized trader-quote terminal path (CLIENT_ACCEPT_OR_REJECT); scenarios/release-path.md — Hold/Release label + quote-path CLIENT_ACCEPT follow-up.
+##   - index.md — registered both new component pages; updated dev-injector feature entry.
+##   - Brand-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write).

@@ -1,9 +1,10 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-10
 sources:
   - docs/07-scenario-pack.md
   - docs/09-suggestion-engine.md
   - docs/phase-summaries/FXSW-027-summary.md
+  - docs/phase-summaries/FXSW-042-followup-summary.md
 status: stable
 ticket: FXSW-027
 ---
@@ -62,7 +63,13 @@ Scenario: Credit-breach GBPUSD deal is rejected by trader
 | Trigger | Event |
 |---|---|
 | t=0 (inject) | `NEW_SI_DEAL` — Halcyon BUY 25M GBPUSD, reasons `['CREDIT_LIMIT']` |
-| _(none)_ | Scenario has no follow-up — terminal action is trader-driven |
+| SI reaches `Quoted`, +1500ms | `CLIENT_ACCEPT_OR_REJECT` — resolved randomly to `CLIENT_ACCEPT` or `CLIENT_REJECT` |
+
+## Two terminal paths (Phase 6.1)
+
+The recommended action is still **Reject** — the AI credit-decline guardrail surfaces it, and the trader-Reject path (`PickedUp → RejectSent → TraderRejected`, Historic outcome `Rejected by Trader`) is unchanged and is what the E2E exercises.
+
+Before Phase 6.1 the scenario had **no follow-up**, so a trader who ignored the recommendation and **sent a quote anyway** left the deal hanging in `Quoted` forever. Phase 6.1 added an `after-si-state` follow-up on `Quoted` (+1500ms) carrying the new `CLIENT_ACCEPT_OR_REJECT` event. At scheduling time the [scenario player](../components/scenario-player.md) resolves it via `Math.random() < 0.5` into a concrete `CLIENT_ACCEPT` (→ `TradeConfirmed`) or `CLIENT_REJECT` (→ client-rejected terminal), so the quote path also reaches a terminal state in ~1.5s — simulating realistic, non-deterministic counterparty behaviour on a breached account. This was a **user-directed decision** (the user chose "configurable / both outcomes" over a fixed accept or reject). The outcome is **not seeded** — `Math.random()` is called directly in `player.ts:buildFollowUpEvent`, so it is not reproducible in tests; a future ticket could thread a `random?: () => number` seam through the player if needed.
 
 ## AI Suggestion behaviour
 
