@@ -66,6 +66,10 @@ This sanitized backlog preserves the completed ticket map and current delivery s
 | FXSW-040 | Dual margin UI — two inputs + Balance + Zero buttons (v2) | 6 | Done |
 | FXSW-041 | Direction-aware P/L display via `quoteSideFor` (v2) | 6 | Done |
 | FXSW-042 | Mobile card-stack blotters at < md breakpoint (v2) | 6 | Done |
+| FXSW-043 | `themePreviewEnabled` parser + `?theme=preview` URL gate | 7 | Open |
+| FXSW-044 | `themeStore` + light token block in `tokens.css` | 7 | Open |
+| FXSW-045 | `ThemeToggle` header component | 7 | Open |
+| FXSW-046 | Per-surface visual rebalancing pass + phase summary | 7 | Open |
 
 ## Phase summaries
 
@@ -271,6 +275,100 @@ Each ticket below has AC, TDD test list, and Done-when checklist. The build agen
 - v1 regression at 1440×900.
 
 **Done when:** all gates green; manual mobile-emulator view at `?dev=v2` shows cards with no horizontal scroll; v1 view unchanged.
+
+### Phase 7 — Light theme (behind `?theme=preview`)
+
+Phase 7 lands on the long-lived `dev/light-mode` branch and ships behind a `?theme=preview` URL gate, orthogonal to `?dev=v2`. The dark-only ship state on `main` is preserved byte-for-byte when the flag is absent. Scope:
+
+- Light token block in `tokens.css` selected via `[data-theme="light"]`, with all dark tokens rebalanced for light-surface legibility (status pills darkened, AI indigo preserved).
+- `themeStore` (Zustand + sessionStorage, mirrors `settingsStore` pattern) with `prefers-color-scheme` as the first-visit default.
+- `ThemeToggle` component in the header (Sun / Moon icons), only mounted when the URL flag is on.
+- Per-surface visual rebalancing pass: blotter rows, ticket panels, AI suggestion accent, toast chrome, row-flash keyframe, resize handle, dev injector.
+
+Spec references: `02-functional-spec.md` §8, `05-ui-ux-spec.md` §13–§14.
+
+## Phase 7 ticket detail
+
+Each ticket below has AC, TDD test list, and Done-when checklist. The build agent works tickets in order on `dev/light-mode` and commits per-ticket as `feat(FXSW-NNN): title`.
+
+### FXSW-043 — `themePreviewEnabled` parser + `?theme=preview` URL gate
+
+**Effort:** S · **TDD:** Strict · **Depends on:** —
+
+**Docs:** `05-ui-ux-spec.md` §14 · `02-functional-spec.md` §8
+
+**AC:**
+- New file `src/lib/themeMode.ts` exports `export const themePreviewEnabled: boolean` parsed from `window.location.search`.
+- `?theme=preview` → `true`. Any other value (including `?theme=light`, `?theme=dark`, `?theme`, no query) → `false`.
+- Pure module — no side effects on import. `window` access is guarded so SSR-style import (no window) returns `false`.
+- Wiring point only — no UX changes ship in this ticket; FXSW-044+ consume it.
+
+**TDD tests (write first):**
+- Parser unit tests for `?theme=preview`, `?theme=light`, `?theme=dark`, `?theme`, no query, missing `window`.
+- Orthogonality: works alongside `?dev=v2` (both flags on at once).
+
+**Done when:** typecheck/lint/test:run/test:e2e all green on `dev/light-mode`; dark-only behaviour byte-for-byte preserved at no-query and `?dev=v2`.
+
+### FXSW-044 — `themeStore` + light token block
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-043
+
+**Docs:** `02-functional-spec.md` §8.1 · `05-ui-ux-spec.md` §13.1
+
+**AC:**
+- New `src/state/stores/themeStore.ts` (Zustand) with `mode: 'dark' | 'light'`, `setMode(mode)`, `toggle()`.
+- Persistence to sessionStorage under key `si.theme`. Safari-private-mode tolerant (try/catch around set, fall back to in-memory).
+- First-visit init: if `themePreviewEnabled` is `true` and no sessionStorage value, read `window.matchMedia('(prefers-color-scheme: light)').matches`. Otherwise force `'dark'`.
+- Store subscribes to itself and writes `document.documentElement.dataset.theme = mode` on every change.
+- New block `[data-theme='light'] { ... }` appended to `src/styles/tokens.css` per §13.1 of the UI spec — every token in the `:root` block has a light counterpart.
+- No new component renders yet; consumed by FXSW-045.
+
+**TDD tests (write first):**
+- Store: `setMode`, `toggle`, sessionStorage round-trip, Safari-private fallback.
+- First-visit defaults: flag-off forces dark; flag-on + prefers-light returns 'light'; flag-on + sessionStorage value returns that value.
+- DOM side-effect: `document.documentElement.dataset.theme` reflects `mode` after every change.
+- Tokens regression: each new `[data-theme='light']` selector matches the dark counterpart by token name (smoke test parses the CSS file).
+
+**Done when:** all gates green; manual `document.documentElement.dataset.theme = 'light'` in devtools visibly switches the palette across every surface.
+
+### FXSW-045 — `ThemeToggle` header component
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** FXSW-044
+
+**Docs:** `02-functional-spec.md` §8.3 · `05-ui-ux-spec.md` §13.3
+
+**AC:**
+- New `src/features/notifications/ThemeToggle.tsx` (co-located with `MuteToggle` since both are header-level toggle widgets).
+- Renders only when `themePreviewEnabled === true`. When false, returns `null`.
+- Icon: `Sun` from `lucide-react` when active mode is `'dark'` (the target); `Moon` when active mode is `'light'`. 200ms cross-fade between icons on toggle.
+- Same physical size + style as `MuteToggle`: 32×32, `--color-bg-row-hover` on hover, `--color-focus-ring` ring.
+- `data-testid="theme-toggle"`, `data-theme-mode={mode}`, `aria-pressed`, dynamic `aria-label`.
+- Mounted in `Header` between `MuteToggle` and the existing dev/version chip.
+
+**TDD tests (write first):**
+- Renders when flag on; returns null when flag off.
+- Click toggles store; aria-pressed flips.
+- Icon switches with mode.
+- Keyboard: Enter and Space both invoke toggle.
+
+**Done when:** all gates green; at `?theme=preview`, header shows the toggle; toggle visibly switches the palette.
+
+### FXSW-046 — Per-surface visual rebalancing + phase summary
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-045
+
+**Docs:** `05-ui-ux-spec.md` §13.2
+
+**AC:**
+- Per-surface manual pass across every named scenario × theme combination (5 base + 2 v2 scenarios × dark + light = 14 visual states). Capture screenshots into `docs/phase-summaries/FXSW-046-screenshots/` for the phase summary.
+- Adjustments to keyframes / inline styles where a token swap alone is insufficient (most notably the `row-flash` alpha per §13.2).
+- `docs/dev-log.md` entry per ticket, in the established two-list format.
+- `docs/phase-summaries/FXSW-046-summary.md` written per `KICKOFF-PROMPT.md` schema — Wiki Agent ingest input.
+
+**TDD tests (write first):**
+- Snapshot test against `[data-theme='light']` for any component whose visual rebalancing required a code change beyond a token swap.
+
+**Done when:** all gates green; manual pass over 14 visual states completed; phase summary written.
 
 ## Current known follow-ups
 
