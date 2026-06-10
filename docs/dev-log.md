@@ -16,6 +16,40 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## Phase 6.1 · UX feedback pass on dev/v2
+
+Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items, three commits (`fc149cd`, `0fc2d0d`, `77c2f96`). No new tickets, no spec amendments — fixes layered on top of FXSW-035 → FXSW-042. `main` untouched.
+
+- **Margin inputs sit under their respective price cells.** `PricingPanel` restructured: BID `MarginRow` lives in the same column as the BID `Cell`, ASK under ASK; Balance + Zero on a single centered row below. `MarginRow` lost its left "Bid"/"Ask" label span (the cell already labels it).
+- **Browser number-input spinner hidden globally** via `input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none }` + `-moz-appearance: textfield` in `src/styles/global.css`. The dedicated +/− buttons remain the only adjustment surface.
+- **Refresh button always rendered**, disabled in streaming. Removed `pricingMode === 'fixed' &&` conditional gate; added `disabled` + `disabled:opacity-40 disabled:cursor-not-allowed`. No more layout shift on side-select.
+- **CREDIT_BREACH terminates via either outcome.** New `FollowUpEvent` value `CLIENT_ACCEPT_OR_REJECT` resolved at scheduling time in `player.ts` via `Math.random() < 0.5`. Trader Reject path unchanged; trader Send-Quote path now reaches `TradeConfirmed` or `ClientRejected` in ~1.5s.
+- **RELEASE_PATH renamed** to `Hold/Release` in the dev injector LABEL map (resolves naming conflict with the ticket-footer Release action). Added `CLIENT_ACCEPT` after-Quoted follow-up so the quote-path also terminates.
+- **Resize handle now actually drags blotters.** Two stacked root causes:
+  1. Percentage `flex-basis` on column-flex children doesn't resolve under a stretched parent (`flex: 1` on `<main>`). Sections collapsed to content (~104px instead of 55% of 742). Switched to grow-weighted flex: `style={{ flex: '<split> 1 0' }}` and `style={{ flex: '<100-split> 1 0' }}`. Standard splitter pattern.
+  2. `containerHeight: 0` prop on first interaction (ResizeObserver effect fires after first paint), making `computeNewSplit` return `initialSplit` no-op. Replaced with `containerRef` and live `clientHeight` read inside `onMove`. Plus synchronous listener attachment in `handlePointerDown` (no React-commit gap), `setPointerCapture`, hit area widened to `h-2` with a centered 1px visible bar.
+- **Mobile DevInjector dropdown.** Below `md` breakpoint, renders a single `Dev ▾` button; click opens a popover with all scenarios + Reset. Popover uses `position: fixed` with viewport coords from `getBoundingClientRect()` so the header slot's `overflow-x-auto` paint-clip can't truncate it. Outside-click / Esc / button-press closes. Slot wrapper's overflow class flipped from `overflow-x-auto sm:overflow-visible` to `overflow-visible sm:overflow-x-auto`.
+- **Mobile footer buttons stay on one line at 428px.** Footer `px-5 gap-2` → `px-2 gap-1 sm:px-5 sm:gap-2`. Button primitives `px-4 text-sm` → `px-2 text-xs sm:px-4 sm:text-sm`. "Return to Stream" → "Stream" on mobile via inline `<span class="hidden sm:inline">Return to </span>`.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (379 pass / 0 todo) · test:e2e ✓ (6/6 in 35.3s) · build ✓ · brand grep ✓.
+
+**User-directed decisions:**
+
+- **CREDIT_BREACH outcome under trader-sent quote**: AskUserQuestion offered (Client accepts / Client rejects / Configurable). User chose **Configurable / both** → randomized via `CLIENT_ACCEPT_OR_REJECT`.
+- **RELEASE_PATH outcome path**: AskUserQuestion offered (Accept / Reject / Match CREDIT_BREACH). User clarified that "release is an action along quoting not a price request" — the agent renamed the scenario label in the injector and added a `CLIENT_ACCEPT` follow-up so the quote-path also terminates.
+- **Balance/Zero placement**: AskUserQuestion offered (Centered below / Above inputs / Sidebar). User chose **Centered below both inputs**.
+- **Mobile DevInjector pattern**: AskUserQuestion offered (Dropdown popover / Bottom sheet / Hidden by default). User chose **Dropdown / popover menu**.
+
+**Agent-directed decisions:**
+
+- **Grow-weighted flex over pixel-computed heights for the splitter.** Considered measuring main's `clientHeight` and setting `style={{ height: '${px}px' }}` on each section, but that creates a JS-driven layout loop on every resize observer event. `flex: <weight> 1 0` is the canonical browser-native pattern, zero JS-driven sizing, fully responsive to container changes.
+- **`containerRef` over `containerHeight` prop.** The prop-based approach had a first-paint race condition (ResizeObserver effect runs after React commits, leaving `0` in state during the user's first drag). A ref is read live in `onMove` — no state, no closure capture, no race.
+- **Popover `position: fixed` over absolute-with-portal.** Both work; fixed is simpler — no `createPortal`, no synchronization of mount/unmount with backdrop, no extra DOM node under `<body>`. The button rect is read once on toggle-open and the menu is positioned via inline `top` / `left` style.
+- **`CLIENT_ACCEPT_OR_REJECT` as a `FollowUpEvent` union member, not a new trigger kind.** The trigger already supports `after-si-state` + `delay`; this is just a different *outcome event*. Resolution happens at scheduling time in `buildFollowUpEvent` via `Math.random()`. Keeps the scenario-definition syntax declarative.
+- **No deterministic-random injection point for tests.** `Math.random()` is called directly in `player.ts:buildFollowUpEvent`. A future ticket could thread `random?: () => number` through `PlayerOptions` if reproducibility becomes important; not worth it for this slice.
+- **Mobile-only label compression via `<span class="hidden sm:inline">Return to </span>Stream`** rather than two parallel button components. Tailwind's `hidden sm:inline` toggles the prefix at the `sm` breakpoint without JS or component duplication. Desktop appearance is byte-for-byte unchanged.
+- **`MarginRow` lost its left label span.** In the new under-cell layout, the BID/ASK price cell directly above already labels the column; the spans were redundant and pushed the row narrower.
+- **No new unit tests for Phase 6.1.** Existing 379 cover the underlying primitives. Layout changes are visually verified via Playwright DOM inspection (recorded in the phase summary). A future polish ticket can backfill if needed; not blocking the v2 promotion decision.
+
 ## FXSW-042 · Mobile card-stack blotters (v2)
 
 - New hook `src/lib/useIsMobile.ts` — `matchMedia('(max-width: 767px)')` listener with SSR-safe defaults.
