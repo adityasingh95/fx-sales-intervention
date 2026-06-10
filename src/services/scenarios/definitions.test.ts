@@ -68,7 +68,7 @@ const EXPECTED = {
     pair: 'USDJPY',
     side: 'SELL',
     dealtCcy: 'QUOTE',
-    notional: 1_000_000_000,
+    notional: 50_000_000,
     reasons: ['OFF_HOURS'],
   },
 } as const;

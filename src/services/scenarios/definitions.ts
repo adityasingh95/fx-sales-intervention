@@ -129,7 +129,7 @@ const QUOTE_DEALT_INQUIRY: Scenario = {
     pair: 'USDJPY',
     side: 'SELL',
     dealtCcy: 'QUOTE',
-    notional: 1_000_000_000,
+    notional: 50_000_000,
     tenor: 'SPOT',
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
