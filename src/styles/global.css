@@ -17,8 +17,8 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-bg-app);
-  color: var(--color-text);
+  background: rgb(var(--color-bg-app));
+  color: rgb(var(--color-text));
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--line-base);
@@ -59,12 +59,13 @@ input[type='number'] {
   }
 }
 
-/* FXSW-028 — new-SI-deal row flash. Amber 30% → transparent over 300ms,
-   plays once on mount. Tailwind utility `animate-row-flash` wires this
-   keyframe via tailwind.config.ts. */
+/* FXSW-028 — new-SI-deal row flash. Source colour comes from the
+   --color-row-flash token (FXSW-046): amber 30% on dark, amber 18% on
+   light surfaces. Plays once on mount via the `animate-row-flash`
+   Tailwind utility wired in tailwind.config.ts. */
 @keyframes row-flash {
   from {
-    background-color: rgba(251, 191, 36, 0.3);
+    background-color: var(--color-row-flash);
   }
   to {
     background-color: transparent;

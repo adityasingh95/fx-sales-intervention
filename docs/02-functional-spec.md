@@ -217,7 +217,40 @@ Below the Tailwind `md` breakpoint (768px), each blotter row renders as a stacke
 
 Tapping a card opens the ticket panel (already full-width on mobile per §4). The `min-w-[1100px]` / `min-w-[920px]` floors on the blotter containers are removed below md.
 
-## 8. Accessibility and test hooks
+## 8. Theme switching (behind `?theme=preview`)
+
+Phase 7 adds a light theme alongside the existing dark theme. The toggle is gated behind a separate URL flag — `?theme=preview` — so the dark-only behaviour on `main` is preserved until the light theme is promoted to general availability. `?theme=preview` is orthogonal to `?dev=v2`: both flags can be set together, or independently.
+
+### 8.1 Theme model
+
+- `ThemeMode = 'dark' | 'light'`.
+- `themeStore` (Zustand) holds the active mode and exposes `setMode(mode)` and `toggle()`. The current value is mirrored as `document.documentElement.dataset.theme` ("dark" or "light"), which the CSS variable block in `tokens.css` selects on.
+- Persistence: sessionStorage key `si.theme`. Lifetime matches the existing `si.muted` and `si.blotterSplit` keys — survives reload, dropped at tab close (per CLAUDE.md §3).
+
+### 8.2 First-visit default
+
+When `?theme=preview` is on and no sessionStorage value exists, the initial mode is read from `window.matchMedia('(prefers-color-scheme: light)').matches` — light if the OS prefers light, dark otherwise. Once the trader toggles, that choice is persisted and the system preference is no longer consulted on this tab.
+
+When `?theme=preview` is **off**, the app forces `dark` regardless of system preference, sessionStorage, or any other input — same as v1 behaviour.
+
+### 8.3 Toggle UI
+
+The toggle (`ThemeToggle` component, Sun / Moon icons from `lucide-react`) renders in the header next to `MuteToggle`. Only mounted when `themeMode !== null` — i.e. when `?theme=preview` is on. The icon shown is the **target** mode (sun when dark is active, moon when light is active), matching the convention used by GitHub, Linear, and most modern dev tools.
+
+Keyboard accessible: focusable, `Enter` / `Space` invokes `toggle()`. `aria-pressed` reflects current mode (`"true"` = light, `"false"` = dark). `aria-label` updates dynamically: "Switch to light theme" / "Switch to dark theme".
+
+### 8.4 Scope of the theme
+
+Every UI surface respects the theme:
+
+- App background, panel backgrounds, borders, text colours.
+- Status pills (PENDING_INTERVENTION amber, PICKED UP blue, etc.) — accents stay recognisable but luminance is rebalanced for the new surface.
+- AI Margin Suggestion panel — indigo accent is preserved as the "AI moment-of-delight" identifier; the surrounding panel wash and border tone shift to suit the active theme.
+- Toast chrome, row-flash keyframe, ticket overlay glass, the resize handle, the dev injector.
+
+No surface is exempt. There is no "dark-only" component.
+
+## 9. Accessibility and test hooks
 
 - Important controls must have labels or clear text.
 - Rows and panels expose stable `data-testid` / `data-*` attributes for E2E tests.

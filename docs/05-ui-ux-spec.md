@@ -477,4 +477,97 @@ export const devVersion: DevVersion = /* parses ?dev=v2 from window.location.sea
 ```
 
 Components import and branch on `devVersion`. No `v2Enabled` prop is threaded through the tree. `?dev=v2` is a superset of `?dev=1` (the dev injector remains active). Tests assert that with no query string or with `?dev=1`, v1 behaviour is byte-for-byte preserved.
+
+## 13. Light theme (behind `?theme=preview`)
+
+Phase 7 introduces a second theme alongside the existing dark theme. The toggle is gated behind a separate URL flag — `?theme=preview` — orthogonal to `?dev=v2`. Functional behaviour is documented in `02-functional-spec.md` §8; this section covers tokens and per-surface visual treatment.
+
+### 13.1 Light tokens
+
+The dark token block in §1 stays under `:root`. A second block scoped to `[data-theme="light"]` overrides each token. `themeStore` writes `document.documentElement.dataset.theme = 'light' | 'dark'` so the cascade picks the right block.
+
+```css
+[data-theme='light'] {
+  /* Backgrounds — soft warm-cool neutral, not bleached white */
+  --color-bg-app:        #f6f6f8;
+  --color-bg-panel:      #ffffff;
+  --color-bg-panel-2:    #f1f1f4;
+  --color-bg-elevated:   #ffffff;
+  --color-bg-row-hover:  #ececf0;
+  --color-bg-overlay:    rgba(20, 20, 25, 0.42);
+  --color-bg-glass:      rgba(255, 255, 255, 0.78);
+
+  /* Borders & dividers */
+  --color-border:        #e3e3e8;
+  --color-border-strong: #cccdd4;
+  --color-border-focus:  #4f46e5;
+
+  /* Text — high-contrast on light, with proper hierarchy */
+  --color-text:          #15151c;
+  --color-text-dim:      #4d4d5a;
+  --color-text-mute:     #8e8e9c;
+
+  /* Status colours — same hues, darkened for light-surface legibility */
+  --color-amber:         #b45309;
+  --color-blue-soft:     #2563eb;
+  --color-blue:          #1d4ed8;
+  --color-teal:          #0e8a78;
+  --color-teal-dim:      #4a8a83;
+  --color-green:         #15803d;
+  --color-red:           #b91c1c;
+  --color-grey-500:      #6b6b78;
+  --color-grey-700:      #a1a1ab;
+
+  /* AI panel — indigo retained as the AI identifier, surface tints rebalanced */
+  --color-ai-accent:     #4f46e5;
+  --color-ai-accent-2:   #7c3aed;
+  --color-ai-bg:         rgba(99, 102, 241, 0.08);
+  --color-ai-border:     rgba(99, 102, 241, 0.28);
+
+  /* Functional */
+  --color-tick-up:       #15803d;
+  --color-tick-down:     #b91c1c;
+  --color-focus-ring:    #4f46e5;
+}
+```
+
+Token names are stable across themes — components reference `var(--color-bg-panel)` regardless of which mode is active. No component reads a hex literal directly.
+
+### 13.2 Per-surface rebalancing notes
+
+- **Status pills** keep their hue identity but use the darker variant from §13.1 on light surfaces; pill background is `--color-bg-panel-2` (soft grey) rather than the dark theme's elevated panel.
+- **Row-flash keyframe** (`@keyframes row-flash`) keeps amber as the source colour but the alpha starts at `0.18` on light surfaces (vs `0.3` on dark) to avoid an over-saturated flash on white.
+- **AI suggestion panel** indigo accent stays — that's the "AI moment-of-delight" cue and must be recognisable across themes. The surrounding panel wash (`--color-ai-bg`) is identical in both modes by design.
+- **Ticket overlay glass** uses `var(--color-bg-glass)` which is dark-translucent on dark and light-translucent on light. The `backdrop-filter: blur(20px)` carries over unchanged.
+- **Resize handle** uses `var(--color-border)` → `var(--color-border-strong)` → `var(--color-border-focus)` (default → hover → active) — same hierarchy in both themes.
+- **Tick-up / tick-down** flashes on pricing cells use the green/red token; the darkened light-mode values still read clearly against the light panel.
+- **Dev injector** chrome reuses standard panel + border tokens — no theme-specific treatment.
+- **Scrollbar styling** — light theme uses `--color-border-strong` thumb on `--color-bg-panel-2` track, mirroring the dark hierarchy.
+
+### 13.3 ThemeToggle visual
+
+Same physical size as `MuteToggle` (32×32, in-header). The icon is the **target** mode the click would switch to:
+
+- Dark active → Sun icon (`lucide-react` `Sun`).
+- Light active → Moon icon (`lucide-react` `Moon`).
+
+Hover: `--color-bg-row-hover` background. Focus ring uses `--color-focus-ring`. The icon transitions with a 200ms opacity cross-fade on toggle.
+
+`data-testid="theme-toggle"` on the button. `data-theme-mode="dark" | "light"` reflects the active mode for E2E assertions.
+
+### 13.4 Surfaces explicitly out of scope for Phase 7
+
+None. Every UI surface must read well in both themes — verified manually for each scenario before the phase summary lands.
+
+## 14. theme gate — `?theme=preview`
+
+A new module `src/lib/themeMode.ts` exports:
+
+```ts
+export type ThemePreviewFlag = boolean;
+export const themePreviewEnabled: ThemePreviewFlag = /* true if ?theme=preview in window.location.search */;
+```
+
+Components that render the toggle (`Header`) import this constant. The theme store itself is unconditional — but when `themePreviewEnabled === false`, the store is force-initialised to `'dark'` and never written. Tests assert that with no query string or with `?theme=light` (any value other than `preview`), the theme stays dark.
+
 - Vendor names in any user-visible string (see CLAUDE.md critical rule §1).

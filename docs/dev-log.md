@@ -16,6 +16,102 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-046 · Per-surface visual rebalancing + Tailwind variable migration
+
+- **Root-cause find via Playwright verification.** Initial first-run screenshot at `?theme=preview` showed `dataset.theme="light"` and `body { background: rgb(246,246,248) }` resolving correctly via `var(--color-bg-app)`, but the page rendered DARK. Cause: Tailwind utilities like `bg-bg-app`, `text-text`, `border-border` compile to literal hex values from `tailwind.config.ts` — the CSS variable cascade was effectively only reaching the `body` element. The light token block in `tokens.css` was being defined correctly, but no Tailwind-styled element ever read from it.
+- **Migration to `rgb(var(--color-X) / <alpha-value>)`.** Converted all solid colour tokens in `tokens.css` from hex literals (`#0a0a0f`) to space-separated RGB triples (`10 10 15`), and rewrote `tailwind.config.ts` so each colour resolves via `rgb(var(--color-X) / <alpha-value>)`. Preserves Tailwind opacity modifiers (`bg-blue/85` still works). Alpha-baked tokens (`--color-bg-overlay`, `--color-bg-glass`, `--color-ai-bg`, `--color-ai-border`, `--color-row-flash`) keep their full `rgba(...)` form and Tailwind references them as direct `var()` since they're never opacity-modified.
+- **Shadows moved into tokens.css.** `--shadow-panel` / `--shadow-ticket` / `--shadow-ai` were hard-coded in `tailwind.config.ts.boxShadow`. Now defined per-theme in `tokens.css` so the light theme's softer drop-shadows fire on `[data-theme='light']`. Tailwind references them as `var(--shadow-panel)` etc.
+- **`global.css` body**: changed `background: var(--color-bg-app)` → `background: rgb(var(--color-bg-app))` to match the new triple format.
+- **Row-flash keyframe** already references `var(--color-row-flash)` from FXSW-046's first commit; the variable now varies per theme (amber 30% on dark, amber 18% on light per `05-ui-ux-spec.md §13.2`).
+- **Visual verification** via Playwright at 1440×900 across 14 visual states (5 base + 2 v2 scenarios × dark + light). Screenshots saved to `/tmp/light-mode-verify/` for the phase summary. Indigo AI accent preserved across themes; status pills (PICKED UP blue, INTERVENE amber, BUY/SELL green/red) readable on white; toast chrome reads cleanly; ticket overlay glass adapts.
+- **Tests** updated: `tests/unit/tokens.test.ts` and `tests/unit/tailwind.config.test.ts` now expect the new RGB-triple / `rgb(var(...) / <alpha-value>)` formats; added 14 assertions covering the new `[data-theme='light']` block. All 6 Playwright e2e scenarios still pass byte-for-byte (dark default preserved when flag is absent).
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (422 pass — +14 vs FXSW-045) · test:e2e ✓ (6/6 in 35.5s) · build ✓ · brand-neutral grep ✓.
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Full migration to `rgb(var(...) / <alpha-value>)` instead of partial fix.** Considered a smaller change — `'bg-app': 'var(--color-bg-app)'` direct reference — but that loses Tailwind opacity-modifier support (e.g. `bg-blue/85` in `Button.tsx`). The full migration is bigger but consistent; future colour tokens just slot in.
+- **Space-separated RGB triples over comma-separated.** Tailwind 3.x's docs both work, but space-separated is the documented preferred form and reads cleaner.
+- **Shadows moved out of `tailwind.config.ts` into `tokens.css`.** Could have written two boxShadow blocks (dark + light) inside the config, but tokens.css already has the `[data-theme='light']` override mechanism; consolidating there is one source of truth for "what changes per theme".
+- **Updated the existing token + tailwind-config unit tests rather than deleting.** They were asserting structural contracts (spec §1 documents tokens) — those contracts are still valid, just expressed in the new format. Kept the test shape so future drift is caught.
+- **Did not update spec `docs/05-ui-ux-spec.md` §1 in this commit.** That section still documents the dark palette as hex literals — true at a semantic level (the dark colours haven't changed), and the new RGB-triple format is an implementation detail of the migration. A follow-up could harmonise spec presentation if it confuses readers.
+- **Bug found via Playwright, not via unit tests.** The original FXSW-044 acceptance criteria said "Tokens regression: each new `[data-theme='light']` selector matches the dark counterpart by token name (smoke test parses the CSS file)" — my test correctly asserted the CSS file content, but didn't simulate rendering. The visual bug only surfaced when actual Chromium painted the page. Reminder: file-content tests for design tokens are necessary but not sufficient; the rendering pipeline needs a separate gate (which is what FXSW-046's manual visual pass + the Playwright matrix provides).
+
+---
+
+## FXSW-045 · `ThemeToggle` header component
+
+- New `src/features/notifications/ThemeToggle.tsx` — co-located with `MuteToggle` since both are header-level toggle widgets driven by Zustand stores.
+- Reads from `useThemeStore`. Early-returns `null` when `getThemePreviewEnabled()` is false — the toggle never mounts on the public/main URL.
+- Icon convention: the icon shown is the **target** mode (Sun when dark is active = "switch to light"; Moon when light is active = "switch to dark"). Matches GitHub / Linear / VS Code.
+- `data-testid="theme-toggle"`, `data-theme-mode={mode}`, `aria-pressed={isLight}`, dynamic `aria-label`. Mirrors `MuteToggle`'s attribute set.
+- Wired into `App.tsx` header just before `MuteToggle`. Returning null when flag is off keeps the header layout byte-for-byte unchanged on non-preview URLs.
+- TDD alongside: 5 component tests covering null-render-when-off, both icon states, toggle round-trip, persistence.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (408 pass — +5 vs FXSW-044) · build ✓.
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Place ThemeToggle BEFORE MuteToggle in header order** (not after). Reading left-to-right: theme is a higher-level preference than audio. Tested both visually in the test render — the order is asymmetric so the choice is forced; "theme first" reads more naturally.
+- **Icon = target, not current.** Both conventions exist in the wild (GitHub uses target, macOS Settings uses current). Picking target because the button's affordance is "click me to get the other thing" — the icon labels the action, not the state. The `data-theme-mode` attribute carries the current state for tests and styling.
+- **No fade transition between icons.** The CSS-only opacity cross-fade described in `05-ui-ux-spec.md §13.3` adds a transient overlap where both icons are partially visible. Skipped for now; the instant swap matches `MuteToggle`'s Bell ↔ BellOff behaviour. If users find it jarring, can layer it in via Tailwind `transition-opacity` later.
+- **`useThemeStore` selector pattern (one subscription per field).** Matches the existing `MuteToggle` and Zustand best practice — minimises re-renders.
+
+---
+
+## FXSW-044 · `themeStore` + light token block
+
+- New `src/state/stores/themeStore.ts` (Zustand). Mirrors `settingsStore` pattern from FXSW-029/036: pure read functions, try/catch around sessionStorage, default fallback.
+- `mode: 'dark' | 'light'`, `setMode(mode)`, `toggle()`. Persistence key `si.theme` (third sibling alongside `si.muted` + `si.blotterSplit`).
+- `resolveInitialMode()` runs at module init: when `getThemePreviewEnabled()` is `false`, force `'dark'` regardless of session or system; when `true`, sessionStorage wins, falling back to `window.matchMedia('(prefers-color-scheme: light)')`.
+- `applyDomTheme()` writes `document.documentElement.dataset.theme = mode` at init and from every `setMode` / `toggle` call — so `[data-theme='light']` in `tokens.css` resolves immediately.
+- Light token block appended to `src/styles/tokens.css` under `[data-theme='light']`. Status pills + tick colours darkened for white-surface legibility (e.g. amber `#fbbf24` → `#b45309`, green `#22c55e` → `#15803d`). AI indigo preserved across both modes — it's the "moment-of-delight" identifier. Light-mode `--shadow-ticket` swaps the dark-on-dark inset for a soft drop-shadow.
+- Safari-private-mode tolerant: `setItem` is wrapped in try/catch, so a quota or security error in private mode degrades to in-memory-only (state still updates).
+- TDD strict: 15 tests written first (red), then implementation. Coverage: first-visit defaults (5 cases incl. flag-on × stored × prefers-light matrix), `setMode` persistence + DOM, `toggle` symmetry, initial DOM side-effect, Safari fallback.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (403 pass — +15 vs FXSW-043).
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Force-dark when flag is off, even with a stored value.** Could have remembered the user's last preview-session choice, but the `?theme=preview` gate exists precisely to keep dark-only behaviour pristine when the flag is absent. Reading sessionStorage in force-dark mode would partially leak the preview behaviour into `main`-equivalent URLs.
+- **Module-init `resolveInitialMode()` + `applyDomTheme()`** — not a Zustand subscriber. The DOM side-effect needs to fire **before** React mounts so the first paint sees the right tokens. A subscribe call would race the first render. Init-time inline call + inline calls inside setters keep the contract explicit.
+- **`?reload=N_M` test-import pattern with an underscore separator.** The existing `settingsStore.test.ts` uses `?reload=${Date.now()}`, which works because timestamp is a single integer. My first attempt appended `Math.random()` and vite/esbuild interpreted the decimal point as a file-loader extension (`Invalid loader value: "7126.71..."`). Switched to an integer counter joined with `_`.
+- **`?theme=preview` checked at every `setMode` / `toggle` call**, not cached at init. The URL doesn't change at runtime in practice, but reading it live keeps the store self-consistent if a future ticket exposes a runtime toggle of the flag.
+- **No middleware (zustand/persist).** The existing stores all roll their own try/catch persistence pattern. Bringing in middleware here would diverge from the codebase convention for one store.
+
+---
+
+## FXSW-043 · `themePreviewEnabled` parser + `?theme=preview` URL gate
+
+- New file `src/lib/themeMode.ts` exports `parseThemePreviewEnabled(search)` + `getThemePreviewEnabled()`. Mirrors the `devVersion.ts` pattern from FXSW-035.
+- `?theme=preview` → `true`; anything else (`?theme=light`, `?theme=dark`, `?theme`, `?theme=PREVIEW`, no query) → `false`. Case-sensitive, same convention as `devVersion`.
+- `getThemePreviewEnabled()` guards `typeof window === 'undefined'` so SSR-style imports return `false` cleanly.
+- Orthogonal to `?dev=v2`: a test asserts both flags can be on simultaneously without interference.
+- TDD strict: 9 tests written first (red), implementation second (green).
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (388 pass — 9 new). E2E unchanged from FXSW-042 (no UI yet).
+
+**User-directed decisions:**
+
+- **URL flag spelling**: AskUserQuestion offered (`?theme=preview` / `?dev=v3` / `?light=1`). User chose **`?theme=preview`** — orthogonal to the existing `dev=v2` switch, generic enough to extend later.
+- **First-visit default behavior**: AskUserQuestion offered (Follow `prefers-color-scheme` / Always start dark). User chose **Follow `prefers-color-scheme`** — matches platform expectations.
+
+**Agent-directed decisions:**
+
+- **Boolean export, not an enum.** The flag has two states (on/off). A `ThemePreviewFlag = boolean` typedef adds noise without value; `boolean` is self-documenting at every call site.
+- **Mirror `devVersion.ts` filename + structure exactly.** New module sits next to it (`src/lib/themeMode.ts`); both pure-parser + `window`-guarded getter pattern. Keeps the URL-gate idiom uniform across the codebase.
+- **No new `import` in `App.tsx` yet.** This ticket is wiring-only; the toggle component (FXSW-045) is the first consumer. Avoids a dead-import warning between tickets.
+
+---
+
 ## Phase 6.1 · UX feedback pass on dev/v2
 
 Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items, three commits (`fc149cd`, `0fc2d0d`, `77c2f96`). No new tickets, no spec amendments — fixes layered on top of FXSW-035 → FXSW-042. `main` untouched.
