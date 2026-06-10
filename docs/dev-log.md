@@ -16,6 +16,29 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-045 · `ThemeToggle` header component
+
+- New `src/features/notifications/ThemeToggle.tsx` — co-located with `MuteToggle` since both are header-level toggle widgets driven by Zustand stores.
+- Reads from `useThemeStore`. Early-returns `null` when `getThemePreviewEnabled()` is false — the toggle never mounts on the public/main URL.
+- Icon convention: the icon shown is the **target** mode (Sun when dark is active = "switch to light"; Moon when light is active = "switch to dark"). Matches GitHub / Linear / VS Code.
+- `data-testid="theme-toggle"`, `data-theme-mode={mode}`, `aria-pressed={isLight}`, dynamic `aria-label`. Mirrors `MuteToggle`'s attribute set.
+- Wired into `App.tsx` header just before `MuteToggle`. Returning null when flag is off keeps the header layout byte-for-byte unchanged on non-preview URLs.
+- TDD alongside: 5 component tests covering null-render-when-off, both icon states, toggle round-trip, persistence.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (408 pass — +5 vs FXSW-044) · build ✓.
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Place ThemeToggle BEFORE MuteToggle in header order** (not after). Reading left-to-right: theme is a higher-level preference than audio. Tested both visually in the test render — the order is asymmetric so the choice is forced; "theme first" reads more naturally.
+- **Icon = target, not current.** Both conventions exist in the wild (GitHub uses target, macOS Settings uses current). Picking target because the button's affordance is "click me to get the other thing" — the icon labels the action, not the state. The `data-theme-mode` attribute carries the current state for tests and styling.
+- **No fade transition between icons.** The CSS-only opacity cross-fade described in `05-ui-ux-spec.md §13.3` adds a transient overlap where both icons are partially visible. Skipped for now; the instant swap matches `MuteToggle`'s Bell ↔ BellOff behaviour. If users find it jarring, can layer it in via Tailwind `transition-opacity` later.
+- **`useThemeStore` selector pattern (one subscription per field).** Matches the existing `MuteToggle` and Zustand best practice — minimises re-renders.
+
+---
+
 ## FXSW-044 · `themeStore` + light token block
 
 - New `src/state/stores/themeStore.ts` (Zustand). Mirrors `settingsStore` pattern from FXSW-029/036: pure read functions, try/catch around sessionStorage, default fallback.

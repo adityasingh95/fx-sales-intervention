@@ -5,6 +5,7 @@ import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
 import MuteToggle from '@/features/notifications/MuteToggle';
+import ThemeToggle from '@/features/notifications/ThemeToggle';
 import ToastStack from '@/features/notifications/ToastStack';
 import { useNotificationSound } from '@/features/notifications/useNotificationSound';
 import TicketPanel from '@/features/ticket/TicketPanel';
@@ -69,6 +70,7 @@ export default function App() {
           </div>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-3 text-text-dim sm:gap-4">
+          <ThemeToggle />
           <MuteToggle />
           <time
             aria-label="Session clock"
