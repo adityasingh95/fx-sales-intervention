@@ -8,31 +8,48 @@ const fontSize = (tailwindConfig.theme?.extend?.fontSize ?? {}) as Record<string
 const fontFamily = (tailwindConfig.theme?.extend?.fontFamily ?? {}) as Record<string, string[]>;
 const boxShadow = (tailwindConfig.theme?.extend?.boxShadow ?? {}) as Record<string, string>;
 
-describe('tailwind config — colors', () => {
+// FXSW-046: Tailwind colour utilities now reference CSS variables in
+// `rgb(var(--color-X) / <alpha-value>)` form so they theme-flip via
+// [data-theme='light']. Alpha-baked tokens (overlays, glass, AI wash, AI border)
+// pass through as direct `var()` references — they're never used with the
+// opacity modifier.
+
+describe('tailwind config — solid colours map to rgb(var(--color-X) / <alpha-value>)', () => {
   it.each([
-    ['bg-app', '#0a0a0f'],
-    ['bg-panel', '#111118'],
-    ['bg-panel-2', '#16161f'],
-    ['bg-elevated', '#1c1c27'],
-    ['bg-row-hover', '#1f1f2b'],
-    ['border', '#23232f'],
-    ['border-strong', '#2e2e3d'],
-    ['border-focus', '#6366f1'],
-    ['text', '#f1f1f5'],
-    ['text-dim', '#a1a1ab'],
-    ['text-mute', '#62626f'],
-    ['amber', '#fbbf24'],
-    ['blue', '#3b82f6'],
-    ['blue-soft', '#7aa7ff'],
-    ['teal', '#14c4a8'],
-    ['teal-dim', '#2e8073'],
-    ['green', '#22c55e'],
-    ['red', '#ef4444'],
-    ['ai-accent', '#818cf8'],
-    ['ai-accent-2', '#a78bfa'],
-    ['tick-up', '#22c55e'],
-    ['tick-down', '#ef4444'],
-    ['focus-ring', '#6366f1'],
+    'bg-app',
+    'bg-panel',
+    'bg-panel-2',
+    'bg-elevated',
+    'bg-row-hover',
+    'border',
+    'border-strong',
+    'border-focus',
+    'text',
+    'text-dim',
+    'text-mute',
+    'amber',
+    'blue',
+    'blue-soft',
+    'teal',
+    'teal-dim',
+    'green',
+    'red',
+    'ai-accent',
+    'ai-accent-2',
+    'tick-up',
+    'tick-down',
+    'focus-ring',
+  ])('maps %s to rgb(var(--color-X) / <alpha-value>)', (key) => {
+    expect(colors[key]).toBe(`rgb(var(--color-${key}) / <alpha-value>)`);
+  });
+});
+
+describe('tailwind config — alpha-baked colours pass through as var() references', () => {
+  it.each([
+    ['bg-overlay', 'var(--color-bg-overlay)'],
+    ['bg-glass', 'var(--color-bg-glass)'],
+    ['ai-bg', 'var(--color-ai-bg)'],
+    ['ai-border', 'var(--color-ai-border)'],
   ])('maps %s to %s', (key, value) => {
     expect(colors[key]).toBe(value);
   });
@@ -88,11 +105,10 @@ describe('tailwind config — font families', () => {
   });
 });
 
-describe('tailwind config — shadows', () => {
-  it('declares panel, ticket, and ai shadows', () => {
-    expect(boxShadow.panel).toBeDefined();
-    expect(boxShadow.ticket).toBeDefined();
-    expect(boxShadow.ai).toBeDefined();
-    expect(boxShadow.ai).toContain('rgba(99, 102, 241');
+describe('tailwind config — shadows reference CSS variables for theme-awareness', () => {
+  it('declares panel, ticket, and ai shadows as var() references', () => {
+    expect(boxShadow.panel).toBe('var(--shadow-panel)');
+    expect(boxShadow.ticket).toBe('var(--shadow-ticket)');
+    expect(boxShadow.ai).toBe('var(--shadow-ai)');
   });
 });

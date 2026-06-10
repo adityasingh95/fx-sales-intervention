@@ -6,20 +6,25 @@ import { resolve } from 'node:path';
 // Rationale: jsdom does not process Tailwind utility classes nor resolve CSS custom properties via
 // getComputedStyle (var() comes back as the literal string). The intent of the spec test — verify
 // each token from 05-ui-ux-spec.md §1 is declared with the documented value — is fully covered here.
-// See 02 ticket FXSW-002 acceptance.
+//
+// FXSW-046: solid colour tokens are stored as space-separated RGB triples (e.g. `10 10 15`) so
+// Tailwind's `rgb(var(--color-X) / <alpha-value>)` pattern can inject opacity from utility
+// modifiers. The expected values below match that format. Alpha-baked tokens (overlays, glass,
+// AI wash/border, row-flash) stay as `rgba(...)` strings since they're never used with the
+// opacity modifier.
 
 const tokensPath = resolve(__dirname, '../../src/styles/tokens.css');
 const tokens = readFileSync(tokensPath, 'utf-8');
 
-describe('design tokens — backgrounds', () => {
+describe('design tokens — backgrounds (dark)', () => {
   it.each([
-    ['--color-bg-app', '#0a0a0f'],
-    ['--color-bg-panel', '#111118'],
-    ['--color-bg-panel-2', '#16161f'],
-    ['--color-bg-elevated', '#1c1c27'],
-    ['--color-bg-row-hover', '#1f1f2b'],
+    ['--color-bg-app', '10 10 15'],
+    ['--color-bg-panel', '17 17 24'],
+    ['--color-bg-panel-2', '22 22 31'],
+    ['--color-bg-elevated', '28 28 39'],
+    ['--color-bg-row-hover', '31 31 43'],
   ])('declares %s as %s', (name, value) => {
-    expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value.replace('#', '#')}`));
+    expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
   });
 
   it('declares overlay and glass with rgba values', () => {
@@ -30,46 +35,46 @@ describe('design tokens — backgrounds', () => {
   });
 });
 
-describe('design tokens — borders', () => {
+describe('design tokens — borders (dark)', () => {
   it.each([
-    ['--color-border', '#23232f'],
-    ['--color-border-strong', '#2e2e3d'],
-    ['--color-border-focus', '#6366f1'],
+    ['--color-border', '35 35 47'],
+    ['--color-border-strong', '46 46 61'],
+    ['--color-border-focus', '99 102 241'],
   ])('declares %s as %s', (name, value) => {
     expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
   });
 });
 
-describe('design tokens — text', () => {
+describe('design tokens — text (dark)', () => {
   it.each([
-    ['--color-text', '#f1f1f5'],
-    ['--color-text-dim', '#a1a1ab'],
-    ['--color-text-mute', '#62626f'],
+    ['--color-text', '241 241 245'],
+    ['--color-text-dim', '161 161 171'],
+    ['--color-text-mute', '98 98 111'],
   ])('declares %s as %s', (name, value) => {
     expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
   });
 });
 
-describe('design tokens — status colors', () => {
+describe('design tokens — status colours (dark)', () => {
   it.each([
-    ['--color-amber', '#fbbf24'],
-    ['--color-blue-soft', '#7aa7ff'],
-    ['--color-blue', '#3b82f6'],
-    ['--color-teal', '#14c4a8'],
-    ['--color-teal-dim', '#2e8073'],
-    ['--color-green', '#22c55e'],
-    ['--color-red', '#ef4444'],
-    ['--color-grey-500', '#62626f'],
-    ['--color-grey-700', '#3e3e4d'],
+    ['--color-amber', '251 191 36'],
+    ['--color-blue-soft', '122 167 255'],
+    ['--color-blue', '59 130 246'],
+    ['--color-teal', '20 196 168'],
+    ['--color-teal-dim', '46 128 115'],
+    ['--color-green', '34 197 94'],
+    ['--color-red', '239 68 68'],
+    ['--color-grey-500', '98 98 111'],
+    ['--color-grey-700', '62 62 77'],
   ])('declares %s as %s', (name, value) => {
     expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
   });
 });
 
-describe('design tokens — AI accent family', () => {
+describe('design tokens — AI accent family (dark)', () => {
   it.each([
-    ['--color-ai-accent', '#818cf8'],
-    ['--color-ai-accent-2', '#a78bfa'],
+    ['--color-ai-accent', '129 140 248'],
+    ['--color-ai-accent-2', '167 139 250'],
   ])('declares %s as %s', (name, value) => {
     expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
   });
@@ -80,13 +85,17 @@ describe('design tokens — AI accent family', () => {
   });
 });
 
-describe('design tokens — functional colors', () => {
+describe('design tokens — functional colours (dark)', () => {
   it.each([
-    ['--color-tick-up', '#22c55e'],
-    ['--color-tick-down', '#ef4444'],
-    ['--color-focus-ring', '#6366f1'],
+    ['--color-tick-up', '34 197 94'],
+    ['--color-tick-down', '239 68 68'],
+    ['--color-focus-ring', '99 102 241'],
   ])('declares %s as %s', (name, value) => {
     expect(tokens).toMatch(new RegExp(`${name}\\s*:\\s*${value}`));
+  });
+
+  it('declares row-flash as amber 30% rgba', () => {
+    expect(tokens).toContain('rgba(251, 191, 36, 0.3)');
   });
 });
 
@@ -148,5 +157,31 @@ describe('design tokens — shadows', () => {
     expect(tokens).toContain('--shadow-panel');
     expect(tokens).toContain('--shadow-ticket');
     expect(tokens).toContain('--shadow-ai');
+  });
+});
+
+// FXSW-044 — light theme overrides.
+describe('design tokens — light theme block', () => {
+  it('declares a [data-theme=light] selector', () => {
+    expect(tokens).toMatch(/\[data-theme=['"]light['"]\]/);
+  });
+
+  it.each([
+    ['--color-bg-app', '246 246 248'],
+    ['--color-bg-panel', '255 255 255'],
+    ['--color-text', '21 21 28'],
+    ['--color-amber', '180 83 9'],
+    ['--color-green', '21 128 61'],
+    ['--color-red', '185 28 28'],
+    ['--color-ai-accent', '79 70 229'],
+  ])('declares light %s as %s', (name, value) => {
+    // Light override appears AFTER the dark default, so the last match wins.
+    const matches = [...tokens.matchAll(new RegExp(`${name}\\s*:\\s*([\\d\\s]+);`, 'g'))];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(matches[matches.length - 1][1].trim()).toBe(value);
+  });
+
+  it('declares light row-flash with lower alpha', () => {
+    expect(tokens).toContain('rgba(180, 83, 9, 0.18)');
   });
 });

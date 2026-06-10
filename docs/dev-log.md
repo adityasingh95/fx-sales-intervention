@@ -16,6 +16,32 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-046 · Per-surface visual rebalancing + Tailwind variable migration
+
+- **Root-cause find via Playwright verification.** Initial first-run screenshot at `?theme=preview` showed `dataset.theme="light"` and `body { background: rgb(246,246,248) }` resolving correctly via `var(--color-bg-app)`, but the page rendered DARK. Cause: Tailwind utilities like `bg-bg-app`, `text-text`, `border-border` compile to literal hex values from `tailwind.config.ts` — the CSS variable cascade was effectively only reaching the `body` element. The light token block in `tokens.css` was being defined correctly, but no Tailwind-styled element ever read from it.
+- **Migration to `rgb(var(--color-X) / <alpha-value>)`.** Converted all solid colour tokens in `tokens.css` from hex literals (`#0a0a0f`) to space-separated RGB triples (`10 10 15`), and rewrote `tailwind.config.ts` so each colour resolves via `rgb(var(--color-X) / <alpha-value>)`. Preserves Tailwind opacity modifiers (`bg-blue/85` still works). Alpha-baked tokens (`--color-bg-overlay`, `--color-bg-glass`, `--color-ai-bg`, `--color-ai-border`, `--color-row-flash`) keep their full `rgba(...)` form and Tailwind references them as direct `var()` since they're never opacity-modified.
+- **Shadows moved into tokens.css.** `--shadow-panel` / `--shadow-ticket` / `--shadow-ai` were hard-coded in `tailwind.config.ts.boxShadow`. Now defined per-theme in `tokens.css` so the light theme's softer drop-shadows fire on `[data-theme='light']`. Tailwind references them as `var(--shadow-panel)` etc.
+- **`global.css` body**: changed `background: var(--color-bg-app)` → `background: rgb(var(--color-bg-app))` to match the new triple format.
+- **Row-flash keyframe** already references `var(--color-row-flash)` from FXSW-046's first commit; the variable now varies per theme (amber 30% on dark, amber 18% on light per `05-ui-ux-spec.md §13.2`).
+- **Visual verification** via Playwright at 1440×900 across 14 visual states (5 base + 2 v2 scenarios × dark + light). Screenshots saved to `/tmp/light-mode-verify/` for the phase summary. Indigo AI accent preserved across themes; status pills (PICKED UP blue, INTERVENE amber, BUY/SELL green/red) readable on white; toast chrome reads cleanly; ticket overlay glass adapts.
+- **Tests** updated: `tests/unit/tokens.test.ts` and `tests/unit/tailwind.config.test.ts` now expect the new RGB-triple / `rgb(var(...) / <alpha-value>)` formats; added 14 assertions covering the new `[data-theme='light']` block. All 6 Playwright e2e scenarios still pass byte-for-byte (dark default preserved when flag is absent).
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (422 pass — +14 vs FXSW-045) · test:e2e ✓ (6/6 in 35.5s) · build ✓ · brand-neutral grep ✓.
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Full migration to `rgb(var(...) / <alpha-value>)` instead of partial fix.** Considered a smaller change — `'bg-app': 'var(--color-bg-app)'` direct reference — but that loses Tailwind opacity-modifier support (e.g. `bg-blue/85` in `Button.tsx`). The full migration is bigger but consistent; future colour tokens just slot in.
+- **Space-separated RGB triples over comma-separated.** Tailwind 3.x's docs both work, but space-separated is the documented preferred form and reads cleaner.
+- **Shadows moved out of `tailwind.config.ts` into `tokens.css`.** Could have written two boxShadow blocks (dark + light) inside the config, but tokens.css already has the `[data-theme='light']` override mechanism; consolidating there is one source of truth for "what changes per theme".
+- **Updated the existing token + tailwind-config unit tests rather than deleting.** They were asserting structural contracts (spec §1 documents tokens) — those contracts are still valid, just expressed in the new format. Kept the test shape so future drift is caught.
+- **Did not update spec `docs/05-ui-ux-spec.md` §1 in this commit.** That section still documents the dark palette as hex literals — true at a semantic level (the dark colours haven't changed), and the new RGB-triple format is an implementation detail of the migration. A follow-up could harmonise spec presentation if it confuses readers.
+- **Bug found via Playwright, not via unit tests.** The original FXSW-044 acceptance criteria said "Tokens regression: each new `[data-theme='light']` selector matches the dark counterpart by token name (smoke test parses the CSS file)" — my test correctly asserted the CSS file content, but didn't simulate rendering. The visual bug only surfaced when actual Chromium painted the page. Reminder: file-content tests for design tokens are necessary but not sufficient; the rendering pipeline needs a separate gate (which is what FXSW-046's manual visual pass + the Playwright matrix provides).
+
+---
+
 ## FXSW-045 · `ThemeToggle` header component
 
 - New `src/features/notifications/ThemeToggle.tsx` — co-located with `MuteToggle` since both are header-level toggle widgets driven by Zustand stores.

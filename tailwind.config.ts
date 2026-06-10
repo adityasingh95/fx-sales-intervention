@@ -1,44 +1,52 @@
 import type { Config } from 'tailwindcss';
 
+// FXSW-046: colours reference space-separated RGB triples from tokens.css
+// so they theme-flip via [data-theme='light']. The `rgb(var(...) / <alpha-value>)`
+// form keeps Tailwind opacity modifiers working (e.g. `bg-blue/85`).
+// Alpha-baked tokens (overlays, glass, AI wash, row-flash) are passed through
+// as plain `var()` references since they're never used with the opacity modifier.
+
+const solidColor = (token: string): string => `rgb(var(--color-${token}) / <alpha-value>)`;
+
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        'bg-app': '#0a0a0f',
-        'bg-panel': '#111118',
-        'bg-panel-2': '#16161f',
-        'bg-elevated': '#1c1c27',
-        'bg-row-hover': '#1f1f2b',
-        'bg-overlay': 'rgba(6, 6, 10, 0.72)',
-        'bg-glass': 'rgba(22, 22, 31, 0.78)',
+        'bg-app': solidColor('bg-app'),
+        'bg-panel': solidColor('bg-panel'),
+        'bg-panel-2': solidColor('bg-panel-2'),
+        'bg-elevated': solidColor('bg-elevated'),
+        'bg-row-hover': solidColor('bg-row-hover'),
+        'bg-overlay': 'var(--color-bg-overlay)',
+        'bg-glass': 'var(--color-bg-glass)',
 
-        border: '#23232f',
-        'border-strong': '#2e2e3d',
-        'border-focus': '#6366f1',
+        border: solidColor('border'),
+        'border-strong': solidColor('border-strong'),
+        'border-focus': solidColor('border-focus'),
 
-        text: '#f1f1f5',
-        'text-dim': '#a1a1ab',
-        'text-mute': '#62626f',
+        text: solidColor('text'),
+        'text-dim': solidColor('text-dim'),
+        'text-mute': solidColor('text-mute'),
 
-        amber: '#fbbf24',
-        'blue-soft': '#7aa7ff',
-        blue: '#3b82f6',
-        teal: '#14c4a8',
-        'teal-dim': '#2e8073',
-        green: '#22c55e',
-        red: '#ef4444',
-        'grey-500': '#62626f',
-        'grey-700': '#3e3e4d',
+        amber: solidColor('amber'),
+        'blue-soft': solidColor('blue-soft'),
+        blue: solidColor('blue'),
+        teal: solidColor('teal'),
+        'teal-dim': solidColor('teal-dim'),
+        green: solidColor('green'),
+        red: solidColor('red'),
+        'grey-500': solidColor('grey-500'),
+        'grey-700': solidColor('grey-700'),
 
-        'ai-accent': '#818cf8',
-        'ai-accent-2': '#a78bfa',
-        'ai-bg': 'rgba(99, 102, 241, 0.08)',
-        'ai-border': 'rgba(129, 140, 248, 0.22)',
+        'ai-accent': solidColor('ai-accent'),
+        'ai-accent-2': solidColor('ai-accent-2'),
+        'ai-bg': 'var(--color-ai-bg)',
+        'ai-border': 'var(--color-ai-border)',
 
-        'tick-up': '#22c55e',
-        'tick-down': '#ef4444',
-        'focus-ring': '#6366f1',
+        'tick-up': solidColor('tick-up'),
+        'tick-down': solidColor('tick-down'),
+        'focus-ring': solidColor('focus-ring'),
       },
       spacing: {
         '1': '4px',
@@ -77,9 +85,9 @@ const config: Config = {
         tight: '-0.01em',
       },
       boxShadow: {
-        panel: '0 0 0 1px #23232f',
-        ticket: '0 0 0 1px #2e2e3d, -16px 0 48px -8px rgba(0, 0, 0, 0.5)',
-        ai: '0 0 0 1px rgba(129, 140, 248, 0.22), 0 1px 24px -4px rgba(99, 102, 241, 0.12)',
+        panel: 'var(--shadow-panel)',
+        ticket: 'var(--shadow-ticket)',
+        ai: 'var(--shadow-ai)',
       },
       transitionTimingFunction: {
         'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
