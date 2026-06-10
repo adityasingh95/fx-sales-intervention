@@ -16,6 +16,28 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-043 · `themePreviewEnabled` parser + `?theme=preview` URL gate
+
+- New file `src/lib/themeMode.ts` exports `parseThemePreviewEnabled(search)` + `getThemePreviewEnabled()`. Mirrors the `devVersion.ts` pattern from FXSW-035.
+- `?theme=preview` → `true`; anything else (`?theme=light`, `?theme=dark`, `?theme`, `?theme=PREVIEW`, no query) → `false`. Case-sensitive, same convention as `devVersion`.
+- `getThemePreviewEnabled()` guards `typeof window === 'undefined'` so SSR-style imports return `false` cleanly.
+- Orthogonal to `?dev=v2`: a test asserts both flags can be on simultaneously without interference.
+- TDD strict: 9 tests written first (red), implementation second (green).
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (388 pass — 9 new). E2E unchanged from FXSW-042 (no UI yet).
+
+**User-directed decisions:**
+
+- **URL flag spelling**: AskUserQuestion offered (`?theme=preview` / `?dev=v3` / `?light=1`). User chose **`?theme=preview`** — orthogonal to the existing `dev=v2` switch, generic enough to extend later.
+- **First-visit default behavior**: AskUserQuestion offered (Follow `prefers-color-scheme` / Always start dark). User chose **Follow `prefers-color-scheme`** — matches platform expectations.
+
+**Agent-directed decisions:**
+
+- **Boolean export, not an enum.** The flag has two states (on/off). A `ThemePreviewFlag = boolean` typedef adds noise without value; `boolean` is self-documenting at every call site.
+- **Mirror `devVersion.ts` filename + structure exactly.** New module sits next to it (`src/lib/themeMode.ts`); both pure-parser + `window`-guarded getter pattern. Keeps the URL-gate idiom uniform across the codebase.
+- **No new `import` in `App.tsx` yet.** This ticket is wiring-only; the toggle component (FXSW-045) is the first consumer. Avoids a dead-import warning between tickets.
+
+---
+
 ## Phase 6.1 · UX feedback pass on dev/v2
 
 Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items, three commits (`fc149cd`, `0fc2d0d`, `77c2f96`). No new tickets, no spec amendments — fixes layered on top of FXSW-035 → FXSW-042. `main` untouched.
