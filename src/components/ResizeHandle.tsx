@@ -5,16 +5,16 @@ import { BLOTTER_SPLIT_MIN, BLOTTER_SPLIT_MAX, computeNewSplit } from '@/lib/res
 interface Props {
   split: number;
   onSplitChange: (next: number) => void;
-  containerHeight: number;
+  // Live ref to the flex container the handle measures against. Reading
+  // clientHeight at move-time avoids state-timing issues where a stale
+  // `containerHeight` prop would be 0 on first interaction.
+  containerRef: React.RefObject<HTMLElement>;
 }
 
-export default function ResizeHandle({ split, onSplitChange, containerHeight }: Props) {
+export default function ResizeHandle({ split, onSplitChange, containerRef }: Props) {
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ initialSplit: number; initialClientY: number } | null>(null);
 
-  // Listeners are registered synchronously inside handlePointerDown to
-  // avoid the one-frame gap that a useEffect-based registration creates
-  // (effect runs after React commits — pointermoves in between are lost).
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -30,11 +30,13 @@ export default function ResizeHandle({ split, onSplitChange, containerHeight }: 
 
       const onMove = (ev: PointerEvent): void => {
         if (!dragState.current) return;
+        const height = containerRef.current?.clientHeight ?? 0;
+        if (height <= 0) return;
         const next = computeNewSplit(
           dragState.current.initialSplit,
           dragState.current.initialClientY,
           ev.clientY,
-          containerHeight,
+          height,
         );
         onSplitChange(next);
       };
@@ -49,7 +51,7 @@ export default function ResizeHandle({ split, onSplitChange, containerHeight }: 
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     },
-    [split, containerHeight, onSplitChange],
+    [split, containerRef, onSplitChange],
   );
 
   return (

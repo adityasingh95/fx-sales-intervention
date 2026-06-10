@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ResizeHandle from '@/components/ResizeHandle';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
@@ -43,19 +43,12 @@ export default function App() {
   const setBlotterSplit = useSettingsStore((s) => s.setBlotterSplit);
 
   const mainRef = useRef<HTMLElement | null>(null);
-  const [containerHeight, setContainerHeight] = useState(0);
-  useLayoutEffect(() => {
-    if (!isV2 || !mainRef.current) return;
-    const el = mainRef.current;
-    const update = () => setContainerHeight(el.clientHeight);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [isV2]);
 
-  const activeBasis = isV2 ? `${blotterSplit}%` : '55%';
-  const historicBasis = isV2 ? `${100 - blotterSplit}%` : '45%';
+  // v1 uses static percentage basis; v2 switches to grow-weighted flex
+  // below so the resize handle's split takes effect (percentage flex-basis
+  // doesn't resolve under a stretched parent in column flex layouts).
+  const activeBasis = '55%';
+  const historicBasis = '45%';
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
@@ -97,7 +90,11 @@ export default function App() {
             'min-h-0 overflow-hidden',
             !isV2 && 'border-b border-border',
           )}
-          style={{ flexBasis: activeBasis }}
+          style={
+            isV2
+              ? { flex: `${blotterSplit} 1 0` }
+              : { flexBasis: activeBasis }
+          }
         >
           <ActiveBlotter />
         </section>
@@ -105,12 +102,16 @@ export default function App() {
           <ResizeHandle
             split={blotterSplit}
             onSplitChange={setBlotterSplit}
-            containerHeight={containerHeight}
+            containerRef={mainRef}
           />
         )}
         <section
           className="min-h-0 overflow-hidden"
-          style={{ flexBasis: historicBasis }}
+          style={
+            isV2
+              ? { flex: `${100 - blotterSplit} 1 0` }
+              : { flexBasis: historicBasis }
+          }
         >
           <HistoricBlotter />
         </section>

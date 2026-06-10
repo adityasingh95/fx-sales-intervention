@@ -57,11 +57,13 @@ describe('computeNewSplit', () => {
 describe('<ResizeHandle />', () => {
   function setup() {
     const onSplitChange = vi.fn();
+    const fakeEl = { clientHeight: 800 } as HTMLElement;
+    const containerRef = { current: fakeEl } as React.RefObject<HTMLElement>;
     render(
       <ResizeHandle
         split={55}
         onSplitChange={onSplitChange}
-        containerHeight={800}
+        containerRef={containerRef}
       />,
     );
     return { handle: screen.getByTestId('blotter-resize-handle'), onSplitChange };
