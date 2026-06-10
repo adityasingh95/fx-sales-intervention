@@ -70,7 +70,7 @@ export default function App() {
         {dev && (
           <div
             data-testid="dev-injector-slot"
-            className="min-w-0 flex-1 overflow-x-auto"
+            className="min-w-0 flex-1 overflow-x-auto sm:overflow-visible"
           >
             <DevInjector />
           </div>
@@ -94,7 +94,7 @@ export default function App() {
       >
         <section
           className={clsx(
-            'overflow-hidden',
+            'min-h-0 overflow-hidden',
             !isV2 && 'border-b border-border',
           )}
           style={{ flexBasis: activeBasis }}
@@ -109,7 +109,7 @@ export default function App() {
           />
         )}
         <section
-          className="overflow-hidden"
+          className="min-h-0 overflow-hidden"
           style={{ flexBasis: historicBasis }}
         >
           <HistoricBlotter />

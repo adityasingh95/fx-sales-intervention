@@ -28,6 +28,10 @@ const buildFollowUpEvent = (event: FollowUpEvent, dealId: string): DealEvent => 
       return { type: 'CLIENT_CANCEL', dealId };
     case 'EXPIRE':
       return { type: 'EXPIRE', dealId };
+    case 'CLIENT_ACCEPT_OR_REJECT':
+      return Math.random() < 0.5
+        ? { type: 'CLIENT_ACCEPT', dealId }
+        : { type: 'CLIENT_REJECT', dealId };
   }
 };
 

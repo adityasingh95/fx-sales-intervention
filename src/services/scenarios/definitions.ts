@@ -52,7 +52,12 @@ const CREDIT_BREACH: Scenario = {
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
   rejectionReasons: ['CREDIT_LIMIT'],
-  followUps: [],
+  followUps: [
+    {
+      trigger: { kind: 'after-si-state', state: 'Quoted', delayMs: 1500 },
+      event: 'CLIENT_ACCEPT_OR_REJECT',
+    },
+  ],
 };
 
 const SIZE_LIMIT_MARGIN_TUNE: Scenario = {
@@ -88,7 +93,12 @@ const RELEASE_PATH: Scenario = {
     defaultMarginPips: DEFAULT_MARGIN_PIPS,
   },
   rejectionReasons: ['SIZE_LIMIT'],
-  followUps: [],
+  followUps: [
+    {
+      trigger: { kind: 'after-si-state', state: 'Quoted', delayMs: 1500 },
+      event: 'CLIENT_ACCEPT',
+    },
+  ],
 };
 
 const BOTH_SIDED_INQUIRY: Scenario = {

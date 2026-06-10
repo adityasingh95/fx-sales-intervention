@@ -142,17 +142,19 @@ describe('<PricingPanel />', () => {
       expect(screen.getByTestId('ask-cell')).not.toHaveAttribute('data-focused');
     });
 
-    it('Refresh button renders only in fixed mode', () => {
+    it('Refresh button is always rendered; disabled in streaming, enabled in fixed', () => {
       render(<Harness pair="EURUSD" />);
       act(() => {
         pricingFeed.start();
         vi.advanceTimersByTime(300);
       });
-      expect(screen.queryByTestId('refresh-button')).toBeNull();
+      const refresh = screen.getByTestId('refresh-button');
+      expect(refresh).toBeInTheDocument();
+      expect(refresh).toBeDisabled();
       act(() => {
         fireEvent.click(screen.getByTestId('ask-cell'));
       });
-      expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
+      expect(screen.getByTestId('refresh-button')).not.toBeDisabled();
     });
 
     it('+ button increments margin by 1; - decrements', () => {

@@ -1,5 +1,8 @@
 import clsx from 'clsx';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { getDevVersion } from '@/lib/devVersion';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
@@ -15,7 +18,7 @@ const LABEL: Record<ScenarioId, string> = {
   OFF_HOURS_INTERVENTION: 'Off Hours',
   CREDIT_BREACH: 'Credit Breach',
   SIZE_LIMIT_MARGIN_TUNE: 'Size + AI',
-  RELEASE_PATH: 'Release',
+  RELEASE_PATH: 'Hold/Release',
   BOTH_SIDED_INQUIRY: 'Both-Sided',
   QUOTE_DEALT_INQUIRY: 'Quote-Dealt',
 };
@@ -26,6 +29,7 @@ function injectButtonClasses(): string {
 
 export default function DevInjector() {
   const devVersion = getDevVersion();
+  const isMobile = useIsMobile();
   const visibleScenarios: readonly ScenarioId[] =
     devVersion === 'v2' ? [...V1_SCENARIO_IDS, ...V2_SCENARIO_IDS] : V1_SCENARIO_IDS;
 
@@ -37,6 +41,15 @@ export default function DevInjector() {
     useDealsStore.setState({ deals: new Map(), historic: [] });
     useUiStore.setState({ openDealId: null });
   };
+
+  if (isMobile) {
+    return (
+      <MobileDevInjector
+        visibleScenarios={visibleScenarios}
+        onReset={resetSession}
+      />
+    );
+  }
 
   return (
     <div
@@ -65,6 +78,80 @@ export default function DevInjector() {
       >
         Reset
       </button>
+    </div>
+  );
+}
+
+interface MobileDevInjectorProps {
+  visibleScenarios: readonly ScenarioId[];
+  onReset: () => void;
+}
+
+function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  return (
+    <div data-testid="dev-injector" className="relative">
+      <button
+        type="button"
+        data-testid="dev-injector-toggle"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        Dev <ChevronDown size={12} aria-hidden />
+      </button>
+      {open && (
+        <>
+          <div
+            data-testid="dev-injector-backdrop"
+            className="fixed inset-0 z-30"
+            onClick={() => setOpen(false)}
+            role="presentation"
+          />
+          <div
+            data-testid="dev-injector-menu"
+            role="menu"
+            className="absolute left-0 top-full z-40 mt-1 flex w-44 flex-col gap-1 rounded-sm border border-border bg-bg-panel p-2 shadow-xl"
+          >
+            {visibleScenarios.map((id) => (
+              <button
+                key={id}
+                type="button"
+                data-testid={`inject-${id}`}
+                onClick={() => {
+                  dealFeed.inject(id);
+                  setOpen(false);
+                }}
+                className="w-full rounded-sm border border-border bg-bg-elevated px-2 py-1.5 text-left text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+              >
+                {LABEL[id]}
+              </button>
+            ))}
+            <button
+              type="button"
+              data-testid="inject-RESET"
+              onClick={() => {
+                onReset();
+                setOpen(false);
+              }}
+              className="w-full rounded-sm border border-red/30 bg-bg-elevated px-2 py-1.5 text-left text-xs font-medium text-red transition-colors hover:border-red"
+            >
+              Reset
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

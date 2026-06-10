@@ -45,7 +45,7 @@ export function Button({
       disabled={inFlight}
       onClick={onClick}
       className={clsx(
-        'inline-flex h-9 items-center justify-center gap-2 rounded-sm border px-4 text-sm font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex h-9 items-center justify-center gap-2 rounded-sm border px-2 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm',
         VARIANT_CLASSES[variant],
       )}
     >
@@ -110,7 +110,7 @@ export function HoldButton({
       onPointerLeave={cancel}
       onDoubleClick={onDoubleClick}
       className={clsx(
-        'relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-sm border px-4 text-sm font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60',
+        'relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-sm border px-2 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm',
         VARIANT_CLASSES[variant],
       )}
     >

@@ -152,29 +152,43 @@ export default function PricingPanel({
         <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
           Trader Rate
         </h2>
-        {pricingMode === 'fixed' && (
-          <button
-            type="button"
-            data-testid="refresh-button"
-            onClick={onRefresh}
-            className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
-          >
-            <RefreshCw size={12} aria-hidden /> Refresh
-          </button>
-        )}
+        <button
+          type="button"
+          data-testid="refresh-button"
+          onClick={onRefresh}
+          disabled={pricingMode !== 'fixed'}
+          className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
+        >
+          <RefreshCw size={12} aria-hidden /> Refresh
+        </button>
       </div>
-      <div className="flex items-center gap-4">
-        <Cell
-          testId="bid-cell"
-          label="Bid"
-          flash={pricingMode === 'streaming' ? bidFlash : null}
-          focused={fixedSide === 'bid'}
-          dimmed={fixedSide === 'ask'}
-          disabled={quoteSide === 'ASK'}
-          value={showValues ? formatRate(displayTick.bid, pair) : '—'}
-          onClick={() => handleCellClick('bid')}
-        />
-        <div data-testid="mid-cell" className="flex flex-col items-center">
+      <div className="flex items-start gap-4">
+        <div className="flex flex-1 flex-col gap-2">
+          <Cell
+            testId="bid-cell"
+            label="Bid"
+            flash={pricingMode === 'streaming' ? bidFlash : null}
+            focused={fixedSide === 'bid'}
+            dimmed={fixedSide === 'ask'}
+            disabled={quoteSide === 'ASK'}
+            value={showValues ? formatRate(displayTick.bid, pair) : '—'}
+            onClick={() => handleCellClick('bid')}
+          />
+          {useDualMargin && (
+            <MarginRow
+              testIdSuffix="bid"
+              value={marginPair.bid}
+              onChange={(n) =>
+                onMarginPairChange({
+                  bid: Math.max(0, Math.floor(n)),
+                  ask: marginPair.ask,
+                })
+              }
+              glow={marginGlow}
+            />
+          )}
+        </div>
+        <div data-testid="mid-cell" className="flex flex-col items-center pt-2">
           <span className="font-mono text-base tabular-nums text-text-dim">
             {showValues ? formatRate(displayTick.mid, pair) : '—'}
           </span>
@@ -182,23 +196,37 @@ export default function PricingPanel({
             Mid
           </span>
         </div>
-        <Cell
-          testId="ask-cell"
-          label="Ask"
-          flash={pricingMode === 'streaming' ? askFlash : null}
-          focused={fixedSide === 'ask'}
-          dimmed={fixedSide === 'bid'}
-          disabled={quoteSide === 'BID'}
-          value={showValues ? formatRate(displayTick.ask, pair) : '—'}
-          onClick={() => handleCellClick('ask')}
-        />
+        <div className="flex flex-1 flex-col gap-2">
+          <Cell
+            testId="ask-cell"
+            label="Ask"
+            flash={pricingMode === 'streaming' ? askFlash : null}
+            focused={fixedSide === 'ask'}
+            dimmed={fixedSide === 'bid'}
+            disabled={quoteSide === 'BID'}
+            value={showValues ? formatRate(displayTick.ask, pair) : '—'}
+            onClick={() => handleCellClick('ask')}
+          />
+          {useDualMargin && (
+            <MarginRow
+              testIdSuffix="ask"
+              value={marginPair.ask}
+              onChange={(n) =>
+                onMarginPairChange({
+                  bid: marginPair.bid,
+                  ask: Math.max(0, Math.floor(n)),
+                })
+              }
+              glow={marginGlow}
+            />
+          )}
+        </div>
       </div>
 
       {useDualMargin ? (
-        <DualMarginControls
+        <BalanceZeroRow
           marginPair={marginPair}
           onMarginPairChange={onMarginPairChange}
-          marginGlow={marginGlow}
         />
       ) : (
         <div className="flex items-center gap-2">
@@ -249,28 +277,16 @@ export default function PricingPanel({
   );
 }
 
-// FXSW-040 — v2 dual-margin block. Two `[label][−][input][+]` rows plus
-// Balance + Zero shortcut buttons between them.
-interface DualMarginControlsProps {
+// FXSW-040 (revised) — dual-margin under-cell layout: each MarginRow
+// sits directly under its BID/ASK price cell; Balance + Zero share a
+// single row centered beneath both.
+
+interface BalanceZeroRowProps {
   marginPair: MarginPair;
   onMarginPairChange: (next: MarginPair) => void;
-  marginGlow: boolean;
 }
 
-function DualMarginControls({
-  marginPair,
-  onMarginPairChange,
-  marginGlow,
-}: DualMarginControlsProps) {
-  const setSide = (side: 'bid' | 'ask', value: number): void => {
-    const clamped = Math.max(MIN_MARGIN, Math.floor(value));
-    onMarginPairChange(
-      side === 'bid'
-        ? { bid: clamped, ask: marginPair.ask }
-        : { bid: marginPair.bid, ask: clamped },
-    );
-  };
-
+function BalanceZeroRow({ marginPair, onMarginPairChange }: BalanceZeroRowProps) {
   const handleBalance = (): void => {
     const avg = Math.round((marginPair.bid + marginPair.ask) / 2);
     const clamped = Math.max(MIN_MARGIN, avg);
@@ -282,62 +298,43 @@ function DualMarginControls({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <MarginRow
-        label="Bid"
-        testIdSuffix="bid"
-        value={marginPair.bid}
-        onChange={(n) => setSide('bid', n)}
-        glow={marginGlow}
-      />
-      <div className="flex items-center justify-center gap-2">
-        <button
-          type="button"
-          data-testid="margin-balance"
-          onClick={handleBalance}
-          className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
-        >
-          Balance
-        </button>
-        <button
-          type="button"
-          data-testid="margin-zero"
-          onClick={handleZero}
-          className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-red/60 hover:text-text"
-        >
-          Zero
-        </button>
-      </div>
-      <MarginRow
-        label="Ask"
-        testIdSuffix="ask"
-        value={marginPair.ask}
-        onChange={(n) => setSide('ask', n)}
-        glow={marginGlow}
-      />
+    <div className="flex items-center justify-center gap-2">
+      <button
+        type="button"
+        data-testid="margin-balance"
+        onClick={handleBalance}
+        className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+      >
+        Balance
+      </button>
+      <button
+        type="button"
+        data-testid="margin-zero"
+        onClick={handleZero}
+        className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-red/60 hover:text-text"
+      >
+        Zero
+      </button>
     </div>
   );
 }
 
 interface MarginRowProps {
-  label: string;
   testIdSuffix: 'bid' | 'ask';
   value: number;
   onChange: (next: number) => void;
   glow: boolean;
 }
 
-function MarginRow({ label, testIdSuffix, value, onChange, glow }: MarginRowProps) {
+function MarginRow({ testIdSuffix, value, onChange, glow }: MarginRowProps) {
   const minusDisabled = value <= 0;
+  const sideLabel = testIdSuffix === 'bid' ? 'bid' : 'ask';
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-12 text-xs font-medium uppercase tracking-tight text-text-mute">
-        {label}
-      </span>
+    <div className="flex items-center justify-center gap-1">
       <button
         type="button"
         data-testid={`margin-minus-${testIdSuffix}`}
-        aria-label={`Decrease ${label.toLowerCase()} margin`}
+        aria-label={`Decrease ${sideLabel} margin`}
         onClick={() => onChange(value - 1)}
         disabled={minusDisabled}
         className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
@@ -365,7 +362,7 @@ function MarginRow({ label, testIdSuffix, value, onChange, glow }: MarginRowProp
           }
         }}
         className={clsx(
-          'h-8 w-16 rounded-sm border bg-bg-elevated text-center font-mono text-sm text-text outline-none transition-all duration-[200ms]',
+          'h-8 w-14 rounded-sm border bg-bg-elevated text-center font-mono text-sm text-text outline-none transition-all duration-[200ms]',
           glow
             ? 'border-ai-accent shadow-[0_0_0_2px_rgba(129,140,248,0.35)]'
             : 'border-border',
@@ -374,13 +371,13 @@ function MarginRow({ label, testIdSuffix, value, onChange, glow }: MarginRowProp
       <button
         type="button"
         data-testid={`margin-plus-${testIdSuffix}`}
-        aria-label={`Increase ${label.toLowerCase()} margin`}
+        aria-label={`Increase ${sideLabel} margin`}
         onClick={() => onChange(value + 1)}
         className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
       >
         <Plus size={14} aria-hidden />
       </button>
-      <span className="text-xs text-text-mute">pips</span>
+      <span className="text-[10px] text-text-mute">pips</span>
     </div>
   );
 }

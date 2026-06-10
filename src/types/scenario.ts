@@ -32,7 +32,16 @@ export const SCENARIO_IDS = [
 
 export type DealChannel = 'ESP' | 'SI';
 
-export type FollowUpEvent = 'CLIENT_ACCEPT' | 'CLIENT_REJECT' | 'CLIENT_CANCEL' | 'EXPIRE';
+export type FollowUpEvent =
+  | 'CLIENT_ACCEPT'
+  | 'CLIENT_REJECT'
+  | 'CLIENT_CANCEL'
+  | 'EXPIRE'
+  // Resolved randomly to CLIENT_ACCEPT or CLIENT_REJECT at scheduling
+  // time. Used by CREDIT_BREACH so trader-sent quotes terminate via
+  // either path, simulating realistic counterparty behavior on a
+  // breached account.
+  | 'CLIENT_ACCEPT_OR_REJECT';
 
 export type FollowUpTrigger =
   | { kind: 'delay'; ms: number }

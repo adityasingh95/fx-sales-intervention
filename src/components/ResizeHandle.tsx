@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { BLOTTER_SPLIT_MIN, BLOTTER_SPLIT_MAX, computeNewSplit } from '@/lib/resizeMath';
 
 interface Props {
@@ -12,39 +12,45 @@ export default function ResizeHandle({ split, onSplitChange, containerHeight }: 
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ initialSplit: number; initialClientY: number } | null>(null);
 
+  // Listeners are registered synchronously inside handlePointerDown to
+  // avoid the one-frame gap that a useEffect-based registration creates
+  // (effect runs after React commits — pointermoves in between are lost).
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
       dragState.current = { initialSplit: split, initialClientY: event.clientY };
       setDragging(true);
-    },
-    [split],
-  );
 
-  useEffect(() => {
-    if (!dragging) return;
-    const onMove = (event: PointerEvent) => {
-      if (!dragState.current) return;
-      const next = computeNewSplit(
-        dragState.current.initialSplit,
-        dragState.current.initialClientY,
-        event.clientY,
-        containerHeight,
-      );
-      onSplitChange(next);
-    };
-    const onUp = () => {
-      dragState.current = null;
-      setDragging(false);
-    };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
-    return () => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
-    };
-  }, [dragging, containerHeight, onSplitChange]);
+      const target = event.currentTarget;
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch {
+        // jsdom or older browsers may not implement setPointerCapture; safe to ignore.
+      }
+
+      const onMove = (ev: PointerEvent): void => {
+        if (!dragState.current) return;
+        const next = computeNewSplit(
+          dragState.current.initialSplit,
+          dragState.current.initialClientY,
+          ev.clientY,
+          containerHeight,
+        );
+        onSplitChange(next);
+      };
+      const onUp = (): void => {
+        dragState.current = null;
+        setDragging(false);
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    },
+    [split, containerHeight, onSplitChange],
+  );
 
   return (
     <div
@@ -58,9 +64,18 @@ export default function ResizeHandle({ split, onSplitChange, containerHeight }: 
       aria-label="Resize blotter split"
       onPointerDown={handlePointerDown}
       className={clsx(
-        'h-1 w-full shrink-0 cursor-row-resize select-none transition-colors duration-[100ms]',
-        dragging ? 'bg-border-focus' : 'bg-border hover:bg-border-strong',
+        'group relative flex h-2 w-full shrink-0 cursor-row-resize select-none items-center justify-center touch-none',
       )}
-    />
+    >
+      <div
+        aria-hidden
+        className={clsx(
+          'h-px w-full transition-colors duration-[100ms]',
+          dragging
+            ? 'bg-border-focus shadow-[0_0_0_1px_rgba(99,102,241,0.4)]'
+            : 'bg-border group-hover:bg-border-strong',
+        )}
+      />
+    </div>
   );
 }

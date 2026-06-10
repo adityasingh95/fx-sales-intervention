@@ -47,7 +47,7 @@ export default function TicketFooter({
   return (
     <footer
       data-testid="ticket-footer"
-      className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3"
+      className="flex flex-wrap items-center justify-end gap-1 border-t border-border px-2 py-3 sm:gap-2 sm:px-5"
     >
       {showReturnToStream && (
         <ActionButton
@@ -55,7 +55,7 @@ export default function TicketFooter({
           onClick={onReturnToStream}
           variant="ghost"
         >
-          Return to Stream
+          <span className="hidden sm:inline">Return to </span>Stream
         </ActionButton>
       )}
       {showRelease && (
