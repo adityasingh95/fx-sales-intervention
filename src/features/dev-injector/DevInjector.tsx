@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ChevronDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDevVersion } from '@/lib/devVersion';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { dealFeed } from '@/services/feed/dealFeed';
@@ -89,6 +89,8 @@ interface MobileDevInjectorProps {
 
 function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -99,19 +101,34 @@ function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Menu uses `position: fixed` with viewport coords so it escapes any
+  // ancestor with `overflow: hidden/auto` (the header slot clips on mobile).
+  const handleToggle = (): void => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpen(true);
+  };
+
   return (
-    <div data-testid="dev-injector" className="relative">
+    <div data-testid="dev-injector">
       <button
+        ref={buttonRef}
         type="button"
         data-testid="dev-injector-toggle"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         className="flex items-center gap-1 rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
         aria-haspopup="menu"
         aria-expanded={open}
       >
         Dev <ChevronDown size={12} aria-hidden />
       </button>
-      {open && (
+      {open && menuPos && (
         <>
           <div
             data-testid="dev-injector-backdrop"
@@ -122,7 +139,8 @@ function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps
           <div
             data-testid="dev-injector-menu"
             role="menu"
-            className="absolute left-0 top-full z-40 mt-1 flex w-44 flex-col gap-1 rounded-sm border border-border bg-bg-panel p-2 shadow-xl"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            className="fixed z-40 flex w-44 flex-col gap-1 rounded-sm border border-border bg-bg-panel p-2 shadow-xl"
           >
             {visibleScenarios.map((id) => (
               <button
