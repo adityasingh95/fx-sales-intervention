@@ -86,3 +86,58 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
+
+/* FXSW-044 — Light theme overrides. Selected via document.documentElement.dataset.theme = 'light',
+   which themeStore writes on init and every change. Status pills + tick colours darkened for
+   light-surface legibility. AI indigo preserved as the suggestion-panel identifier across modes. */
+[data-theme='light'] {
+  /* Backgrounds — soft warm-cool neutral, not bleached white */
+  --color-bg-app: #f6f6f8;
+  --color-bg-panel: #ffffff;
+  --color-bg-panel-2: #f1f1f4;
+  --color-bg-elevated: #ffffff;
+  --color-bg-row-hover: #ececf0;
+  --color-bg-overlay: rgba(20, 20, 25, 0.42);
+  --color-bg-glass: rgba(255, 255, 255, 0.78);
+
+  /* Borders & dividers */
+  --color-border: #e3e3e8;
+  --color-border-strong: #cccdd4;
+  --color-border-focus: #4f46e5;
+
+  /* Text — high-contrast on light, with proper hierarchy */
+  --color-text: #15151c;
+  --color-text-dim: #4d4d5a;
+  --color-text-mute: #8e8e9c;
+
+  /* Status colours — same hues, darkened for light-surface legibility */
+  --color-amber: #b45309;
+  --color-blue-soft: #2563eb;
+  --color-blue: #1d4ed8;
+  --color-teal: #0e8a78;
+  --color-teal-dim: #4a8a83;
+  --color-green: #15803d;
+  --color-red: #b91c1c;
+  --color-grey-500: #6b6b78;
+  --color-grey-700: #a1a1ab;
+
+  /* AI panel — indigo retained as the AI identifier, surface tints rebalanced */
+  --color-ai-accent: #4f46e5;
+  --color-ai-accent-2: #7c3aed;
+  --color-ai-bg: rgba(99, 102, 241, 0.08);
+  --color-ai-border: rgba(99, 102, 241, 0.28);
+
+  /* Functional */
+  --color-tick-up: #15803d;
+  --color-tick-down: #b91c1c;
+  --color-focus-ring: #4f46e5;
+
+  /* Shadows — soft drop-shadow on white surfaces instead of inset borders */
+  --shadow-panel: 0 0 0 1px var(--color-border);
+  --shadow-ticket:
+    0 0 0 1px var(--color-border-strong),
+    -16px 0 48px -8px rgba(15, 15, 25, 0.12);
+  --shadow-ai:
+    0 0 0 1px var(--color-ai-border),
+    0 1px 24px -4px rgba(99, 102, 241, 0.18);
+}

@@ -16,6 +16,31 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-044 · `themeStore` + light token block
+
+- New `src/state/stores/themeStore.ts` (Zustand). Mirrors `settingsStore` pattern from FXSW-029/036: pure read functions, try/catch around sessionStorage, default fallback.
+- `mode: 'dark' | 'light'`, `setMode(mode)`, `toggle()`. Persistence key `si.theme` (third sibling alongside `si.muted` + `si.blotterSplit`).
+- `resolveInitialMode()` runs at module init: when `getThemePreviewEnabled()` is `false`, force `'dark'` regardless of session or system; when `true`, sessionStorage wins, falling back to `window.matchMedia('(prefers-color-scheme: light)')`.
+- `applyDomTheme()` writes `document.documentElement.dataset.theme = mode` at init and from every `setMode` / `toggle` call — so `[data-theme='light']` in `tokens.css` resolves immediately.
+- Light token block appended to `src/styles/tokens.css` under `[data-theme='light']`. Status pills + tick colours darkened for white-surface legibility (e.g. amber `#fbbf24` → `#b45309`, green `#22c55e` → `#15803d`). AI indigo preserved across both modes — it's the "moment-of-delight" identifier. Light-mode `--shadow-ticket` swaps the dark-on-dark inset for a soft drop-shadow.
+- Safari-private-mode tolerant: `setItem` is wrapped in try/catch, so a quota or security error in private mode degrades to in-memory-only (state still updates).
+- TDD strict: 15 tests written first (red), then implementation. Coverage: first-visit defaults (5 cases incl. flag-on × stored × prefers-light matrix), `setMode` persistence + DOM, `toggle` symmetry, initial DOM side-effect, Safari fallback.
+- Gates: typecheck ✓ · lint ✓ · test:run ✓ (403 pass — +15 vs FXSW-043).
+
+**User-directed decisions:**
+
+- None — all decisions within doc-pack guidance.
+
+**Agent-directed decisions:**
+
+- **Force-dark when flag is off, even with a stored value.** Could have remembered the user's last preview-session choice, but the `?theme=preview` gate exists precisely to keep dark-only behaviour pristine when the flag is absent. Reading sessionStorage in force-dark mode would partially leak the preview behaviour into `main`-equivalent URLs.
+- **Module-init `resolveInitialMode()` + `applyDomTheme()`** — not a Zustand subscriber. The DOM side-effect needs to fire **before** React mounts so the first paint sees the right tokens. A subscribe call would race the first render. Init-time inline call + inline calls inside setters keep the contract explicit.
+- **`?reload=N_M` test-import pattern with an underscore separator.** The existing `settingsStore.test.ts` uses `?reload=${Date.now()}`, which works because timestamp is a single integer. My first attempt appended `Math.random()` and vite/esbuild interpreted the decimal point as a file-loader extension (`Invalid loader value: "7126.71..."`). Switched to an integer counter joined with `_`.
+- **`?theme=preview` checked at every `setMode` / `toggle` call**, not cached at init. The URL doesn't change at runtime in practice, but reading it live keeps the store self-consistent if a future ticket exposes a runtime toggle of the flag.
+- **No middleware (zustand/persist).** The existing stores all roll their own try/catch persistence pattern. Bringing in middleware here would diverge from the codebase convention for one store.
+
+---
+
 ## FXSW-043 · `themePreviewEnabled` parser + `?theme=preview` URL gate
 
 - New file `src/lib/themeMode.ts` exports `parseThemePreviewEnabled(search)` + `getThemePreviewEnabled()`. Mirrors the `devVersion.ts` pattern from FXSW-035.
