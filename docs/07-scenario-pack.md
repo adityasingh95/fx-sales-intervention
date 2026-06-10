@@ -4,13 +4,15 @@ Named scenarios used by the Dev Injector and Playwright E2E tests.
 
 ## 1. Scenario ids
 
-| Scenario | Purpose |
-|---|---|
-| `HAPPY_PATH_ESP` | Demonstrates an auto-priced flow that completes without manual intervention. |
-| `OFF_HOURS_INTERVENTION` | Demonstrates a manual-pricing flow caused by off-hours handling. |
-| `CREDIT_BREACH` | Demonstrates credit-limit handling and decline recommendation. |
-| `SIZE_LIMIT_MARGIN_TUNE` | Demonstrates size-limit handling and AI margin adjustment. |
-| `RELEASE_PATH` | Demonstrates releasing a picked-up ticket back to available state. |
+| Scenario | Purpose | Gated by |
+|---|---|---|
+| `HAPPY_PATH_ESP` | Demonstrates an auto-priced flow that completes without manual intervention. | `?dev=1` |
+| `OFF_HOURS_INTERVENTION` | Demonstrates a manual-pricing flow caused by off-hours handling. | `?dev=1` |
+| `CREDIT_BREACH` | Demonstrates credit-limit handling and decline recommendation. | `?dev=1` |
+| `SIZE_LIMIT_MARGIN_TUNE` | Demonstrates size-limit handling and AI margin adjustment. | `?dev=1` |
+| `RELEASE_PATH` | Demonstrates releasing a picked-up ticket back to available state. | `?dev=1` |
+| `BOTH_SIDED_INQUIRY` | Demonstrates a two-sided client request and the v2 dual-margin / either-side response flow. | `?dev=v2` |
+| `QUOTE_DEALT_INQUIRY` | Demonstrates a one-sided client request where the notional is in the **quote** currency, exercising the inverted bid/ask convention. | `?dev=v2` |
 
 ## 2. Common data fields
 
@@ -33,7 +35,8 @@ Suggested common fields:
   clientName: string;
   account: string;
   pair: string;
-  side: 'BUY' | 'SELL';
+  side: 'BUY' | 'SELL' | 'BOTH';   // 'BOTH' added in v2
+  dealtCcy: 'BASE' | 'QUOTE';      // added in v2; defaults to 'BASE' for v1 scenarios
   notional: number;
   tenor: string;
   tradeDate: string;
@@ -41,6 +44,8 @@ Suggested common fields:
   rejectionReasons: RejectionReason[];
 }
 ```
+
+`dealtCcy: 'BASE'` is the v1-compatible default; the five v1 scenarios above all use base-currency notional. Quote-currency-dealt scenarios are v2-only.
 
 ## 3. Scenario 1 — HAPPY_PATH_ESP
 
@@ -126,13 +131,69 @@ Show that a trader can release a ticket without completing the deal.
 7. SI returns to `Initial`.
 8. Row remains in Active and becomes dealable again.
 
-## 8. E2E guidance
+## 8. Scenario 6 — BOTH_SIDED_INQUIRY (v2)
+
+### Intent
+
+Demonstrate a client request without a fixed direction; the trader can quote either side as a single quote or stream both sides simultaneously.
+
+### Suggested data
+
+- Client: Acme Corp (platinum)
+- Pair: EURUSD
+- Side: `BOTH`
+- Dealt CCY: `BASE`
+- Notional: 8,000,000 EUR
+- Rejection reason: `SIZE_LIMIT` (illustrative — the size-limit handling is unchanged)
+
+### Flow
+
+1. User opens the app with `?dev=v2`.
+2. User clicks `Both-Sided`.
+3. A row appears in Active with `INTERVENE` status and side displayed as `BOTH`.
+4. User opens the ticket.
+5. Pricing Panel renders both BID and ASK as clickable in fixed mode; default is two-sided streaming.
+6. User adjusts the bid margin and ask margin independently via the dual-margin inputs.
+7. User clicks Send Stream.
+8. Simulated client accepts one of the two sides.
+9. Row archives to Historic as executed with the resolved side reflected.
+
+## 9. Scenario 7 — QUOTE_DEALT_INQUIRY (v2)
+
+### Intent
+
+Demonstrate the inverted bid/ask convention when the notional is denominated in the **quote** currency rather than the pair's base.
+
+### Suggested data
+
+- Client: Northwind FX (gold)
+- Pair: USDJPY
+- Side: `SELL`
+- Dealt CCY: `QUOTE` (the notional is in JPY)
+- Notional: 1,000,000,000 JPY
+- Rejection reason: `OFF_HOURS`
+
+By the convention `quoteSideFor(SELL, QUOTE) = ASK`, the bank quotes the ASK side. The Pricing Panel renders the BID cell with `data-disabled="true"`; the trader cannot click into a BID-side quote.
+
+### Flow
+
+1. User opens the app with `?dev=v2`.
+2. User clicks `Quote-Dealt`.
+3. A row appears in Active with `INTERVENE`. Side column reads `SELL`. Amount column reads `1,000,000,000 JPY`.
+4. Toast text reads "wants to sell 1,000,000,000 JPY in USDJPY".
+5. User opens the ticket.
+6. Pricing Panel: BID is dimmed and disabled (`data-disabled="true"`); ASK is clickable.
+7. User selects ASK, applies ask-side margin, clicks Send Quote.
+8. Simulated client accepts.
+9. Row archives to Historic as executed.
+
+## 10. E2E guidance
 
 - Tests should use stable scenario ids and test ids.
 - Tests should avoid relying on visual timing except where explicitly validating the grace-period removal.
 - Tests should seed or reset feed state before each scenario.
 - Scenario names and state names are compatibility contracts.
 
-## 9. Brand-neutrality
+## 11. Brand-neutrality
 
 Scenarios must not include vendor names in client names, comments, URLs, UI strings, or test descriptions.

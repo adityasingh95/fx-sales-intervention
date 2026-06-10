@@ -10,6 +10,7 @@ const makeDeal = (overrides: Partial<Deal> = {}): Deal => ({
   pair: 'EURUSD',
   side: 'BUY',
   notional: 1_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: 0,

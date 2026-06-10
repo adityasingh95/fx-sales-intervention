@@ -1,10 +1,11 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-10
 sources:
   - docs/02-functional-spec.md
   - docs/05-ui-ux-spec.md
   - docs/09-suggestion-engine.md
   - docs/phase-summaries/FXSW-027-summary.md
+  - docs/phase-summaries/FXSW-042-followup-summary.md
 status: stable
 ticket: FXSW-025..FXSW-026
 ---
@@ -70,6 +71,7 @@ The suggested-pips number is replaced with a `bg-elevated` pulse skeleton. The r
 - Debounced at 800ms — rapid clicks / vol-shift events coalesce into one recompute.
 - **Vol-shift is dormant in v1.** `marketContext.ts` returns constants per pair — wiring exists for v2 per `docs/09 §3.1`.
 - **Apply** sets `marginPips` on TicketPanel state (interim) — to be lifted onto the dealMachine context in a future polish ticket. The Pricing Panel's margin field animates to the new value with a brief indigo outline glow that fades over 600ms (`data-margin-glow="true"` for 600ms on the margin input; the `MarginGlowHarness` integration test in `SuggestionPanel.test.tsx` verifies the wire).
+- **Pricing Panel Refresh button (Phase 6.1):** the [Pricing Panel](ticket.md#pricing-panel--fixed-mode-fxsw-018)'s `refresh-button` is now always rendered and `disabled` outside fixed mode, rather than mounting only in fixed mode. After Apply captures a side into fixed mode, Refresh re-captures the live tick; in streaming it stays visible-but-disabled so selecting a side no longer shifts the layout. See [ticket.md](ticket.md#pricing-panel--fixed-mode-fxsw-018).
 
 ## Test contract
 

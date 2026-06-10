@@ -13,6 +13,7 @@ const makeDeal = (overrides: Partial<Deal> = {}): Deal => ({
   pair: 'EURUSD',
   side: 'BUY',
   notional: 1_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: new Date(2026, 4, 25, 14, 23, 8).getTime(),
@@ -27,9 +28,20 @@ const resetStores = (): void => {
   useUiStore.setState({ openDealId: null });
 };
 
+// FXSW-042 — mobile detection helper for the v2 card-stack tests.
+function mockMatchMedia(matches: boolean): void {
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
 describe('<ActiveBlotter />', () => {
   beforeEach(() => {
     resetStores();
+    window.history.replaceState({}, '', '/');
+    mockMatchMedia(false);
   });
 
   afterEach(() => {
@@ -87,6 +99,42 @@ describe('<ActiveBlotter />', () => {
       .querySelector('[data-deal-id="d_click"]') as HTMLElement;
     fireEvent.click(row);
     expect(useUiStore.getState().openDealId).toBe('d_click');
+  });
+
+  // FXSW-042 — v2 mobile card layout
+  it('v2 at mobile width renders card stack (not the table)', () => {
+    window.history.replaceState({}, '', '/?dev=v2');
+    mockMatchMedia(true);
+    act(() => {
+      useDealsStore
+        .getState()
+        .addDeal(
+          makeDeal({ dealId: 'd_m1', clientName: 'Globex Industries', notional: 5_000_000, side: 'SELL' }),
+          ['OFF_HOURS'],
+        );
+    });
+    render(<ActiveBlotter />);
+    const body = screen.getByTestId('active-blotter-body');
+    // Card layout — flex-col, not the min-w-[1100px] table.
+    expect(body.className).toMatch(/flex-col/);
+    // Row testids preserved.
+    const row = body.querySelector('[data-deal-id="d_m1"]');
+    expect(row).not.toBeNull();
+    // Key fields present in the card.
+    expect(body.textContent).toContain('Globex Industries');
+    expect(body.textContent).toContain('SELL');
+  });
+
+  it('v1 at mobile width keeps the desktop table (v1 contract preserved)', () => {
+    mockMatchMedia(true);
+    act(() => {
+      useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_m2' }), ['SIZE_LIMIT']);
+    });
+    render(<ActiveBlotter />);
+    const body = screen.getByTestId('active-blotter-body');
+    // Body sits inside a `min-w-[1100px]` desktop table container at v1.
+    const wrapper = body.parentElement;
+    expect(wrapper?.className).toMatch(/min-w/);
   });
 
   it('terminal-state row gets data-removing="true" and unmounts at t+5000ms', async () => {

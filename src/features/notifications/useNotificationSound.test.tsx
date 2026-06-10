@@ -55,6 +55,7 @@ const makeDeal = (id = 'd_sound'): Deal => ({
   pair: 'USDJPY',
   side: 'SELL',
   notional: 5_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: Date.now(),

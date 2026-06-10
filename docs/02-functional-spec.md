@@ -101,6 +101,8 @@ Supports two modes:
 
 The trader may adjust margin in pips using +/- buttons or numeric input. Client price and estimated profit update from the selected margin.
 
+v2 enhancements to side selection, dual-side margins, and direction-aware quoting are defined in §6 "v2 enhancements" below.
+
 ### 4.5 Client Summary
 
 Displays read-only client bid/ask preview and estimated profit.
@@ -141,7 +143,81 @@ Mute persists to `sessionStorage`.
 
 The Dev Injector appears only with `?dev=1`. It exposes buttons for the named scenarios in `docs/07-scenario-pack.md` and a Reset control.
 
-## 7. Accessibility and test hooks
+`?dev=v2` also activates the Dev Injector (as a superset of `?dev=1`) and additionally exposes the Phase 6 scenarios (BOTH-sided, quote-currency-dealt) and the v2 UX enhancements described in §7 below.
+
+## 7. v2 enhancements (behind `?dev=v2`)
+
+Phase 6 work lands behind a URL gate so the shippable v1 behaviour on `main` is unaffected. A single source of truth — `src/lib/devVersion.ts` — exports `devVersion: 'v1' | 'v2'` based on `?dev=v2`. Components branch on that constant. v1 paths are not removed during Phase 6.
+
+### 7.1 Side selection in fixed mode (Pricing Panel)
+
+In v1, clicking BID or ASK enters fixed mode and the clicked cell receives a focus outline; the unselected cell looks identical to streaming mode. In v2:
+
+- The selected cell keeps the existing focus outline.
+- The non-selected cell renders with `data-dimmed="true"` — reduced opacity (≈50%) and a muted border. Price values continue to update in the dimmed cell so the trader still sees the market.
+- **Re-click the same side** while in fixed mode — pricing mode returns to streaming. Both cells return to normal opacity.
+- Clicking the **other** side switches `fixedSide` to that side and re-applies the dim treatment to the previously selected cell.
+- When the request is one-sided (see §7.3), only the appropriate side accepts clicks. The non-quoteable cell renders `data-disabled="true"`, retains live price updates, but has no click handler and a `cursor: not-allowed`.
+
+### 7.2 Dual-side margin inputs (Pricing Panel)
+
+The single margin input is replaced by two independent inputs in v2:
+
+- **Bid margin** input (`data-testid="margin-input-bid"`).
+- **Ask margin** input (`data-testid="margin-input-ask"`).
+
+Both default to `deal.defaultMarginPips`. Each carries its own `−` / `+` buttons. Keyboard `+` / `-` targets whichever input has focus.
+
+Two action buttons sit between them:
+
+- **Balance** — sets both margins to the average of the current pair, preserving the implied mid + spread the trader had configured. Concretely: `balanced = (marginBid + marginAsk) / 2`, then both sides set to `balanced` (rounded to the nearest integer pip).
+- **Zero** — sets both margins to `0`.
+
+The AI Margin Suggestion remains a single value (engine API unchanged). On Apply, the same suggested value is written to both sides. Undo restores the prior pair.
+
+### 7.3 Request direction semantics and dealt currency
+
+In v1, a deal has `side: 'BUY' | 'SELL'` and the dealt currency is implicitly the pair's base. In v2 the model is extended:
+
+- `side: 'BUY' | 'SELL' | 'BOTH'`.
+- `dealtCcy: 'BASE' | 'QUOTE'` — explicit indication of which leg of the pair the notional is denominated in.
+
+The bank-quote side a request maps to is determined by `quoteSideFor(side, dealtCcy)`:
+
+| Client side | Dealt CCY | Bank action | Quote side |
+|---|---|---|---|
+| BUY | BASE | bank sells base | ASK |
+| SELL | BASE | bank buys base | BID |
+| BUY | QUOTE | bank buys base = sells quote | BID |
+| SELL | QUOTE | bank sells base = buys quote | ASK |
+| BOTH | (n/a) | two-sided quote | BOTH |
+
+Footer-button visibility flows from quote side:
+
+- Quote side `ASK` → only the ASK cell is clickable; Send Quote sends an ASK price.
+- Quote side `BID` → only the BID cell is clickable; Send Quote sends a BID price.
+- Quote side `BOTH` → either cell selectable; default streaming is two-sided.
+
+The notification toast text reads from the dealt currency, e.g. "Globex Industries wants to sell 5,000,000 USD USDJPY" (USD = quote ccy dealt) or "wants to trade 5,000,000 USD USDJPY" for `BOTH`.
+
+### 7.4 Resizable blotter divider
+
+The Active vs Historic blotter split is adjustable by dragging a horizontal handle between the two sections. Clamp: 20%–80% of available height. Persistence: sessionStorage under `blotterSplit` (extends the existing settings store used by mute).
+
+Both blotter bodies retain internal vertical overflow scrolling so neither pushes the other when content grows beyond its allotted height.
+
+### 7.5 Mobile card-stack layout
+
+Below the Tailwind `md` breakpoint (768px), each blotter row renders as a stacked card rather than a horizontal-scroll row. Per-card content:
+
+- **Active card row 1:** status pill, amount + currency, pair.
+- **Active card row 2:** client name, side, reasons chips.
+- **Historic card row 1:** time, amount + currency, pair.
+- **Historic card row 2:** client name, outcome.
+
+Tapping a card opens the ticket panel (already full-width on mobile per §4). The `min-w-[1100px]` / `min-w-[920px]` floors on the blotter containers are removed below md.
+
+## 8. Accessibility and test hooks
 
 - Important controls must have labels or clear text.
 - Rows and panels expose stable `data-testid` / `data-*` attributes for E2E tests.

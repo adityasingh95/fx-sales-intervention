@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ResizeHandle from '@/components/ResizeHandle';
 import { ActiveBlotter } from '@/features/blotter/ActiveBlotter';
 import { HistoricBlotter } from '@/features/blotter/HistoricBlotter';
 import DevInjector from '@/features/dev-injector/DevInjector';
@@ -7,6 +8,8 @@ import MuteToggle from '@/features/notifications/MuteToggle';
 import ToastStack from '@/features/notifications/ToastStack';
 import { useNotificationSound } from '@/features/notifications/useNotificationSound';
 import TicketPanel from '@/features/ticket/TicketPanel';
+import { getDevVersion } from '@/lib/devVersion';
+import { useSettingsStore } from '@/state/stores/settingsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 
 function formatClock(d: Date): string {
@@ -30,9 +33,22 @@ export default function App() {
   const clock = useSessionClock();
   const dev = isDevMode();
   const ticketOpen = useUiStore((s) => s.openDealId !== null);
+  const devVersion = getDevVersion();
   // FXSW-029: hook drives the WebAudio chime + autoplay-unlock listener
   // for the lifetime of the app. No-op output; side-effects only.
   useNotificationSound();
+
+  const isV2 = devVersion === 'v2';
+  const blotterSplit = useSettingsStore((s) => s.blotterSplit);
+  const setBlotterSplit = useSettingsStore((s) => s.setBlotterSplit);
+
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // v1 uses static percentage basis; v2 switches to grow-weighted flex
+  // below so the resize handle's split takes effect (percentage flex-basis
+  // doesn't resolve under a stretched parent in column flex layouts).
+  const activeBasis = '55%';
+  const historicBasis = '45%';
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
@@ -47,7 +63,7 @@ export default function App() {
         {dev && (
           <div
             data-testid="dev-injector-slot"
-            className="min-w-0 flex-1 overflow-x-auto"
+            className="min-w-0 flex-1 overflow-visible sm:overflow-x-auto"
           >
             <DevInjector />
           </div>
@@ -63,15 +79,40 @@ export default function App() {
         </div>
       </header>
       <main
+        ref={mainRef}
         className={clsx(
           'flex flex-1 flex-col overflow-hidden transition-opacity duration-[240ms]',
           ticketOpen && 'opacity-75',
         )}
       >
-        <section className="basis-[55%] overflow-hidden border-b border-border">
+        <section
+          className={clsx(
+            'min-h-0 overflow-hidden',
+            !isV2 && 'border-b border-border',
+          )}
+          style={
+            isV2
+              ? { flex: `${blotterSplit} 1 0` }
+              : { flexBasis: activeBasis }
+          }
+        >
           <ActiveBlotter />
         </section>
-        <section className="basis-[45%] overflow-hidden">
+        {isV2 && (
+          <ResizeHandle
+            split={blotterSplit}
+            onSplitChange={setBlotterSplit}
+            containerRef={mainRef}
+          />
+        )}
+        <section
+          className="min-h-0 overflow-hidden"
+          style={
+            isV2
+              ? { flex: `${100 - blotterSplit} 1 0` }
+              : { flexBasis: historicBasis }
+          }
+        >
           <HistoricBlotter />
         </section>
       </main>

@@ -14,7 +14,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/ticket.md](features/ticket.md) — **stable.** SI ticket panel, panel stack (Reasons/Summary/AI/Pricing/ClientSummary/DealSummary/Footer), streaming + fixed pricing modes, hold-to-confirm + double-click footer actions.
 - [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
 - [features/notifications.md](features/notifications.md) — **stable.** Toast + title flash + row flash + WebAudio chime + mute toggle + dispatcher dedupe.
-- [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1`.
+- [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1` / `?dev=v2`; collapses to a `Dev ▾` popover on mobile. Internals in [components/dev-injector.md](components/dev-injector.md).
 
 ## Components
 
@@ -27,6 +27,8 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
 - [components/suggestion-engine.md](components/suggestion-engine.md) — **stable.** Deterministic rule engine, tier base + size + market + reason + behaviour deltas. Rationale builder + CREDIT_DECLINE_RATIONALE constant.
+- [components/dev-injector.md](components/dev-injector.md) — *in-progress (v2).* Dev injector internals: dev-version scenario gating (`?dev=1` vs `?dev=v2`), compact labels (`Hold/Release`), and the v2 mobile `Dev ▾` popover (fixed positioning to escape the header overflow clip).
+- [components/resize-handle.md](components/resize-handle.md) — *in-progress (v2).* Draggable blotter split (`?dev=v2`): the handle's `containerRef` live-read event contract paired with `App.tsx`'s grow-weighted-flex layout contract.
 - [components/test-patterns.md](components/test-patterns.md) — recurring test patterns: seed pinning, fake timers for `*Sent`, hold-to-confirm interaction, harness pattern, `queueMicrotask` cleanup, cell-testid scoping, throwaway debug spec, `data-*` over text/color.
 
 ## Data models

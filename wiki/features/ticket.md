@@ -1,10 +1,11 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-10
 sources:
   - docs/02-functional-spec.md
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
   - docs/phase-summaries/FXSW-021-summary.md
+  - docs/phase-summaries/FXSW-042-followup-summary.md
 status: stable
 ticket: FXSW-014..FXSW-020
 ---
@@ -64,11 +65,24 @@ Each chip carries `data-reason="{REASON}"` for test scoping.
 ## Pricing Panel — fixed mode (FXSW-018)
 
 - Click a bid or ask cell to enter fixed mode for that side. The panel switches to `data-pricing-mode="fixed"` and the clicked cell gets `data-focused="true"`. Cells are real `<button>` elements so keyboard activation (Enter/Space) works.
-- Refresh button (`data-testid="refresh-button"`, lucide `RefreshCw`) appears only in fixed mode. Click re-captures the current live tick.
+- Refresh button (`data-testid="refresh-button"`, lucide `RefreshCw`) is **always rendered** and `disabled` outside fixed mode (`disabled={pricingMode !== 'fixed'}` + `disabled:opacity-40 disabled:cursor-not-allowed`). In fixed mode, clicking re-captures the current live tick. Phase 6.1 dropped the earlier `pricingMode === 'fixed' &&` mount gate so the button always reserves layout space — selecting a side no longer causes a vertical jump. (The earlier FXSW-018 "appears only in fixed mode" contract is superseded; `PricingPanel.test.tsx` was updated to assert always-rendered-disabled-in-streaming.)
 - Margin controls: `data-testid="margin-minus" | "margin-input" | "margin-plus"`. + / − increment / decrement by 1. Numeric input clamps floor at 1; minus button is `disabled` at the floor.
 - Keyboard `+` / `=` / `-` / `_` on the document increment/decrement margin. Handler ignores keys typed into an `<input>` (so the operator can type a margin value without the global accelerator firing).
 - Indigo glow on margin change: `data-margin-glow="true"` for 600ms on every margin change (internal click, keypress, typed input, or external prop push).
 - Tick flash + stale watchdog suppressed in fixed mode — the displayed rate is frozen, so motion would be misleading.
+
+## Pricing Panel — dual-margin mode (v2)
+
+**v2-only** (`?dev=v2`). When `TicketPanel` runs in v2 (`getDevVersion() === 'v2'`) it passes a `marginPair` (`{ bid, ask }`) plus `onMarginPairChange` into `PricingPanel`; their presence flips on the dual-margin layout (`useDualMargin`). v1 keeps the single shared-margin control documented under fixed mode above.
+
+Layout (revised in Phase 6.1, item #1):
+
+- A **3-column flex row**: the BID price cell, the MID cell, the ASK price cell. Each margin input sits in the **same column directly under its own price cell** — BID `MarginRow` under the BID cell, ASK `MarginRow` under the ASK cell. The MID column has no input beneath it.
+- `MarginRow` no longer carries a left-side `Bid`/`Ask` label span — the price cell directly above already labels the column, so the span was redundant and the row fits the narrower two-column width without it.
+- **Balance** and **Zero** moved to a single **centered row below both inputs** (`BalanceZeroRow`), rather than stacked between the BID and ASK rows as in the first pass. `Balance` mirrors one side's margin onto the other; `Zero` clears both.
+- The native number-input spinner is suppressed globally (`input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none }` + `-moz-appearance: textfield` in `src/styles/global.css`) so the dedicated `−`/`+` buttons are the only adjustment surface and the side-by-side inputs stay aligned.
+
+Per-side testids carry a side suffix so the two `MarginRow`s are independently addressable: `margin-minus-bid` / `margin-input-bid` / `margin-plus-bid` and the `-ask` equivalents (v1's single control keeps the unsuffixed `margin-minus` / `margin-input` / `margin-plus`). The `BalanceZeroRow` exposes `margin-balance` and `margin-zero`. Each input keeps the `data-margin-glow="true"` 600ms indigo glow on change.
 
 ## Client Summary Panel (FXSW-019)
 
@@ -98,6 +112,8 @@ Six buttons per `docs/02-functional-spec.md` §4.7. Visibility gated on `siState
 | Send Quote | `btn-send-quote` | `PickedUp`, fixed mode | `Quote` with captured rate → `QuoteSent` → `Quoted`. |
 | Withdraw | `btn-withdraw` | `Quoted` | `Withdraw` → `WithdrawSent` → `PickedUp`. |
 | Return to Stream | `btn-return-stream` | `PickedUp`, fixed mode | Resumes streaming locally; resets `pricingMode` / `fixedSide` / `frozenTick`. |
+
+**Mobile compaction (Phase 6.1, item #8):** the footer tightens at narrow widths so its buttons stay on one line down to ~428px — `px-2 gap-1` on mobile, `sm:px-5 sm:gap-2` on desktop; the shared button primitives (`ActionButton` / `HoldButton` in `src/components/Button.tsx`) drop to `px-2 text-xs` with `sm:px-4 sm:text-sm`; and the "Return to Stream" label compresses to just "Stream" via `<span class="hidden sm:inline">Return to </span>Stream`. Desktop appearance is byte-for-byte unchanged.
 
 ### Hold-to-confirm + double-click
 

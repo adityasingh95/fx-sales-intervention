@@ -10,6 +10,7 @@ const globex = (): Deal => ({
   pair: 'USDJPY',
   side: 'SELL',
   notional: 5_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: new Date(2026, 4, 18, 14, 23, 8).getTime(), // Mon 18 May 2026

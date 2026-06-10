@@ -35,6 +35,18 @@ pre,
   font-variant-numeric: tabular-nums;
 }
 
+/* Hide the browser's number-input spinner buttons on hover. The margin
+   inputs handle increment/decrement via dedicated −/+ buttons; the
+   native spinner interferes with the side-by-side layout. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* Hold-to-confirm progress overlay (TicketFooter HoldButton). 600ms
    left-to-right wipe. Driven via inline style so the keyframes live
    here and the component stays Tailwind-only. */

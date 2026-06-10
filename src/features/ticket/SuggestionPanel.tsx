@@ -13,7 +13,15 @@ const VOL_SHIFT_THRESHOLD = 0.3; // 30% relative change triggers recompute
 export interface SuggestionPanelProps {
   suggestion: MarginSuggestion | null;
   currentMargin: number;
+  // FXSW-039: `onApply` writes the new suggested margin. In v2 the
+  // parent translates the single number to both sides of a MarginPair
+  // and captures the prior pair for Undo.
   onApply: (next: number) => void;
+  // FXSW-039: optional callback fired by the Undo button. If provided,
+  // the parent restores the saved pair (lossless undo in v2). If absent,
+  // the panel falls back to calling onApply with the pre-apply margin
+  // value (v1 behaviour, single-number restore).
+  onUndo?: () => void;
   // FXSW-026: provided by TicketPanel. Recompute click + vol shift fire
   // onRecompute(); credit-decline shortcut fires onReject() which the
   // parent maps to SI Reject (same event the TicketFooter Reject sends).
@@ -38,6 +46,7 @@ export default function SuggestionPanel({
   suggestion,
   currentMargin,
   onApply,
+  onUndo,
   onRecompute,
   onReject,
   currentVolatility,
@@ -134,10 +143,15 @@ export default function SuggestionPanel({
     onApply(suggestion.suggestedPips);
   };
   const handleUndo = (): void => {
-    if (appliedFrom !== null) {
+    if (appliedFrom === null) return;
+    // v2 path: parent owns the saved pair and restores it losslessly.
+    // v1 path: fall back to restoring the single captured value.
+    if (onUndo) {
+      onUndo();
+    } else {
       onApply(appliedFrom);
-      setAppliedFrom(null);
     }
+    setAppliedFrom(null);
   };
 
   const isApplied = appliedFrom !== null;

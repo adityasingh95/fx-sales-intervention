@@ -43,4 +43,27 @@ describe('useSettingsStore', () => {
     const fresh = await import('./settingsStore?reload=' + Date.now());
     expect(fresh.useSettingsStore.getState().muted).toBe(true);
   });
+
+  // FXSW-036: blotter split (v2 resize handle)
+  it('defaults blotterSplit to 55', () => {
+    expect(useSettingsStore.getState().blotterSplit).toBe(55);
+  });
+
+  it('setBlotterSplit updates the value and persists', () => {
+    useSettingsStore.getState().setBlotterSplit(70);
+    expect(useSettingsStore.getState().blotterSplit).toBe(70);
+    expect(window.sessionStorage.getItem('si.blotterSplit')).toBe('70');
+  });
+
+  it('restores blotterSplit from sessionStorage on reload', async () => {
+    window.sessionStorage.setItem('si.blotterSplit', '40');
+    const fresh = await import('./settingsStore?reload=' + Date.now());
+    expect(fresh.useSettingsStore.getState().blotterSplit).toBe(40);
+  });
+
+  it('falls back to default 55 when stored value is malformed', async () => {
+    window.sessionStorage.setItem('si.blotterSplit', 'not-a-number');
+    const fresh = await import('./settingsStore?reload=' + Date.now());
+    expect(fresh.useSettingsStore.getState().blotterSplit).toBe(55);
+  });
 });

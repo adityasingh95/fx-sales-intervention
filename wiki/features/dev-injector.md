@@ -1,15 +1,18 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-10
 sources:
   - docs/02-functional-spec.md
   - docs/07-scenario-pack.md
+  - docs/phase-summaries/FXSW-042-followup-summary.md
 status: stable
 ticket: FXSW-013
 ---
 
 # Feature — Dev Injector
 
-Hidden control panel that lets the demo operator inject pre-canned scenarios on demand. Visible only when the URL includes `?dev=1`. Replaces the right side of the header with a row of buttons.
+Hidden control panel that lets the demo operator inject pre-canned scenarios on demand. Visible only when the URL includes a `dev` query param. Replaces the right side of the header with a row of buttons.
+
+> **Dev versions + mobile:** `?dev=1` shows the five v1 scenarios below; `?dev=v2` additionally surfaces the v2 scenarios (`BOTH_SIDED_INQUIRY`, `QUOTE_DEALT_INQUIRY`). Below the `md` breakpoint the row collapses into a `Dev ▾` popover. Component internals — the dev-version gating, the compact button labels (the `RELEASE_PATH` button now reads **`Hold/Release`**), and the mobile dropdown — are documented in [components/dev-injector.md](../components/dev-injector.md).
 
 ## Buttons
 

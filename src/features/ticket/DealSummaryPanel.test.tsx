@@ -10,6 +10,7 @@ const dealAt = (date: Date): Deal => ({
   pair: 'EURUSD',
   side: 'BUY',
   notional: 1_000_000,
+  dealtCcy: 'BASE',
   tenor: 'SPOT',
   defaultMarginPips: 3,
   createdAt: date.getTime(),
