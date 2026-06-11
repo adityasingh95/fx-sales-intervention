@@ -136,3 +136,11 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - scenarios/credit-breach.md — randomized trader-quote terminal path (CLIENT_ACCEPT_OR_REJECT); scenarios/release-path.md — Hold/Release label + quote-path CLIENT_ACCEPT follow-up.
 ##   - index.md — registered both new component pages; updated dev-injector feature entry.
 ##   - Brand-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write).
+
+## [2026-06-11] ingest | Phase 7 Light Theme (FXSW-043 → FXSW-046, main commit a622dce) — source docs/phase-summaries/FXSW-046-summary.md.
+##   - NEW features/theme-switching.md — opt-in light theme behind ?theme=preview; ThemeToggle (Sun/Moon, null when flag off); pure-parser/window-guarded URL-gate pattern (mirrors devVersion.ts); orthogonal to ?dev=v2.
+##   - NEW components/theme-store.md — Zustand theme store; resolveInitialMode (force-dark off / stored / prefers-color-scheme); sole writer of document.documentElement.dataset.theme; sessionStorage si.theme.
+##   - NEW decisions/ADR-0011-tailwind-rgb-variable-tokens.md — RGB-triple CSS-var migration: rgb(var(--color-X) / <alpha-value>) so utilities flip via cascade + keep opacity modifiers; captures the literal-hex bug (token file-content tests green while render pipeline broken; needs a visual gate).
+##   - overview.md §Current state → "Phase 7 closed (light theme behind ?theme=preview)"; corrected the stale "There is no Phase 6" line with a phase-progression note; test count 316 → 422.
+##   - index.md — registered the 3 new pages; glossary.md — added Preview flag + Light theme terms.
+##   - Boundary: writes confined to wiki/. Vendor-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write).

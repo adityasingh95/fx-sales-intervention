@@ -1,7 +1,8 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-11
 sources:
   - docs/01-prd.md
+  - docs/phase-summaries/FXSW-046-summary.md
 status: stable
 ---
 
@@ -56,31 +57,29 @@ This is **not** a re-implementation of any vendor product. It is a brand-neutral
 
 ## Current state
 
-**Phase 5 closed (FXSW-028 → FXSW-033). Build complete. Project shippable.**
+**Phase 7 closed (FXSW-043 → FXSW-046): opt-in light theme behind `?theme=preview`. Build complete; the dark workstation remains the default and is unchanged without the flag.**
 
 The full stack is live end-to-end:
 
 - Pricing feed (300ms tick, seeded random walk, baked reference mids).
-- Deal feed + scenario player driving five demo scenarios.
+- Deal feed + scenario player driving the demo scenarios.
 - Two-machine deal lifecycle (RFS + SI) coordinated by `dealMachine`, with `*Sent` ack delays + 5-second blotter removal.
 - Live Active + Historic blotters with full status derivation.
 - SI ticket panel with all seven sub-panels: Reasons, Summary, AI Margin Suggestion (ready / applied / Undo / credit-decline / computing), Pricing (streaming + fixed mode + margin controls), Client Summary, Deal Summary, Footer (hold-to-confirm + double-click).
 - Deterministic AI margin engine + indigo-accented suggestion panel.
 - Notifications layer: toast + title-flash + row-flash + 880 Hz WebAudio chime + mute toggle (sessionStorage-persisted).
-- Dev injector for one-click scenario playback (`?dev=1`).
+- Dev injector for one-click scenario playback (`?dev=1`, with `?dev=v2` adding the v2 scenarios).
+- **v2 UX enhancements** (Phase 6 / 6.1, behind `?dev=v2`): resizable blotter split, dual-margin pricing, mobile card-stack blotters + dev-injector popover. See [components/resize-handle.md](components/resize-handle.md) and [components/dev-injector.md](components/dev-injector.md).
+- **Opt-in light theme** (Phase 7, behind `?theme=preview`): [theme switching](features/theme-switching.md) via the [theme store](components/theme-store.md) + a Tailwind RGB-triple token migration ([ADR-0011](decisions/ADR-0011-tailwind-rgb-variable-tokens.md)). Orthogonal to `?dev=v2`; both flags compose.
 - Shared `Button` + `HoldButton` primitives in `src/components/`.
 
-**Test suite:** 316 unit tests pass · 6 E2Es pass (smoke + happy-path-esp + off-hours-intervention + credit-breach + size-limit-margin-tune + release-path) in 35.9s.
+**Test suite:** 422 unit tests pass · 6 E2Es pass (smoke + happy-path-esp + off-hours-intervention + credit-breach + size-limit-margin-tune + release-path).
 
 **CI workflow:** typecheck + lint + Vitest + Playwright Chromium on every push to `main` or `claude/**` and every PR; trace artifacts uploaded on failure with 7-day retention.
 
 **Deploy:** GitHub Pages workflow shipped at FXSW-034 (pulled forward in Phase 1). Live URL serves the production build with `?dev=1`-gated injector.
 
-**Two user-side follow-ups remain** before the project is fully done:
-1. Watch the CI workflow run on `main` post-merge land green; flip FXSW-032 ☑.
-2. Capture a 30-60s demo recording walking the five scenarios; drop at `docs/demo.mp4`; flip FXSW-033 ☑.
-
-There is no Phase 6.
+**Phase progression:** Phases 1–5 built the dark v1 workstation. Phase 6 + 6.1 added the `?dev=v2` UX enhancements (squash-merged to `main`). Phase 7 added the `?theme=preview` light theme (squash-merged to `main`, commit `a622dce`). Both preview flags are opt-in; `main` without flags is the original dark v1 experience.
 
 ## Where to go next
 

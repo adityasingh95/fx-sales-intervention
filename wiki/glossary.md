@@ -1,7 +1,8 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-11
 sources:
   - docs/00-glossary.md
+  - docs/phase-summaries/FXSW-046-summary.md
 status: stable
 ---
 
@@ -113,6 +114,8 @@ Reference implementations publish these in a container at `/PRIVATE/FX/SALES/BLO
 | **Scenario** | A pre-canned sequence of events used for demos and E2E tests. See the [Scenarios section of the index](index.md#scenarios). |
 | **Dev Injector** | The hidden control panel at `?dev=1` that lets the operator inject scenarios on demand. See [features/dev-injector.md](features/dev-injector.md). |
 | **Rejection reason** | The flag indicating why auto-pricing failed. In v1: `OFF_HOURS`, `SIZE_LIMIT`, `CREDIT_LIMIT`. |
+| **Preview flag** | A query-param URL gate that opts into an unfinished/optional capability. `?dev=v2` (v2 UX) and `?theme=preview` (light theme) are the two; they are independent and compose. Pattern: a pure parser + a `window`-guarded getter (`devVersion.ts`, `themeMode.ts`). |
+| **Light theme** | Opt-in light colour palette behind `?theme=preview`. Dark is the default and is forced when the flag is absent. See [features/theme-switching.md](features/theme-switching.md). |
 
 ## Source
 
