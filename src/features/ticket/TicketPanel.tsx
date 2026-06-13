@@ -3,7 +3,6 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
-import { getDevVersion } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { quoteSideFor } from '@/lib/quoteSide';
 import type { PriceTick } from '@/services/feed/types';
@@ -33,12 +32,9 @@ import TicketFooter from './TicketFooter';
 export default function TicketPanel() {
   const openDealId = useUiStore((s) => s.openDealId);
   const entry = useDealsStore((s) => (openDealId ? s.deals.get(openDealId) : undefined));
-  const isV2 = getDevVersion() === 'v2';
   const [slidIn, setSlidIn] = useState(false);
   // FXSW-039: dual-margin state. Each side carries an independent pip
-  // markup. v1 keeps both sides equal via the single PricingPanel
-  // input; v2 (FXSW-040) adds a dual-input UI so the trader can diverge
-  // the two. The AI suggestion engine returns a single value applied to
+  // markup. The AI suggestion engine returns a single value applied to
   // both sides on Apply; Undo restores the prior pair losslessly via
   // the saved pair below.
   const defaultPips = entry?.deal.defaultMarginPips ?? 3;
@@ -47,9 +43,8 @@ export default function TicketPanel() {
     ask: defaultPips,
   });
   const [savedPairForUndo, setSavedPairForUndo] = useState<MarginPair | null>(null);
-  // Convenience setter for the single-input v1 UI in PricingPanel —
-  // writes both sides equal. v2's dual UI (FXSW-040) will edit each
-  // side independently.
+  // Convenience setter for the AI-suggestion Apply path — writes both
+  // sides equal so a single suggested pip value applies symmetrically.
   const setMargin = useCallback((n: number) => {
     setMarginPair({ bid: n, ask: n });
   }, []);
@@ -238,18 +233,14 @@ export default function TicketPanel() {
               setFixedSide(side);
               setFrozenTick(liveTick);
             }}
-            onExitFixed={
-              isV2
-                ? () => {
-                    setPricingMode('streaming');
-                    setFixedSide(null);
-                    setFrozenTick(null);
-                  }
-                : undefined
-            }
-            quoteSide={isV2 ? quoteSideFor(deal.side, deal.dealtCcy) : 'BOTH'}
-            marginPair={isV2 ? marginPair : undefined}
-            onMarginPairChange={isV2 ? setMarginPair : undefined}
+            onExitFixed={() => {
+              setPricingMode('streaming');
+              setFixedSide(null);
+              setFrozenTick(null);
+            }}
+            quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}
+            marginPair={marginPair}
+            onMarginPairChange={setMarginPair}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}
@@ -259,7 +250,7 @@ export default function TicketPanel() {
             marginPair={marginPair}
             notional={deal.notional}
             pair={deal.pair}
-            quoteSide={isV2 ? quoteSideFor(deal.side, deal.dealtCcy) : undefined}
+            quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}
           />
           <DealSummaryPanel deal={deal} />
         </div>

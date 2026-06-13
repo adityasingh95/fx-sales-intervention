@@ -370,6 +370,32 @@ Each ticket below has AC, TDD test list, and Done-when checklist. The build agen
 
 **Done when:** all gates green; manual pass over 14 visual states completed; phase summary written.
 
+### Phase 8 — Single-URL GA (strip preview gates)
+
+Phase 8 promotes Phase 6 + Phase 7 from opt-in URL flags to the default-on behaviour. After this phase, the bare URL `/` renders the full app: resizable blotter, dual-margin UI, BOTH-side support, mobile card-stack, ThemeToggle in header, DevInjector visible. The `?dev=v2` and `?theme=preview` flags are gone (no-ops if pasted); the URL-flag pattern itself is documented in `05-ui-ux-spec.md` §14 for future preview gates.
+
+### FXSW-047 — Strip `?dev=v2` and `?theme=preview` gates; promote Phase 6 + 7 to GA
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-046
+
+**AC:**
+- Delete `src/lib/devVersion.ts` + test, `src/lib/themeMode.ts` + test.
+- Remove `isV2` branches in `App.tsx`, `ActiveBlotter.tsx`, `HistoricBlotter.tsx`, `TicketPanel.tsx`, `DevInjector.tsx`.
+- Remove `getThemePreviewEnabled` checks in `themeStore.ts` (always honor `prefers-color-scheme`, always persist) and `ThemeToggle.tsx` (always render).
+- Remove the `isDevMode()` helper in `App.tsx`; DevInjector slot always mounts.
+- Collapse `V1_SCENARIO_IDS` + `V2_SCENARIO_IDS` into a single `SCENARIO_IDS` export.
+- All 5 e2e scenario specs use `page.goto('/')` (no flag).
+- All gates green.
+
+**TDD tests (write first / update):**
+- `App.test.tsx` — DevInjector and ResizeHandle both render on bare URL.
+- `DevInjector.test.tsx` — every scenario testid present on bare URL.
+- `ActiveBlotter.test.tsx` — mobile card stack triggers on `useIsMobile() === true` alone (no URL flag).
+- `themeStore.test.ts` — drop "force-dark when flag off" / "ignores stored value when flag off" / "does not persist when flag off" tests; remaining tests assert always-persist behaviour.
+- `ThemeToggle.test.tsx` — drop "null when flag off" test; remaining icon/toggle tests work without URL setup.
+
+**Done when:** all gates green; bare URL `/` (with no query string) shows DevInjector, the ResizeHandle, the ThemeToggle, and behaves identically to the prior `/?dev=v2&theme=preview`; brand-neutral grep over `dist/` returns zero hits.
+
 ## Current known follow-ups
 
 - Capture and attach the actual demo recording if needed.

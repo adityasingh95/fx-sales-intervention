@@ -14,7 +14,7 @@ test('HAPPY_PATH_ESP — ESP deal flows from inject → AUTO → DONE → Histor
     (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
   });
 
-  await page.goto('/?dev=1');
+  await page.goto('/');
   const activeBody = page.getByTestId('active-blotter-body');
   const historicBody = page.getByTestId('historic-blotter-body');
 
