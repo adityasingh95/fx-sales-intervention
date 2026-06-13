@@ -5,8 +5,6 @@ export type Side = 'BUY' | 'SELL' | 'BOTH';
 // Which leg of the pair the notional is denominated in.
 // 'BASE'  — the first three letters of the pair (e.g. EUR in EURUSD).
 // 'QUOTE' — the last three letters (e.g. JPY in USDJPY).
-// V1 scenarios are all base-dealt; quote-dealt arrives in v2 alongside the
-// `?dev=v2` URL gate.
 export type DealtCcy = 'BASE' | 'QUOTE';
 
 export type Tenor = 'SPOT';

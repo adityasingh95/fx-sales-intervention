@@ -1,12 +1,9 @@
 import { Moon, Sun } from 'lucide-react';
-import { getThemePreviewEnabled } from '@/lib/themeMode';
 import { useThemeStore } from '@/state/stores/themeStore';
 
 export default function ThemeToggle() {
   const mode = useThemeStore((s) => s.mode);
   const toggle = useThemeStore((s) => s.toggle);
-
-  if (!getThemePreviewEnabled()) return null;
 
   const isLight = mode === 'light';
   const Icon = isLight ? Moon : Sun;

@@ -1,5 +1,4 @@
 import clsx from 'clsx';
-import { getDevVersion } from '@/lib/devVersion';
 import { dealtCcyCode, formatTime } from '@/lib/format';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
@@ -88,9 +87,8 @@ function HistoricCard({ entry }: { entry: HistoricEntry }) {
 export function HistoricBlotter() {
   const all = useHistoricDeals();
   const visible = all.slice(0, HISTORIC_CAP);
-  const isV2 = getDevVersion() === 'v2';
   const isMobile = useIsMobile();
-  const useCards = isV2 && isMobile;
+  const useCards = isMobile;
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">

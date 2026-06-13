@@ -1,16 +1,11 @@
 import clsx from 'clsx';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { getDevVersion } from '@/lib/devVersion';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import {
-  V1_SCENARIO_IDS,
-  V2_SCENARIO_IDS,
-  type ScenarioId,
-} from '@/types/scenario';
+import { SCENARIO_IDS, type ScenarioId } from '@/types/scenario';
 
 // Compact labels for the header chip-style buttons.
 const LABEL: Record<ScenarioId, string> = {
@@ -28,10 +23,8 @@ function injectButtonClasses(): string {
 }
 
 export default function DevInjector() {
-  const devVersion = getDevVersion();
   const isMobile = useIsMobile();
-  const visibleScenarios: readonly ScenarioId[] =
-    devVersion === 'v2' ? [...V1_SCENARIO_IDS, ...V2_SCENARIO_IDS] : V1_SCENARIO_IDS;
+  const visibleScenarios: readonly ScenarioId[] = SCENARIO_IDS;
 
   const resetSession = (): void => {
     dealFeed.reset();

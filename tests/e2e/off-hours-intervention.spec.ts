@@ -16,7 +16,7 @@ test('OFF_HOURS_INTERVENTION — full trader-driven SI flow', async ({ page }) =
     (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
   });
 
-  await page.goto('/?dev=1');
+  await page.goto('/');
   const activeBody = page.getByTestId('active-blotter-body');
   const historicBody = page.getByTestId('historic-blotter-body');
 
@@ -64,7 +64,7 @@ test('OFF_HOURS_INTERVENTION — full trader-driven SI flow', async ({ page }) =
   await expect(page.getByTestId('ask-cell')).not.toHaveText('—');
 
   // Margin field shows 3 (the dealFeed default per docs/04 §4.3).
-  await expect(page.getByTestId('margin-input')).toHaveValue('3');
+  await expect(page.getByTestId('margin-input-bid')).toHaveValue('3');
 
   // SI machine should have advanced past Initial (PickUp fired on open,
   // ack delay zeroed via __zeroAckDelay → straight to PickedUp).

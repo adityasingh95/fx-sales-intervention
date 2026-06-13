@@ -1,5 +1,4 @@
 import clsx from 'clsx';
-import { getDevVersion } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { isHistoric, useActiveDeals, type DealEntry } from '@/state/stores/dealsStore';
@@ -108,12 +107,8 @@ function Row({ entry }: { entry: DealEntry }) {
 
 export function ActiveBlotter() {
   const deals = useActiveDeals();
-  const isV2 = getDevVersion() === 'v2';
   const isMobile = useIsMobile();
-  // v1 + desktop OR v2 + desktop: horizontal-scroll table.
-  // v2 + mobile: card stack (no horizontal scroll). v1 + mobile keeps the
-  // table per the v1 ship contract.
-  const useCards = isV2 && isMobile;
+  const useCards = isMobile;
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">

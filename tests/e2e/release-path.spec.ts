@@ -17,7 +17,7 @@ test('RELEASE_PATH — pickup then release; row stays Active, dealable returns',
     (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
   });
 
-  await page.goto('/?dev=1');
+  await page.goto('/');
   const activeBody = page.getByTestId('active-blotter-body');
 
   await expect(activeBody.locator('[data-deal-id]')).toHaveCount(0);

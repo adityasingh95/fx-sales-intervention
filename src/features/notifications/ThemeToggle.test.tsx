@@ -9,10 +9,6 @@ function mockMatchMedia(prefersLight: boolean): void {
   }));
 }
 
-function setSearch(search: string): void {
-  window.history.replaceState({}, '', `/${search}`);
-}
-
 let reloadCounter = 0;
 async function freshImport() {
   reloadCounter += 1;
@@ -24,24 +20,15 @@ describe('<ThemeToggle />', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     document.documentElement.dataset.theme = '';
-    setSearch('');
     mockMatchMedia(false);
   });
   afterEach(() => {
     window.sessionStorage.clear();
     document.documentElement.dataset.theme = '';
-    setSearch('');
     vi.restoreAllMocks();
   });
 
-  it('returns null when ?theme=preview flag is off', async () => {
-    const { default: ThemeToggle } = await freshImport();
-    const { container } = render(<ThemeToggle />);
-    expect(container.firstChild).toBeNull();
-  });
-
   it('renders Sun icon when dark is active (icon is the target — what click switches TO)', async () => {
-    setSearch('?theme=preview');
     const { default: ThemeToggle } = await freshImport();
     render(<ThemeToggle />);
     const btn = screen.getByTestId('theme-toggle');
@@ -51,7 +38,6 @@ describe('<ThemeToggle />', () => {
   });
 
   it('renders Moon icon when light is active', async () => {
-    setSearch('?theme=preview');
     window.sessionStorage.setItem('si.theme', 'light');
     const { default: ThemeToggle } = await freshImport();
     render(<ThemeToggle />);
@@ -62,7 +48,6 @@ describe('<ThemeToggle />', () => {
   });
 
   it('click toggles the theme and updates attributes', async () => {
-    setSearch('?theme=preview');
     const { default: ThemeToggle } = await freshImport();
     render(<ThemeToggle />);
     const btn = screen.getByTestId('theme-toggle');
@@ -76,7 +61,6 @@ describe('<ThemeToggle />', () => {
   });
 
   it('second click flips back to dark', async () => {
-    setSearch('?theme=preview');
     const { default: ThemeToggle } = await freshImport();
     render(<ThemeToggle />);
     const btn = screen.getByTestId('theme-toggle');
