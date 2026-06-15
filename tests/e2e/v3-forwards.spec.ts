@@ -41,13 +41,26 @@ test('v3 forward injection — forward points, all-in rates, component markup', 
   await expect(page.getByTestId('fwd-points')).not.toHaveText('');
   await expect(page.getByTestId('all-in-bid')).not.toHaveText('—', { timeout: 1_000 });
 
-  // Component mode (default) shows the forward-points margin row.
+  // Component mode (default) shows the forward-points margin row + its own
+  // Balance/Zero controls.
   await expect(page.getByTestId('margin-input-fwd-bid')).toBeVisible();
+  await expect(page.getByTestId('margin-balance-fwd')).toBeVisible();
+  await expect(page.getByTestId('margin-zero-fwd')).toBeVisible();
 
-  // Toggling to all-in hides the forward-points margin row; back to component
-  // restores it.
+  // Freeze the rate (fixed mode) so the all-in figure only moves on markup,
+  // then confirm bumping the spot bid margin moves the all-in bid — i.e. the
+  // markup is now reflected in the outright (FXSW-064).
+  await page.getByTestId('bid-cell').click();
+  const allInBid = page.getByTestId('all-in-bid');
+  const beforeBid = await allInBid.textContent();
+  await page.getByTestId('margin-plus-bid').click();
+  await expect(allInBid).not.toHaveText(beforeBid ?? '');
+
+  // Toggling to all-in hides the forward-points margin row + its Balance/Zero;
+  // back to component restores them.
   await page.getByTestId('markup-mode-all-in').click();
   await expect(page.getByTestId('margin-input-fwd-bid')).toHaveCount(0);
+  await expect(page.getByTestId('margin-balance-fwd')).toHaveCount(0);
   await page.getByTestId('markup-mode-component').click();
   await expect(page.getByTestId('margin-input-fwd-bid')).toBeVisible();
 });
