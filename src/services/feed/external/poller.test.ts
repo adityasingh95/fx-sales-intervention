@@ -4,8 +4,12 @@ import { ProviderError } from './provider';
 import type { ExternalFeedStatus, MidMap } from './types';
 
 describe('createPoller', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('polls immediately on start, then every interval', async () => {
     const fetchMids = vi.fn<[], Promise<MidMap>>().mockResolvedValue({ EURUSD: 1.1 });

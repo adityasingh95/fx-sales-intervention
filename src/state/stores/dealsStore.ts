@@ -79,6 +79,14 @@ interface DealsState {
   recordQuoteContext: (dealId: string, ctx: QuoteContext) => void;
 }
 
+// XState's snapshot type doesn't surface the triggering event, but it's
+// present at runtime. Read it through a narrow cast so the lifecycle log can
+// record what caused each transition without a `any` / ts-ignore.
+const triggerOf = (snap: unknown): string | undefined => {
+  const event = (snap as { event?: { type?: unknown } }).event;
+  return typeof event?.type === 'string' ? event.type : undefined;
+};
+
 const replaceEntry = (
   deals: Map<string, DealEntry>,
   dealId: string,
@@ -168,7 +176,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
                 channel: 'SI',
                 fromState: cur.siState,
                 toState: stateName,
-                trigger: snap.event?.type,
+                trigger: triggerOf(snap),
               },
             ];
           }
@@ -199,7 +207,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
                 channel: 'RFS',
                 fromState: cur.rfsState,
                 toState: stateName,
-                trigger: snap.event?.type,
+                trigger: triggerOf(snap),
               },
             ];
           }
