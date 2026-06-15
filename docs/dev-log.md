@@ -16,6 +16,19 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-048 · Reinstate the `?dev=v3` gate (Phase 8 / v3 foundation)
+
+- **Re-added `src/lib/devVersion.ts`** — the path FXSW-047 deleted — following the URL-flag pattern documented in `05-ui-ux-spec.md` §12/§14. Exports `devVersion: 'v1' | 'v3'` (parsed once from `?dev=v3`) and `isV3()`. Components and services branch on `isV3()`; no version prop is threaded through the tree. The legacy `?dev=1` flag and any other `dev` value resolve to `v1`, so the bare-URL GA tree is unchanged.
+- **`isV3()` is a function** (not just a const) so `devVersion.test.ts` can re-import the module with a `?reload=` cache-buster after stubbing `window.location.search`, mirroring `themeStore.test.ts`'s `freshImport` pattern.
+- This is the gate every subsequent v3 ticket (external feed, forwards, historical detail) hangs off; with no flag set, none of that code executes.
+- Gates: typecheck (pending full run) · `devVersion.test.ts` ✓ (5 tests).
+
+**Agent-directed decisions:**
+
+- **Version label `v1 | v3`, skipping `v2`.** v2 is now GA (FXSW-047), so the live distinction is GA-vs-next. Reusing the literal `v3` matches the `?dev=v3` flag the user chose and avoids a confusing `v2` alias.
+
+---
+
 ## FXSW-047 · Strip `?dev=v2` / `?theme=preview` gates — single-URL GA
 
 - **Promote Phase 6 + 7 to GA.** Removed the URL flags that previously gated v2 features (`?dev=v2`) and the light-theme toggle (`?theme=preview`). The bare URL `/` now renders the full app: resizable blotter, dual-margin UI, BOTH-side support, mobile card-stack, ThemeToggle in header. No more flag composition required for the demo.
