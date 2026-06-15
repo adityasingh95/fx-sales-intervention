@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allInRate,
+  clientAskFromForward,
   clientAskFromTrader,
+  clientBidFromForward,
   clientBidFromTrader,
   estimatedProfitUsd,
+  sumMargins,
   pipSizeFor,
 } from './pips';
 
@@ -56,5 +60,37 @@ describe('estimatedProfitUsd', () => {
 
   it('handles a zero midRate without dividing by zero (USD-based pairs only)', () => {
     expect(estimatedProfitUsd(3, 1_000_000, 'USDJPY', 0)).toBe(0);
+  });
+});
+
+describe('forward pricing (v3)', () => {
+  it('allInRate adds forward points (in pips) to the spot rate', () => {
+    // EURUSD spot 1.1715 + (-25 points × 0.0001) = 1.169.
+    expect(allInRate(1.1715, -25, 'EURUSD')).toBe(1.169);
+    // USDJPY spot 157.77 + (40 points × 0.01) = 158.17.
+    expect(allInRate(157.77, 40, 'USDJPY')).toBe(158.17);
+  });
+
+  it('sumMargins adds the two components per side', () => {
+    expect(sumMargins({ bid: 2, ask: 3 }, { bid: 1, ask: 1.5 })).toEqual({
+      bid: 3,
+      ask: 4.5,
+    });
+  });
+
+  it('client forward bid/ask widen by the sum of spot + forward margins', () => {
+    // All-in bid = 1.1715 - 0.0025 = 1.169; client bid subtracts (2+1)=3 pips.
+    expect(clientBidFromForward(1.1715, -25, 2, 1, 'EURUSD')).toBe(
+      clientBidFromTrader(1.169, 3, 'EURUSD'),
+    );
+    expect(clientAskFromForward(1.1717, -25, 2, 1, 'EURUSD')).toBe(
+      clientAskFromTrader(allInRate(1.1717, -25, 'EURUSD'), 3, 'EURUSD'),
+    );
+  });
+
+  it('zero forward points + zero forward margin reduces to the spot case', () => {
+    expect(clientBidFromForward(1.1715, 0, 3, 0, 'EURUSD')).toBe(
+      clientBidFromTrader(1.1715, 3, 'EURUSD'),
+    );
   });
 });

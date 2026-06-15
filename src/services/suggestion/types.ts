@@ -1,4 +1,4 @@
-import type { RejectionReason } from '@/types/deal';
+import type { RejectionReason, Tenor } from '@/types/deal';
 
 export type ClientTier = 'platinum' | 'gold' | 'standard' | 'new';
 
@@ -31,6 +31,10 @@ export type SuggestionInput = {
     notional: number;
     defaultMarginPips: number;
     rejectionReasons: RejectionReason[];
+    // FXSW-058: forward deals carry a tenor so the engine can add a
+    // forward-points margin component. Optional/defaults to SPOT, so existing
+    // spot callers and tests are unchanged.
+    tenor?: Tenor;
   };
   client: ClientProfile;
   market: {
@@ -43,7 +47,10 @@ export type SuggestionInput = {
 
 export type ReadySuggestion = {
   kind: 'ready';
+  // For forwards this is the spot-component margin; the forward-points margin
+  // is `fwdPointsPips`. For spot deals `fwdPointsPips` is absent.
   suggestedPips: number;
+  fwdPointsPips?: number;
   confidence: 'low' | 'medium' | 'high';
   rationale: string;
   factors: Factor[];

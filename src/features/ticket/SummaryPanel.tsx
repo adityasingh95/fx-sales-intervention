@@ -1,5 +1,5 @@
 import { formatAmount } from '@/lib/format';
-import { addBusinessDays, formatSettlementDate } from '@/lib/time';
+import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import type { Deal } from '@/types/deal';
 
 // Per docs/02 §4.2: natural-language one-liner + key/value strip.
@@ -14,7 +14,7 @@ export default function SummaryPanel({ deal }: SummaryPanelProps) {
   // The "vs" leg is whichever currency the trader is NOT dealing in.
   const other = deal.dealtCcy === 'BASE' ? deal.pair.slice(3, 6) : deal.pair.slice(0, 3);
   const tradeDate = new Date(deal.createdAt);
-  const settlementDate = addBusinessDays(tradeDate, 2);
+  const settlementDate = valueDateForTenor(tradeDate, deal.tenor);
   return (
     <section
       data-testid="summary-panel"

@@ -15,8 +15,9 @@ export interface SuggestionPanelProps {
   currentMargin: number;
   // FXSW-039: `onApply` writes the new suggested margin. In v2 the
   // parent translates the single number to both sides of a MarginPair
-  // and captures the prior pair for Undo.
-  onApply: (next: number) => void;
+  // and captures the prior pair for Undo. FXSW-058: for forwards a second
+  // arg carries the suggested forward-points margin.
+  onApply: (next: number, fwdPips?: number) => void;
   // FXSW-039: optional callback fired by the Undo button. If provided,
   // the parent restores the saved pair (lossless undo in v2). If absent,
   // the panel falls back to calling onApply with the pre-apply margin
@@ -140,7 +141,11 @@ export default function SuggestionPanel({
 
   const handleApply = (): void => {
     setAppliedFrom(currentMargin);
-    onApply(suggestion.suggestedPips);
+    if (suggestion.fwdPointsPips !== undefined) {
+      onApply(suggestion.suggestedPips, suggestion.fwdPointsPips);
+    } else {
+      onApply(suggestion.suggestedPips);
+    }
   };
   const handleUndo = (): void => {
     if (appliedFrom === null) return;
@@ -166,7 +171,11 @@ export default function SuggestionPanel({
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-ai-accent" aria-hidden />
           <span className="text-sm text-text">
-            Applied {suggestion.suggestedPips} pips
+            Applied {suggestion.suggestedPips}
+            {suggestion.fwdPointsPips !== undefined
+              ? ` + ${suggestion.fwdPointsPips} fwd`
+              : ''}{' '}
+            pips
           </span>
         </div>
         <button
@@ -239,7 +248,17 @@ export default function SuggestionPanel({
               >
                 {suggestion.suggestedPips}
               </span>
-              <span className="text-xs font-normal text-text-mute">pips</span>
+              <span className="text-xs font-normal text-text-mute">
+                {suggestion.fwdPointsPips !== undefined ? 'spot pips' : 'pips'}
+              </span>
+              {suggestion.fwdPointsPips !== undefined && (
+                <span
+                  data-testid="suggestion-fwd-pips"
+                  className="text-xs font-normal text-text-mute"
+                >
+                  · +{suggestion.fwdPointsPips} fwd pips
+                </span>
+              )}
             </div>
             <p
               data-testid="suggestion-rationale"

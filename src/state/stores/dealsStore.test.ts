@@ -94,6 +94,55 @@ describe('dealsStore', () => {
     expect(h.rejectionReasons).toEqual(['OFF_HOURS']);
   });
 
+  it('captures a lifecycle event log and carries it into historic (FXSW-049)', async () => {
+    vi.useFakeTimers();
+    useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_log' }), ['OFF_HOURS']);
+    // REQUEST logged at creation.
+    expect(
+      useDealsStore.getState().deals.get('d_log')?.events.map((e) => e.phase),
+    ).toEqual(['REQUEST']);
+
+    useDealsStore.getState().forwardEvent('d_log', { type: 'PickUp' });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    useDealsStore.getState().forwardEvent('d_log', { type: 'Quote' });
+    // recordQuoteContext merges the markup reason into the PRICE_BACK event.
+    useDealsStore.getState().recordQuoteContext('d_log', {
+      appliedMargin: { kind: 'spot', margin: { bid: 4, ask: 4 } },
+      aiSuggested: true,
+      rationale: 'Off-hours premium',
+    });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    useDealsStore.getState().forwardEvent('d_log', { type: 'TradeConfirmed' });
+
+    const live = useDealsStore.getState().deals.get('d_log');
+    expect(live?.events.map((e) => e.phase)).toEqual([
+      'REQUEST',
+      'PICKUP',
+      'PRICE_BACK',
+      'RESPONSE',
+    ]);
+    const priceBack = live?.events.find((e) => e.phase === 'PRICE_BACK');
+    expect(priceBack?.aiSuggested).toBe(true);
+    expect(priceBack?.rationale).toBe('Off-hours premium');
+
+    vi.advanceTimersByTime(timings.removalDelayMs);
+    await Promise.resolve();
+    const h = useDealsStore.getState().historic[0];
+    expect(h.events.map((e) => e.phase)).toEqual([
+      'REQUEST',
+      'PICKUP',
+      'PRICE_BACK',
+      'RESPONSE',
+    ]);
+  });
+
+  it('ESP deals derive the timeline from the RFS machine', () => {
+    useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_esp' }), [], 'ESP');
+    const events = useDealsStore.getState().deals.get('d_esp')?.events ?? [];
+    expect(events.map((e) => e.phase)).toEqual(['REQUEST', 'PRICE_BACK']);
+    expect(events.every((e) => e.channel === 'RFS')).toBe(true);
+  });
+
   it('addDeal for two deals creates two independent actors', () => {
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_x' }));
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_y' }));

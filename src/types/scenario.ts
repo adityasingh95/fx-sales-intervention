@@ -1,4 +1,10 @@
-import type { Deal, RejectionReason } from './deal';
+import type { Deal, RejectionReason, Tenor } from './deal';
+
+// Per-injection overrides (FXSW-059). The Dev Injector can inject any scenario
+// as a forward by overriding the tenor at inject time — no scenario duplication.
+export type ScenarioOverrides = {
+  tenor?: Tenor;
+};
 
 export type ScenarioId =
   | 'HAPPY_PATH_ESP'

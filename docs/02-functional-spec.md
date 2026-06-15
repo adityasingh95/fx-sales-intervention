@@ -255,3 +255,49 @@ No surface is exempt. There is no "dark-only" component.
 - Important controls must have labels or clear text.
 - Rows and panels expose stable `data-testid` / `data-*` attributes for E2E tests.
 - State names and scenario ids are treated as compatibility contracts.
+
+## 10. v3 enhancements (behind `?dev=v3`)
+
+Phase 8 work lands behind a new `?dev=v3` URL gate; bare-URL GA behaviour is
+unchanged. A single helper `src/lib/devVersion.ts` exports
+`devVersion: 'v1' | 'v3'` and `isV3()`; components and services branch on it.
+v3 is a superset of GA (all former v2 features are already GA).
+
+### 10.1 External price ingestion
+
+- An opt-in runtime market-data source refreshes the reference mids. The user
+  enters an API key in a settings panel (header gear, v3 only); the key lives in
+  `sessionStorage` and is never bundled.
+- When enabled, the app polls the provider every 5 minutes, maps quotes to the
+  four pairs' reference mids, and updates the feed anchor. The existing
+  randomizer keeps ticking (~300ms) between polls, mean-reverting toward the new
+  anchor.
+- Default OFF. With no key / disabled, behaviour is identical to GA (baked mids +
+  seeded RNG). On error or rate-limit the feed silently keeps the last-known
+  anchor; a generic status pill shows Off / Connecting / Live / Error /
+  Rate-limited (never a vendor name).
+
+### 10.2 Forwards
+
+- Deals may carry a non-SPOT tenor (1W, 2W, 1M, 2M, 3M, 6M, 9M, 1Y). A forward is
+  modelled as one or more legs; v3 uses a single NEAR leg (FAR reserved for
+  swaps).
+- The outright forward = spot rate + forward points. The trader marks up either
+  all-in or per-component (independent spot-margin and forward-points-margin,
+  each a bid/ask pair).
+- Forward points are simulated deterministically per (pair, tenor) and increase
+  with tenor. Client all-in price and estimated P/L derive from both components.
+
+### 10.3 Forward scenario injection
+
+- The Dev Injector gains a SPOT/forward tenor selector. Any existing scenario can
+  be injected as a forward; tenor is parameterized at inject time. No new
+  scenario definitions are added.
+
+### 10.4 Historical trade detail
+
+- Concluded (Historic) rows become clickable and open a read-only detail overlay
+  (same slide-in pattern as the ticket). It shows the deal summary, the markup
+  reason (applied margin, whether AI-suggested, and the rationale), and a
+  timestamped lifecycle timeline: request → pickup → release → price-back →
+  response.

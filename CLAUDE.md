@@ -71,6 +71,7 @@ CI must pass `lint`, `typecheck`, `test:run`, and `test:e2e` before merge.
 - **No mutation.** State updates must be immutable.
 - **State transitions go through XState.** Never set lifecycle state directly.
 - **Pricing math lives in `/lib/pips.ts`.** Do not inline pip/margin math in components.
+- **`PricingPanel` is a folder** (`src/features/ticket/pricing/`) of sub-components since FXSW-056; the `?dev=v3` gate lives in `src/lib/devVersion.ts` (FXSW-048).
 - **No real network calls in `/src`.** Anything feed-like must go through `services/feed/`.
 - **Money values as numbers in display units, never strings.** Format at render boundary only.
 - **Files under 300 lines** unless a documented exception is warranted.
@@ -79,8 +80,8 @@ CI must pass `lint`, `typecheck`, `test:run`, and `test:e2e` before merge.
 ## Critical rules
 
 1. **Product name:** `FX Sales Workstation`.
-2. **Brand-neutrality:** no vendor names anywhere in committed files or generated output.
-3. **Simulated feed only:** never call external pricing APIs at runtime.
+2. **Brand-neutrality:** no vendor names in committed files or generated output. *Exception (v3):* the external-feed adapter under `src/services/feed/external/` may reference the real market-data provider (incl. its endpoint, which therefore appears in the bundle); all **user-visible** strings stay generic.
+3. **Simulated feed only by default.** *Exception (v3, behind `?dev=v3`):* an opt-in runtime reference-mid poller, keyed by a GUI-entered API key held in `sessionStorage`, may call an external provider every 5 min to update the feed anchor. OFF by default; simulation remains the default and the only test/E2E path.
 4. **Persistence:** no persistence beyond `sessionStorage`, limited to small UI preferences.
 5. **Audio unlock:** WebAudio playback requires a user gesture.
 6. **5-second removal rule:** completed/terminal trades stay in Active briefly, then archive to Historic.

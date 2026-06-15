@@ -16,6 +16,153 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-061 · v3 spec docs + CLAUDE.md exceptions + phase summary
+
+- **Appended v3 sections** to the spec pack mirroring the v2 precedent: `02` §10 (functional: ingestion / forwards / forward injection / historical detail), `03` §9 (lifecycle-log note — no new canonical states), `04` §8 (external feed seam + forward points), `05` §15–16 (`?dev=v3` gate + v3 visuals), `07` §12 (forward injection), `09` §16 (per-component forward suggestion).
+- **CLAUDE.md** scoped rule #2 (brand-neutrality: adapter may name the provider; UI strings stay generic) and rule #3 (simulated by default; opt-in `?dev=v3` runtime poller), plus convention notes (PricingPanel is a folder; devVersion reinstated).
+- **New `docs/phase-summaries/phase-08-v3-summary.md`** — scope, ticket list (FXSW-048…061), decisions, gate results.
+- **E2E:** added `v3-forwards.spec.ts` (forward injection → forward-points panel, all-in rates, component-markup toggle, off-by-default feed status) and `v3-historic-detail.spec.ts` (drive a deal to Executed → click the Historic row → timeline overlay with all five phases). Both at `?dev=v3`; the 6 existing scenario specs (bare URL) stay green.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (455) · build ✓ · `test:e2e` ✓ (8/8).
+
+---
+
+## FXSW-060 · Historical trade detail view + markup-reason capture
+
+- **`uiStore`** gains `openHistoricId` + `openHistoric`/`closeHistoric`; opening either overlay closes the other.
+- **`HistoricBlotter`** rows/cards become `<button>`s under `isV3()` (GA stays `<div>`s), preserving `data-deal-id`/`data-outcome`, and open the detail overlay.
+- **New `TimelinePanel`** — renders the captured lifecycle events as a timestamped list (request → pickup → released → priced back → response) with the Clock icon; `data-testid="timeline-panel"`, `data-phase` per row.
+- **New `HistoricDetailPanel`** — read-only overlay reusing the TicketPanel shell (slide-in, Esc + backdrop close, no footer/machine). Shows outcome pill + archived time, reuses `ReasonsPanel`/`SummaryPanel`/`DealSummaryPanel`, a **markup-reason** block (applied margin, AI-suggested vs manual, rationale — spot or forward component shape), and the timeline. Mounted in `App` under `isV3()`.
+- **Markup-reason capture** wired via the new `useQuoteContextCapture` hook (extracted to keep TicketPanel at 289 lines): on the QuoteSent transition it merges the applied margin + AI flag + rationale into the PRICE_BACK lifecycle event; resets on return to PickedUp so a re-quote re-records. `TicketPanel` tracks `aiApplied`/`appliedRationale` set on Apply and cleared on Undo.
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (455; +3 HistoricDetailPanel).
+
+---
+
+## FXSW-059 · Dev Injector forward toggle + parameterized injection
+
+- **`ScenarioOverrides` ({ tenor? })** added to `types/scenario.ts`; `player.inject(id, overrides?)` and `buildDeal` apply a tenor override over the scenario's deal; `dealFeed.inject` + the `DealFeed` interface thread it through. Defaults preserve SPOT, so the 7 scenarios are reused, not duplicated.
+- **`DevInjector`** (v3 only, via `isV3()`) gains a `TenorSelect` (`forward-tenor-select`) in both the desktop bar and the mobile menu. Inject buttons call `injectScenario(id)`, which passes `{ tenor }` only when non-SPOT. On the bare GA URL the select is hidden and injection is unchanged.
+- Gates: typecheck ✓ · lint ✓ · player (4) + dealFeed (4) + injector (1) tests ✓.
+
+---
+
+## FXSW-058 · AI per-component forward suggestion
+
+- **`SuggestionInput.deal.tenor`** (optional, defaults to SPOT) and **`ReadySuggestion.fwdPointsPips`** (optional) added to `types.ts` — backward-compatible, so all existing engine/rationale/profile tests pass untouched.
+- **New `forwardEngine.ts`** — `suggestForwardPointsMargin(tenor, input)` returns a forward-points margin that widens with tenor (and with thin liquidity) plus a `Forward tenor` factor. Kept separate so the spot rule chain in `engine.ts` is unchanged.
+- **`engine.ts`** — after computing the spot component, non-SPOT deals append the forward-points margin + factor and surface `fwdPointsPips`. The spot `suggestedPips` is independent of tenor.
+- **`SuggestionPanel`** — `onApply(next, fwdPips?)`; forward suggestions show "spot pips · +N fwd pips" and the applied row reflects both; Apply passes both components.
+- **`TicketPanel`** — Apply writes both the spot margin and (for forwards) the forward-points margin, switches to component mode, and saves both for a lossless Undo; reset clears the new saved-fwd state.
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (450; +4 forward engine tests).
+
+---
+
+## FXSW-057 · Forward UI — ForwardPointsPanel, LegTabs, summary + client changes
+
+- **New `pricing/ForwardPointsPanel.tsx`** (renders for non-SPOT deals) — forward points, all-in outright bid/mid/ask, and a markup-mode toggle. In **component** mode it shows an independent forward-points margin row (reusing `MarginRow` with a `fwd-` id prefix → `margin-input-fwd-bid/ask`); in **all-in** mode the spot Trader Rate margin applies to the whole outright and the forward row is hidden. New testids: `forward-points-panel`, `fwd-points`, `all-in-bid/mid/ask`, `markup-mode-toggle`.
+- **New `pricing/LegTabs.tsx`** — swap seam; renders nothing for a single (NEAR) leg, one tab per leg for a future swap.
+- **`MarginRow`** gained optional `idPrefix`/`labelPrefix` so forward-margin inputs get distinct ids without colliding with the spot row (defaults preserve every existing spot testid).
+- **`ClientSummaryPanel`** — optional `fwdPoints`/`fwdMarginPair`; for forwards client bid/ask are all-in outright rates (`clientBidFromForward`/`clientAskFromForward`) and P/L uses the summed spot + forward margin off the all-in mid. Spot path unchanged.
+- **`SummaryPanel` + `DealSummaryPanel`** now derive the value date via `valueDateForTenor` (T+2 for SPOT, unchanged); DealSummary labels it "Value date" and adds a Tenor field for forwards.
+- **`TicketPanel`** wires forward state (`fwdMarginPair`, `markupMode`) and renders the forward section for forward deals. To stay under the 300-line limit, the AI-suggestion lifecycle was extracted to **`useSuggestionState.ts`** (TicketPanel 256 lines).
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (446; +4 ForwardPointsPanel; existing ticket tests unchanged).
+
+---
+
+## FXSW-056 · PricingPanel split (pure refactor)
+
+- **Decomposed the 432-line `PricingPanel.tsx`** (over the 300-line limit) into `src/features/ticket/pricing/`: `types.ts` (constants + `FlashDir`/`PricingMode`/`Side`), `Cell.tsx` (bid/ask price cell), and `MarginControls.tsx` (`SingleMarginControl` v1 + `MarginRow` + `BalanceZeroRow`). The orchestrator is now 217 lines and keeps the flash/stale/glow/keyboard state.
+- **Behaviour-preserving for the spot path:** every `data-testid` and `data-*` attribute is unchanged on its original element, so `PricingPanel.test.tsx` (23) and `SuggestionPanel.test.tsx` (14) pass without edits — the regression gate for this refactor.
+- This split is the prerequisite for adding the forward sub-panels (FXSW-057) without re-breaching the line limit.
+- Gates: typecheck ✓ · lint ✓ · 37 tests ✓.
+
+---
+
+## FXSW-055 · Seeded forward-points feed
+
+- **Extracted `makeRng` (+ added `hashSeed`) to `src/services/feed/rng.ts`** and imported it back into `pricingFeed.ts`. The Mulberry32 implementation is identical, so the seed-42 golden sequence is unchanged (verified).
+- **New `src/services/feed/forwardPoints.ts`** — `forwardPointsFeed.get(pair, tenor)` returns deterministic points (in pips), seeded *independently* of the spot RNG via `hashSeed('{pair}:{tenor}') ^ FWD_SEED`, so it never perturbs the spot stream. Magnitude scales with tenor (rate-differential shape), sign is per-pair, SPOT = 0, with a small (±0.3 pip) deterministic jitter. Exposed behind a tiny `ForwardPointsFeed` interface so a real forward curve can replace it later.
+- Gates: typecheck ✓ · lint ✓ · `forwardPoints.test.ts` (4) + `pricingFeed.test.ts` (9, golden unchanged) ✓.
+
+---
+
+## FXSW-054 · Forward types + pip math + value dates
+
+- **`types/deal.ts`** — widened `Tenor` to `SPOT | 1W | 2W | 1M | 2M | 3M | 6M | 9M | 1Y`, added `TENORS`/`FORWARD_TENORS`/`isForwardTenor`, and the swap seam: `LegKind` (`NEAR | FAR`), `DealLeg`, and an optional `Deal.legs`. The widening is pure — SPOT deals, scenarios, and machines are unaffected; v3 derives the single near leg from `tenor`, so `legs` stays optional/unused for now.
+- **`lib/pips.ts`** (single source of truth) — `allInRate(spot, fwdPoints, pair)` (forward outright = spot + points×pip), `sumMargins` (component totals per side), and `clientBidFromForward`/`clientAskFromForward` which compose the existing spot client-rate semantics over the all-in rate with the summed spot+forward margins. No new rounding logic — reuses the private `roundTo`/`DECIMALS`.
+- **`lib/time.ts`** — `valueDateForTenor(tradeDate, tenor)`: spot (T+2) shifted by the tenor period (week tenors add calendar days; month/year tenors add months) then rolled forward to a business day. The `rollForward` seam is where a real holiday calendar could later slot in.
+- Gates: typecheck ✓ · lint ✓ · `pips.test.ts` (13) + `time.test.ts` (11) ✓.
+
+---
+
+## FXSW-053 · External feed status indicator + settings popover
+
+- **New `src/features/settings/ExternalFeedPanel.tsx`** — a header control (gear icon + status `Pill`) rendered only under `isV3()` (gated in `App.tsx`, placed before `ThemeToggle`). The popover holds a password-style API-key input (bound to `settingsStore.externalFeedKey`) and an enable checkbox (disabled until a key is present). Status is read live via `externalFeed.subscribeStatus`.
+- **Generic labels only:** status maps `off/connecting/live/error/rate-limited` → grey/blue/green/red/amber pills with plain English; no vendor name appears in any user-visible string (`data-testid="external-feed-status"`, `data-feed-status`). A test asserts the absence of provider names in the pill.
+- Gates: typecheck ✓ · lint ✓ · full unit suite ✓ (429 tests; +3 panel tests, `App.test.tsx` unchanged since the panel is v3-gated).
+
+---
+
+## FXSW-052 · External feed settings (GUI key) + main.tsx wiring
+
+- **`settingsStore`** gains `externalFeedKey: string | null` and `externalFeedEnabled: boolean`, both session-only (`si.externalFeedKey` / `si.externalFeedEnabled`) and **default OFF**, following the store's existing read/write/try-catch pattern. Setting an empty key clears it.
+- **New `wireExternalFeed.ts`** bridges the store to `externalFeed.enable/disable`, kept outside the store to avoid a store→service import cycle. It applies the current state on mount and on every change (enable only when a key *and* the toggle are present; disable otherwise), deduping redundant calls.
+- **`main.tsx`** calls `wireExternalFeed()` only under `isV3()`, after `pricingFeed.start()`. On the bare GA URL the bridge is never mounted, so the simulated feed is untouched.
+- Gates: typecheck ✓ · lint ✓ · `settingsStore.test.ts` (13) + `wireExternalFeed.test.ts` (3) ✓.
+
+---
+
+## FXSW-051 · External market-data adapter + poller
+
+- **New `src/services/feed/external/`** — `provider.ts` (fetches the previous-close forex aggregate `C:{PAIR}/prev`; the close is already in our pair convention so no inversion is needed, unlike the build-time Frankfurter script; `ProviderError` carries a `rateLimited` flag; `fetchImpl` is injectable so no real network call runs under Vitest), `poller.ts` (pure self-rescheduling controller: immediate first poll, 5-min cadence, exponential backoff capped at 30 min, distinct `rate-limited` vs `error` status), `externalFeed.ts` (module singleton bridging successful polls into `pricingFeed.setReferences`, broadcasting a coarse `ExternalFeedStatus`), and `types.ts`.
+- **Brand-neutrality exception applied per plan:** the provider is named only in `provider.ts` adapter code; status values are generic (`off/connecting/live/error/rate-limited`) and carry no vendor name.
+- **OFF by default** — nothing here runs until `enable(apiKey)` is called (wired in the next ticket), so tests/E2E keep the simulated deterministic feed.
+- Gates: typecheck ✓ · lint ✓ · `provider.test.ts` + `poller.test.ts` ✓ (10 tests).
+
+**Agent-directed decisions:**
+
+- **Previous-close aggregate endpoint** over real-time last-quote: it's on the provider's free tier and refreshes slowly enough for a 5-min anchor poll, matching the user's stated rate constraint. Real-time can swap in behind the same `fetchMids` seam later.
+- **setTimeout self-reschedule** rather than `setInterval`, so error backoff is expressed by simply scheduling the next run later — no separate interval-cancel dance.
+
+---
+
+## FXSW-050 · PricingFeed `setReferences` / `clearReferences` seam
+
+- **Extended the `PricingFeed` interface** (`src/services/feed/types.ts`) with `setReferences(Partial<Record<Pair, number>>)` and `clearReferences()`. The implementation merges finite values into the existing module-level `references` map that `tick()` already reads first, so the mean-reversion target moves on the next tick while mids/RNG state are untouched. `clearReferences()` reverts to the baked mids (re-seeding anchors if the feed is running, else leaving the map empty for the baked-file fallback).
+- **`tick()` is unchanged** — this is the whole point: when the external adapter never calls `setReferences` (the default/simulated path), the seeded sequence is byte-identical. The seed-42 golden test still returns `[1.1715, 1.1714, …]`.
+- Tests: `setReferences` drifts the mid toward a new anchor; non-finite values and untouched pairs are ignored; `clearReferences` reverts toward the baked mid.
+- Gates: typecheck ✓ · `pricingFeed.test.ts` ✓ (9 tests; +3 new, golden unchanged).
+
+---
+
+## FXSW-049 · Per-deal lifecycle event log (v3 foundation)
+
+- **New `src/types/lifecycle.ts`** — `LifecyclePhase` (REQUEST → PICKUP → RELEASE → PRICE_BACK → RESPONSE), `DealLifecycleEvent`, `AppliedMargin` (spot single-pair / forward two-component), and `QuoteContext`. These are display-only phases derived by *observing* the existing SI/RFS transitions; **no new canonical machine states** (per `03-trade-state-model.md` v3 note).
+- **New `src/state/stores/lifecyclePhase.ts`** — pure `lifecyclePhaseFor(channel, toState)` mapper, kept out of the store for isolated testing and to stay under the 300-line limit. Maps only trader-meaningful waypoints; ack-only `*Sent` and steady states return null.
+- **`dealsStore` instrumented** — `DealEntry` and `HistoricEntry` gain `events: DealLifecycleEvent[]`. The existing SI/RFS subscribers append a mapped event immutably (`replaceEntry`); a `REQUEST` event is seeded at deal creation. A per-deal `phaseChannel` (RFS for ESP auto-priced deals, SI otherwise) selects a single source so the shared PRICE_BACK/RESPONSE transitions the parent fans into both children aren't double-logged. `events` is copied into the `HistoricEntry` in the archive closure.
+- **New `recordQuoteContext(dealId, ctx)` store action** — merges the markup reason (applied margin / AI-suggested / rationale) into the most recent PRICE_BACK event; defensive fallback appends one if none exists yet. UI callers wired in a later ticket.
+- **New `useHistoricDealById` selector** for the upcoming detail view.
+- Gates: typecheck ✓ · lint ✓ · `dealsStore.test.ts` + `lifecyclePhase.test.ts` + `HistoricBlotter.test.tsx` ✓ (22 tests; +3 new).
+
+**Agent-directed decisions:**
+
+- **Single phase-source per deal (`phaseChannel`).** Logging from both SI and RFS would double-count the PRICE_BACK/RESPONSE transitions the parent machine fans into both children. Picking RFS for ESP (where SI never leaves `Initial`) and SI otherwise yields a clean, dedup-free timeline without a separate dedup pass.
+- **`snap.event?.type` guarded.** XState fires some transitions (initial/delayed `after`) without a typed triggering event at runtime; the trigger field is optional, so an absent event is recorded as `undefined` rather than throwing.
+
+---
+
+## FXSW-048 · Reinstate the `?dev=v3` gate (Phase 8 / v3 foundation)
+
+- **Re-added `src/lib/devVersion.ts`** — the path FXSW-047 deleted — following the URL-flag pattern documented in `05-ui-ux-spec.md` §12/§14. Exports `devVersion: 'v1' | 'v3'` (parsed once from `?dev=v3`) and `isV3()`. Components and services branch on `isV3()`; no version prop is threaded through the tree. The legacy `?dev=1` flag and any other `dev` value resolve to `v1`, so the bare-URL GA tree is unchanged.
+- **`isV3()` is a function** (not just a const) so `devVersion.test.ts` can re-import the module with a `?reload=` cache-buster after stubbing `window.location.search`, mirroring `themeStore.test.ts`'s `freshImport` pattern.
+- This is the gate every subsequent v3 ticket (external feed, forwards, historical detail) hangs off; with no flag set, none of that code executes.
+- Gates: typecheck (pending full run) · `devVersion.test.ts` ✓ (5 tests).
+
+**Agent-directed decisions:**
+
+- **Version label `v1 | v3`, skipping `v2`.** v2 is now GA (FXSW-047), so the live distinction is GA-vs-next. Reusing the literal `v3` matches the `?dev=v3` flag the user chose and avoids a confusing `v2` alias.
+
+---
+
 ## FXSW-047 · Strip `?dev=v2` / `?theme=preview` gates — single-URL GA
 
 - **Promote Phase 6 + 7 to GA.** Removed the URL flags that previously gated v2 features (`?dev=v2`) and the light-theme toggle (`?theme=preview`). The bare URL `/` now renders the full app: resizable blotter, dual-margin UI, BOTH-side support, mobile card-stack, ThemeToggle in header. No more flag composition required for the demo.

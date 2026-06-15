@@ -27,6 +27,40 @@ export const addBusinessDays = (date: Date, days: number): Date => {
   return result;
 };
 
+// Forward value-date calculation (v3, FXSW-054). The forward value date is the
+// spot date (T+2) shifted by the tenor period and rolled forward to the next
+// business day. A real holiday calendar could slot in at the rollForward seam.
+import type { Tenor } from '@/types/deal';
+
+const rollForward = (d: Date): Date => {
+  let result = new Date(d);
+  while (isWeekend(result)) {
+    result = nextBusinessDay(result);
+  }
+  return result;
+};
+
+const TENOR_DAYS: Partial<Record<Tenor, number>> = { '1W': 7, '2W': 14 };
+const TENOR_MONTHS: Partial<Record<Tenor, number>> = {
+  '1M': 1,
+  '2M': 2,
+  '3M': 3,
+  '6M': 6,
+  '9M': 9,
+  '1Y': 12,
+};
+
+export const valueDateForTenor = (tradeDate: Date, tenor: Tenor): Date => {
+  const spot = addBusinessDays(tradeDate, 2);
+  if (tenor === 'SPOT') return spot;
+  const d = new Date(spot);
+  const days = TENOR_DAYS[tenor];
+  const months = TENOR_MONTHS[tenor];
+  if (days !== undefined) d.setDate(d.getDate() + days);
+  else if (months !== undefined) d.setMonth(d.getMonth() + months);
+  return rollForward(d);
+};
+
 const SETTLEMENT_FMT = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',
   month: 'short',

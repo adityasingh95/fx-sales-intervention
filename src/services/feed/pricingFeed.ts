@@ -1,4 +1,5 @@
 import referenceMidsFile from './referenceMids.json';
+import { makeRng } from './rng';
 import { PAIRS, type Pair, type PriceTick, type PricingFeed } from './types';
 
 type PairConfig = {
@@ -22,17 +23,6 @@ declare global {
   interface Window {
     __seedFeed?: number;
   }
-}
-
-function makeRng(seed: number): () => number {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function makeNormal(rng: () => number): () => number {
@@ -135,5 +125,29 @@ export const pricingFeed: PricingFeed = {
     mids.clear();
     references.clear();
     normal = () => 0;
+  },
+
+  setReferences(next) {
+    // Move the mean-reversion target only; `tick()` reads `references` first
+    // (line: `references.get(pair) ?? referenceMids[pair]`), so the next tick
+    // drifts toward the new anchor. Mids/RNG state are untouched.
+    for (const pair of PAIRS) {
+      const v = next[pair];
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        references.set(pair, v);
+      }
+    }
+  },
+
+  clearReferences() {
+    // Revert to the baked reference mids (used when the external feed is
+    // disabled). If the feed is running, re-seed the anchors; otherwise leave
+    // the map empty so `tick()` falls back to the baked file.
+    references.clear();
+    if (intervalId !== null) {
+      for (const pair of PAIRS) {
+        references.set(pair, referenceMids[pair]);
+      }
+    }
   },
 };
