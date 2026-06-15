@@ -16,6 +16,15 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-056 · PricingPanel split (pure refactor)
+
+- **Decomposed the 432-line `PricingPanel.tsx`** (over the 300-line limit) into `src/features/ticket/pricing/`: `types.ts` (constants + `FlashDir`/`PricingMode`/`Side`), `Cell.tsx` (bid/ask price cell), and `MarginControls.tsx` (`SingleMarginControl` v1 + `MarginRow` + `BalanceZeroRow`). The orchestrator is now 217 lines and keeps the flash/stale/glow/keyboard state.
+- **Behaviour-preserving for the spot path:** every `data-testid` and `data-*` attribute is unchanged on its original element, so `PricingPanel.test.tsx` (23) and `SuggestionPanel.test.tsx` (14) pass without edits — the regression gate for this refactor.
+- This split is the prerequisite for adding the forward sub-panels (FXSW-057) without re-breaching the line limit.
+- Gates: typecheck ✓ · lint ✓ · 37 tests ✓.
+
+---
+
 ## FXSW-055 · Seeded forward-points feed
 
 - **Extracted `makeRng` (+ added `hashSeed`) to `src/services/feed/rng.ts`** and imported it back into `pricingFeed.ts`. The Mulberry32 implementation is identical, so the seed-42 golden sequence is unchanged (verified).
