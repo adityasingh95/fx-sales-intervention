@@ -16,6 +16,14 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-053 · External feed status indicator + settings popover
+
+- **New `src/features/settings/ExternalFeedPanel.tsx`** — a header control (gear icon + status `Pill`) rendered only under `isV3()` (gated in `App.tsx`, placed before `ThemeToggle`). The popover holds a password-style API-key input (bound to `settingsStore.externalFeedKey`) and an enable checkbox (disabled until a key is present). Status is read live via `externalFeed.subscribeStatus`.
+- **Generic labels only:** status maps `off/connecting/live/error/rate-limited` → grey/blue/green/red/amber pills with plain English; no vendor name appears in any user-visible string (`data-testid="external-feed-status"`, `data-feed-status`). A test asserts the absence of provider names in the pill.
+- Gates: typecheck ✓ · lint ✓ · full unit suite ✓ (429 tests; +3 panel tests, `App.test.tsx` unchanged since the panel is v3-gated).
+
+---
+
 ## FXSW-052 · External feed settings (GUI key) + main.tsx wiring
 
 - **`settingsStore`** gains `externalFeedKey: string | null` and `externalFeedEnabled: boolean`, both session-only (`si.externalFeedKey` / `si.externalFeedEnabled`) and **default OFF**, following the store's existing read/write/try-catch pattern. Setting an empty key clears it.

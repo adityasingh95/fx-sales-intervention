@@ -8,7 +8,9 @@ import MuteToggle from '@/features/notifications/MuteToggle';
 import ThemeToggle from '@/features/notifications/ThemeToggle';
 import ToastStack from '@/features/notifications/ToastStack';
 import { useNotificationSound } from '@/features/notifications/useNotificationSound';
+import ExternalFeedPanel from '@/features/settings/ExternalFeedPanel';
 import TicketPanel from '@/features/ticket/TicketPanel';
+import { isV3 } from '@/lib/devVersion';
 import { useSettingsStore } from '@/state/stores/settingsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 
@@ -54,6 +56,7 @@ export default function App() {
           <DevInjector />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-3 text-text-dim sm:gap-4">
+          {isV3() && <ExternalFeedPanel />}
           <ThemeToggle />
           <MuteToggle />
           <time
