@@ -21,7 +21,8 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 - **Appended v3 sections** to the spec pack mirroring the v2 precedent: `02` §10 (functional: ingestion / forwards / forward injection / historical detail), `03` §9 (lifecycle-log note — no new canonical states), `04` §8 (external feed seam + forward points), `05` §15–16 (`?dev=v3` gate + v3 visuals), `07` §12 (forward injection), `09` §16 (per-component forward suggestion).
 - **CLAUDE.md** scoped rule #2 (brand-neutrality: adapter may name the provider; UI strings stay generic) and rule #3 (simulated by default; opt-in `?dev=v3` runtime poller), plus convention notes (PricingPanel is a folder; devVersion reinstated).
 - **New `docs/phase-summaries/phase-08-v3-summary.md`** — scope, ticket list (FXSW-048…061), decisions, gate results.
-- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (455) · build ✓.
+- **E2E:** added `v3-forwards.spec.ts` (forward injection → forward-points panel, all-in rates, component-markup toggle, off-by-default feed status) and `v3-historic-detail.spec.ts` (drive a deal to Executed → click the Historic row → timeline overlay with all five phases). Both at `?dev=v3`; the 6 existing scenario specs (bare URL) stay green.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (455) · build ✓ · `test:e2e` ✓ (8/8).
 
 ---
 
