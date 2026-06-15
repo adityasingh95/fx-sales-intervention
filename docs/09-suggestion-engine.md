@@ -313,3 +313,12 @@ The engine's internal pip-delta values (tier baseline, notional band, market del
 
 Future v2.x work could optionally return a `{ bidPips, askPips }` shape to model asymmetric tier-based skews; intentionally deferred for the v2 phase to keep the engine API stable for the Wiki Agent's code-drift checks.
 - Audit log of overrides (could be valuable for v2 — "trader overrode AI in 23% of cases this week").
+
+## 16. v3 per-component forward suggestion
+
+For non-SPOT deals the engine additionally returns a forward-points margin
+alongside the spot margin (`fwdPointsPips`); `suggestedPips` is retained for the
+spot component. A tenor factor widens the forward component with maturity (and
+with thin liquidity). The spot rule chain (§3–§8) is unchanged — implemented in a
+separate `forwardEngine.ts` — so existing factor and rationale tests pass. Apply
+writes both components; Undo restores both. The engine remains deterministic.

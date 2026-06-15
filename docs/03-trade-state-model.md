@@ -113,3 +113,14 @@ State names, event names, and derived display statuses are compatibility contrac
 - wiki summaries.
 
 Do not rename them without updating all dependent tests and documentation.
+
+## 9. v3 note — lifecycle event log
+
+v3 (FXSW-049) adds a per-deal lifecycle event log by *observing* the existing
+SI/RFS transitions; it introduces **no new canonical states or events**.
+Observed transitions map to five display-only phases — REQUEST, PICKUP, RELEASE,
+PRICE_BACK, RESPONSE — used solely for the Historical Trade Detail timeline. A
+single phase source is chosen per deal (RFS for ESP auto-priced deals, SI
+otherwise) so the shared PRICE_BACK/RESPONSE transitions the parent fans into
+both children are not double-logged. State names and `data-*` test attributes
+remain the compatibility contract.

@@ -571,3 +571,28 @@ export const themePreviewEnabled: ThemePreviewFlag = /* true if ?theme=preview i
 Components that render the toggle (`Header`) import this constant. The theme store itself is unconditional — but when `themePreviewEnabled === false`, the store is force-initialised to `'dark'` and never written. Tests assert that with no query string or with `?theme=light` (any value other than `preview`), the theme stays dark.
 
 - Vendor names in any user-visible string (see CLAUDE.md critical rule §1).
+
+## 15. v3 versioning gate — `?dev=v3`
+
+`src/lib/devVersion.ts` is reinstated (it was removed in FXSW-047) following the
+pattern in §12. It exports `devVersion: 'v1' | 'v3'` parsed once from `?dev=v3`,
+plus `isV3()`. Components and services import and branch; no version prop is
+threaded through the tree. With no flag the GA tree renders byte-for-byte; tests
+assert bare-URL parity.
+
+## 16. v3 enhancements (behind `?dev=v3`)
+
+Visual treatment for:
+
+- **External-feed settings panel** (header gear, v3 only) + status pill using
+  existing Pill colours; labels are generic (no vendor name).
+- **ForwardPointsPanel** — forward points, all-in outright bid/mid/ask, and an
+  all-in ↔ per-component markup toggle (reuses the existing `MarginRow` with a
+  `fwd-` id prefix).
+- **LegTabs** — one tab per leg; hidden for a single (NEAR) leg (swap seam).
+- **HistoricDetailPanel** — read-only overlay reusing the ticket shell; no
+  footer. Outcome pill + markup-reason block + timeline.
+- **TimelinePanel** — vertical timestamped phase list with the Clock icon.
+
+`PricingPanel` is now a folder of sub-components (`src/features/ticket/pricing/`);
+every existing `data-testid` is preserved on its original element.

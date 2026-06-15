@@ -16,6 +16,15 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-061 · v3 spec docs + CLAUDE.md exceptions + phase summary
+
+- **Appended v3 sections** to the spec pack mirroring the v2 precedent: `02` §10 (functional: ingestion / forwards / forward injection / historical detail), `03` §9 (lifecycle-log note — no new canonical states), `04` §8 (external feed seam + forward points), `05` §15–16 (`?dev=v3` gate + v3 visuals), `07` §12 (forward injection), `09` §16 (per-component forward suggestion).
+- **CLAUDE.md** scoped rule #2 (brand-neutrality: adapter may name the provider; UI strings stay generic) and rule #3 (simulated by default; opt-in `?dev=v3` runtime poller), plus convention notes (PricingPanel is a folder; devVersion reinstated).
+- **New `docs/phase-summaries/phase-08-v3-summary.md`** — scope, ticket list (FXSW-048…061), decisions, gate results.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (455) · build ✓.
+
+---
+
 ## FXSW-060 · Historical trade detail view + markup-reason capture
 
 - **`uiStore`** gains `openHistoricId` + `openHistoric`/`closeHistoric`; opening either overlay closes the other.
