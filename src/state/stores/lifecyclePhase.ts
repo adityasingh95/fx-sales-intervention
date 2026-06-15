@@ -12,6 +12,9 @@ const SI_PHASE: Record<string, LifecyclePhase | undefined> = {
   PickUpSent: 'PICKUP',
   QuoteSent: 'PRICE_BACK',
   HoldSent: 'RELEASE',
+  // Quote taken back by the trader (Quoted + Withdraw → WithdrawSent → PickedUp).
+  // Logged as its own waypoint so the timeline shows the take-back (FXSW-065).
+  WithdrawSent: 'WITHDRAWN',
   TradeConfirmed: 'RESPONSE',
   ClientRejected: 'RESPONSE',
   TraderRejected: 'RESPONSE',
