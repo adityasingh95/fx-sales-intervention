@@ -41,6 +41,8 @@ const entry: HistoricEntry = {
   finalRfsState: 'TradeConfirmed',
   outcome: 'Executed',
   archivedAt: deal.createdAt + 8000,
+  requestId: 'REQ-TEST01',
+  tradeId: 'TRD-TEST01',
   events,
 };
 
@@ -62,6 +64,8 @@ describe('HistoricDetailPanel', () => {
 
     expect(screen.getByTestId('historic-detail-panel')).toHaveAttribute('data-deal-id', 'd_hist');
     expect(screen.getByTestId('detail-outcome')).toHaveAttribute('data-outcome', 'Executed');
+    expect(screen.getByTestId('detail-request-id').textContent).toBe('REQ-TEST01');
+    expect(screen.getByTestId('detail-trade-id').textContent).toBe('TRD-TEST01');
 
     const markup = screen.getByTestId('markup-reason');
     expect(markup.textContent).toContain('Bid 4 / Ask 5 pips');

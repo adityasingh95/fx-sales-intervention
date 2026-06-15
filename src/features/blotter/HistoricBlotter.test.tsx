@@ -25,6 +25,8 @@ const makeHistoricEntry = (overrides: Partial<HistoricEntry> = {}): HistoricEntr
   finalRfsState: 'TradeConfirmed',
   outcome: 'Executed',
   archivedAt: new Date(2026, 4, 25, 14, 23, 8).getTime(),
+  requestId: 'REQ-AAAAAA',
+  tradeId: 'TRD-AAAAAA',
   events: [],
   ...overrides,
 });
