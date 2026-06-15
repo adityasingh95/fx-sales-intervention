@@ -16,6 +16,14 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-059 · Dev Injector forward toggle + parameterized injection
+
+- **`ScenarioOverrides` ({ tenor? })** added to `types/scenario.ts`; `player.inject(id, overrides?)` and `buildDeal` apply a tenor override over the scenario's deal; `dealFeed.inject` + the `DealFeed` interface thread it through. Defaults preserve SPOT, so the 7 scenarios are reused, not duplicated.
+- **`DevInjector`** (v3 only, via `isV3()`) gains a `TenorSelect` (`forward-tenor-select`) in both the desktop bar and the mobile menu. Inject buttons call `injectScenario(id)`, which passes `{ tenor }` only when non-SPOT. On the bare GA URL the select is hidden and injection is unchanged.
+- Gates: typecheck ✓ · lint ✓ · player (4) + dealFeed (4) + injector (1) tests ✓.
+
+---
+
 ## FXSW-058 · AI per-component forward suggestion
 
 - **`SuggestionInput.deal.tenor`** (optional, defaults to SPOT) and **`ReadySuggestion.fwdPointsPips`** (optional) added to `types.ts` — backward-compatible, so all existing engine/rationale/profile tests pass untouched.

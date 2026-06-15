@@ -5,6 +5,7 @@ import type {
   Scenario,
   ScenarioFollowUp,
   ScenarioId,
+  ScenarioOverrides,
 } from '@/types/scenario';
 import { SCENARIOS } from './definitions';
 
@@ -43,7 +44,7 @@ type Gate = {
 };
 
 export type ScenarioPlayer = {
-  inject(scenarioId: ScenarioId): string;
+  inject(scenarioId: ScenarioId, overrides?: ScenarioOverrides): string;
   notifyDealState(dealId: string, siState: string): void;
   reset(): void;
 };
@@ -76,17 +77,22 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
     }
   };
 
-  const buildDeal = (scenario: Scenario, dealId: string): Deal => ({
+  const buildDeal = (
+    scenario: Scenario,
+    dealId: string,
+    overrides?: ScenarioOverrides,
+  ): Deal => ({
     dealId,
     createdAt: now(),
     ...scenario.deal,
+    ...(overrides?.tenor ? { tenor: overrides.tenor } : {}),
   });
 
   return {
-    inject(scenarioId) {
+    inject(scenarioId, overrides) {
       const scenario = SCENARIOS[scenarioId];
       const dealId = generateDealId();
-      const deal = buildDeal(scenario, dealId);
+      const deal = buildDeal(scenario, dealId, overrides);
       const initial: DealEvent =
         scenario.channel === 'ESP'
           ? { type: 'NEW_ESP_DEAL', deal }

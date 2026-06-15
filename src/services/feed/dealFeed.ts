@@ -19,8 +19,8 @@ export const dealFeed: DealFeed = {
     };
   },
 
-  inject(scenarioId) {
-    player.inject(scenarioId);
+  inject(scenarioId, overrides) {
+    player.inject(scenarioId, overrides);
   },
 
   reset() {

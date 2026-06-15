@@ -1,5 +1,5 @@
 import type { Deal, RejectionReason } from '@/types/deal';
-import type { ScenarioId } from '@/types/scenario';
+import type { ScenarioId, ScenarioOverrides } from '@/types/scenario';
 
 export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR';
 
@@ -37,7 +37,7 @@ export type DealEvent =
 
 export interface DealFeed {
   subscribe(cb: (event: DealEvent) => void): () => void;
-  inject(scenarioId: ScenarioId): void;
+  inject(scenarioId: ScenarioId, overrides?: ScenarioOverrides): void;
   reset(): void;
   // Bridge: the deals store calls this when an SI machine state changes,
   // so scenario follow-ups gated on an SI state (e.g. "fire CLIENT_ACCEPT
