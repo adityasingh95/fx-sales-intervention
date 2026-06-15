@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { wireNotifications } from './features/notifications/dispatcher';
 import { pricingFeed } from './services/feed/pricingFeed';
+import { wireExternalFeed } from './services/feed/external/wireExternalFeed';
+import { isV3 } from './lib/devVersion';
 import { timings } from './state/machines/timings';
 import { wireDealFeedToStore } from './state/stores/dealsBootstrap';
 import './styles/global.css';
@@ -25,6 +27,12 @@ if (typeof window !== 'undefined' && window.__zeroAckDelay) {
 wireDealFeedToStore();
 wireNotifications();
 pricingFeed.start();
+
+// v3 only: bridge the GUI-entered external feed key to the pricing anchor.
+// Off by default, so on the bare GA URL this never touches the simulated feed.
+if (isV3()) {
+  wireExternalFeed();
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -16,6 +16,15 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-052 · External feed settings (GUI key) + main.tsx wiring
+
+- **`settingsStore`** gains `externalFeedKey: string | null` and `externalFeedEnabled: boolean`, both session-only (`si.externalFeedKey` / `si.externalFeedEnabled`) and **default OFF**, following the store's existing read/write/try-catch pattern. Setting an empty key clears it.
+- **New `wireExternalFeed.ts`** bridges the store to `externalFeed.enable/disable`, kept outside the store to avoid a store→service import cycle. It applies the current state on mount and on every change (enable only when a key *and* the toggle are present; disable otherwise), deduping redundant calls.
+- **`main.tsx`** calls `wireExternalFeed()` only under `isV3()`, after `pricingFeed.start()`. On the bare GA URL the bridge is never mounted, so the simulated feed is untouched.
+- Gates: typecheck ✓ · lint ✓ · `settingsStore.test.ts` (13) + `wireExternalFeed.test.ts` (3) ✓.
+
+---
+
 ## FXSW-051 · External market-data adapter + poller
 
 - **New `src/services/feed/external/`** — `provider.ts` (fetches the previous-close forex aggregate `C:{PAIR}/prev`; the close is already in our pair convention so no inversion is needed, unlike the build-time Frankfurter script; `ProviderError` carries a `rateLimited` flag; `fetchImpl` is injectable so no real network call runs under Vitest), `poller.ts` (pure self-rescheduling controller: immediate first poll, 5-min cadence, exponential backoff capped at 30 min, distinct `rate-limited` vs `error` status), `externalFeed.ts` (module singleton bridging successful polls into `pricingFeed.setReferences`, broadcasting a coarse `ExternalFeedStatus`), and `types.ts`.
