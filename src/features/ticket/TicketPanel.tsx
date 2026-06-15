@@ -1,22 +1,23 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { formatTime } from '@/lib/format';
 import { quoteSideFor } from '@/lib/quoteSide';
 import type { PriceTick } from '@/services/feed/types';
 import { usePrice } from '@/services/feed/usePrice';
-import { getClientProfile } from '@/services/suggestion/clientProfiles';
-import { suggestMargin } from '@/services/suggestion/engine';
 import { getMarketContext } from '@/services/suggestion/marketContext';
-import type { MarginSuggestion } from '@/services/suggestion/types';
+import { forwardPointsFeed } from '@/services/feed/forwardPoints';
+import { useSuggestionState } from './useSuggestionState';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import type { MarginPair } from '@/types/deal';
+import { isForwardTenor, type MarginPair } from '@/types/deal';
 import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
+import ForwardPointsPanel, { type MarkupMode } from './pricing/ForwardPointsPanel';
+import LegTabs from './pricing/LegTabs';
 import ReasonsPanel from './ReasonsPanel';
 import SuggestionPanel from './SuggestionPanel';
 import SummaryPanel from './SummaryPanel';
@@ -43,6 +44,10 @@ export default function TicketPanel() {
     ask: defaultPips,
   });
   const [savedPairForUndo, setSavedPairForUndo] = useState<MarginPair | null>(null);
+  // FXSW-057: forward-points margin (component mode) + markup mode. Spot deals
+  // ignore both.
+  const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
+  const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
   // Convenience setter for the AI-suggestion Apply path — writes both
   // sides equal so a single suggested pip value applies symmetrically.
   const setMargin = useCallback((n: number) => {
@@ -59,11 +64,8 @@ export default function TicketPanel() {
   // pricingMode.
   const liveTick = usePrice(entry?.deal.pair ?? 'EURUSD');
   const displayTick = pricingMode === 'fixed' ? frozenTick : liveTick;
-  // AI suggestion (FXSW-025). Computed once per PickedUp visit, snapshotting
-  // the tick at compute time so live ticks don't recompute (per docs/09 §9).
-  // FXSW-026 adds Recompute + vol-shift triggers + the credit-decline UI.
-  const [suggestion, setSuggestion] = useState<MarginSuggestion | null>(null);
-  const suggestionComputed = useRef(false);
+  // AI suggestion lifecycle (FXSW-025/026), extracted to a hook in FXSW-057.
+  const { suggestion, recompute: computeAndSetSuggestion } = useSuggestionState(entry, liveTick);
 
   // Reset margin + pricing mode whenever a different deal opens.
   useEffect(() => {
@@ -73,53 +75,13 @@ export default function TicketPanel() {
         ask: entry.deal.defaultMarginPips,
       });
       setSavedPairForUndo(null);
+      setFwdMarginPair({ bid: 0, ask: 0 });
+      setMarkupMode('component');
       setPricingMode('streaming');
       setFixedSide(null);
       setFrozenTick(null);
-      setSuggestion(null);
-      suggestionComputed.current = false;
     }
   }, [openDealId, entry]);
-
-  // Synchronous re-usable compute — driven both by the initial PickedUp
-  // entry effect below and by SuggestionPanel's Recompute / vol-shift
-  // callback.
-  const computeAndSetSuggestion = useCallback((): void => {
-    if (!entry || !liveTick) return;
-    const profile = getClientProfile(entry.deal.clientName);
-    const marketStatic = getMarketContext(entry.deal.pair);
-    setSuggestion(
-      suggestMargin({
-        deal: {
-          pair: entry.deal.pair,
-          side: entry.deal.side,
-          notional: entry.deal.notional,
-          defaultMarginPips: entry.deal.defaultMarginPips,
-          rejectionReasons: entry.rejectionReasons,
-        },
-        client: profile,
-        market: {
-          currentBid: liveTick.bid,
-          currentAsk: liveTick.ask,
-          ...marketStatic,
-        },
-      }),
-    );
-  }, [entry, liveTick]);
-
-  // Compute the suggestion on entry to PickedUp. Clears when SI leaves
-  // PickedUp; will recompute on re-entry (e.g. after Withdraw).
-  useEffect(() => {
-    if (!entry || entry.siState !== 'PickedUp') {
-      setSuggestion(null);
-      suggestionComputed.current = false;
-      return;
-    }
-    if (suggestionComputed.current) return;
-    if (!liveTick) return;
-    suggestionComputed.current = true;
-    computeAndSetSuggestion();
-  }, [entry, liveTick, computeAndSetSuggestion]);
 
   // Esc closes. Listener only active while open.
   useEffect(() => {
@@ -155,6 +117,13 @@ export default function TicketPanel() {
 
   const { deal, rejectionReasons, siState, rfsState, dealable } = entry;
   const status = derivedStatus(rfsState, siState, dealable);
+  // Forward pricing (FXSW-057). Forward points are stable per (pair, tenor).
+  // In all-in markup mode the forward-points margin is held at zero (the spot
+  // margin applies to the whole outright).
+  const isForward = isForwardTenor(deal.tenor);
+  const fwdPoints = isForward ? forwardPointsFeed.get(deal.pair, deal.tenor) : 0;
+  const effectiveFwdMargin: MarginPair =
+    markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
 
   return (
     <div
@@ -245,12 +214,29 @@ export default function TicketPanel() {
               if (liveTick) setFrozenTick(liveTick);
             }}
           />
+          {isForward && (
+            <>
+              <LegTabs legs={deal.legs ?? []} />
+              <ForwardPointsPanel
+                pair={deal.pair}
+                tenor={deal.tenor}
+                tick={displayTick}
+                fwdPoints={fwdPoints}
+                markupMode={markupMode}
+                onMarkupModeChange={setMarkupMode}
+                fwdMarginPair={effectiveFwdMargin}
+                onFwdMarginPairChange={setFwdMarginPair}
+              />
+            </>
+          )}
           <ClientSummaryPanel
             tick={displayTick}
             marginPair={marginPair}
             notional={deal.notional}
             pair={deal.pair}
             quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}
+            fwdPoints={isForward ? fwdPoints : undefined}
+            fwdMarginPair={effectiveFwdMargin}
           />
           <DealSummaryPanel deal={deal} />
         </div>

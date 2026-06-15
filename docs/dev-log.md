@@ -16,6 +16,18 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-057 · Forward UI — ForwardPointsPanel, LegTabs, summary + client changes
+
+- **New `pricing/ForwardPointsPanel.tsx`** (renders for non-SPOT deals) — forward points, all-in outright bid/mid/ask, and a markup-mode toggle. In **component** mode it shows an independent forward-points margin row (reusing `MarginRow` with a `fwd-` id prefix → `margin-input-fwd-bid/ask`); in **all-in** mode the spot Trader Rate margin applies to the whole outright and the forward row is hidden. New testids: `forward-points-panel`, `fwd-points`, `all-in-bid/mid/ask`, `markup-mode-toggle`.
+- **New `pricing/LegTabs.tsx`** — swap seam; renders nothing for a single (NEAR) leg, one tab per leg for a future swap.
+- **`MarginRow`** gained optional `idPrefix`/`labelPrefix` so forward-margin inputs get distinct ids without colliding with the spot row (defaults preserve every existing spot testid).
+- **`ClientSummaryPanel`** — optional `fwdPoints`/`fwdMarginPair`; for forwards client bid/ask are all-in outright rates (`clientBidFromForward`/`clientAskFromForward`) and P/L uses the summed spot + forward margin off the all-in mid. Spot path unchanged.
+- **`SummaryPanel` + `DealSummaryPanel`** now derive the value date via `valueDateForTenor` (T+2 for SPOT, unchanged); DealSummary labels it "Value date" and adds a Tenor field for forwards.
+- **`TicketPanel`** wires forward state (`fwdMarginPair`, `markupMode`) and renders the forward section for forward deals. To stay under the 300-line limit, the AI-suggestion lifecycle was extracted to **`useSuggestionState.ts`** (TicketPanel 256 lines).
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (446; +4 ForwardPointsPanel; existing ticket tests unchanged).
+
+---
+
 ## FXSW-056 · PricingPanel split (pure refactor)
 
 - **Decomposed the 432-line `PricingPanel.tsx`** (over the 300-line limit) into `src/features/ticket/pricing/`: `types.ts` (constants + `FlashDir`/`PricingMode`/`Side`), `Cell.tsx` (bid/ask price cell), and `MarginControls.tsx` (`SingleMarginControl` v1 + `MarginRow` + `BalanceZeroRow`). The orchestrator is now 217 lines and keeps the flash/stale/glow/keyboard state.

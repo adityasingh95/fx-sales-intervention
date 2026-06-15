@@ -1,6 +1,9 @@
 import { formatRate } from '@/lib/format';
 import {
+  allInRate,
+  clientAskFromForward,
   clientAskFromTrader,
+  clientBidFromForward,
   clientBidFromTrader,
   estimatedProfitUsd,
 } from '@/lib/pips';
@@ -35,6 +38,11 @@ export interface ClientSummaryPanelProps {
   // FXSW-041: v2 callers pass `quoteSide` to split P/L by direction.
   // v1 omits and falls back to a single blended-margin line.
   quoteSide?: QuoteSide;
+  // FXSW-057: forward deals pass the forward points + forward-points margin.
+  // When `fwdPoints` is defined, client prices are all-in outright rates and
+  // P/L uses the summed spot + forward margin. Spot deals omit both.
+  fwdPoints?: number;
+  fwdMarginPair?: MarginPair;
 }
 
 export default function ClientSummaryPanel({
@@ -43,18 +51,39 @@ export default function ClientSummaryPanel({
   notional,
   pair,
   quoteSide,
+  fwdPoints,
+  fwdMarginPair,
 }: ClientSummaryPanelProps) {
+  const isForward = fwdPoints !== undefined;
+  const fwdBid = fwdMarginPair?.bid ?? 0;
+  const fwdAsk = fwdMarginPair?.ask ?? 0;
+
   const clientBid =
-    tick === null ? null : clientBidFromTrader(tick.bid, marginPair.bid, pair);
+    tick === null
+      ? null
+      : isForward
+        ? clientBidFromForward(tick.bid, fwdPoints, marginPair.bid, fwdBid, pair)
+        : clientBidFromTrader(tick.bid, marginPair.bid, pair);
   const clientAsk =
-    tick === null ? null : clientAskFromTrader(tick.ask, marginPair.ask, pair);
+    tick === null
+      ? null
+      : isForward
+        ? clientAskFromForward(tick.ask, fwdPoints, marginPair.ask, fwdAsk, pair)
+        : clientAskFromTrader(tick.ask, marginPair.ask, pair);
+
+  // For forwards, P/L is referenced off the all-in mid.
+  const profitMid =
+    tick === null ? 0 : isForward ? allInRate(tick.mid, fwdPoints, pair) : tick.mid;
+  // Total margin per side folds in the forward-points component.
+  const totalBid = marginPair.bid + fwdBid;
+  const totalAsk = marginPair.ask + fwdAsk;
 
   const profitFor = (margin: number): number | null =>
-    tick === null ? null : estimatedProfitUsd(margin, notional, pair, tick.mid);
+    tick === null ? null : estimatedProfitUsd(margin, notional, pair, profitMid);
 
   const renderProfit = (): JSX.Element => {
     if (quoteSide === 'BID') {
-      const p = profitFor(marginPair.bid);
+      const p = profitFor(totalBid);
       return (
         <div>
           <div className="text-xs uppercase tracking-tight text-text-mute">Est. P/L</div>
@@ -65,7 +94,7 @@ export default function ClientSummaryPanel({
       );
     }
     if (quoteSide === 'ASK') {
-      const p = profitFor(marginPair.ask);
+      const p = profitFor(totalAsk);
       return (
         <div>
           <div className="text-xs uppercase tracking-tight text-text-mute">Est. P/L</div>
@@ -76,8 +105,8 @@ export default function ClientSummaryPanel({
       );
     }
     if (quoteSide === 'BOTH') {
-      const bp = profitFor(marginPair.bid);
-      const ap = profitFor(marginPair.ask);
+      const bp = profitFor(totalBid);
+      const ap = profitFor(totalAsk);
       return (
         <div data-testid="pnl-both" className="col-span-1">
           <div className="text-xs uppercase tracking-tight text-text-mute">Est. P/L</div>
@@ -95,7 +124,7 @@ export default function ClientSummaryPanel({
       );
     }
     // v1 fallback: blended average margin, single line.
-    const blended = (marginPair.bid + marginPair.ask) / 2;
+    const blended = (totalBid + totalAsk) / 2;
     const p = profitFor(blended);
     return (
       <div>

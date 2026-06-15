@@ -70,16 +70,28 @@ export interface MarginRowProps {
   value: number;
   onChange: (next: number) => void;
   glow: boolean;
+  // Optional testid/aria prefix so the forward-points margin row (FXSW-057)
+  // gets distinct ids (e.g. margin-input-fwd-bid) without colliding with the
+  // spot margin row. Defaults to '' — existing spot ids are unchanged.
+  idPrefix?: string;
+  labelPrefix?: string;
 }
 
-export function MarginRow({ testIdSuffix, value, onChange, glow }: MarginRowProps) {
+export function MarginRow({
+  testIdSuffix,
+  value,
+  onChange,
+  glow,
+  idPrefix = '',
+  labelPrefix = '',
+}: MarginRowProps) {
   const minusDisabled = value <= 0;
-  const sideLabel = testIdSuffix === 'bid' ? 'bid' : 'ask';
+  const sideLabel = `${labelPrefix}${testIdSuffix === 'bid' ? 'bid' : 'ask'}`;
   return (
     <div className="flex items-center justify-center gap-1">
       <button
         type="button"
-        data-testid={`margin-minus-${testIdSuffix}`}
+        data-testid={`margin-minus-${idPrefix}${testIdSuffix}`}
         aria-label={`Decrease ${sideLabel} margin`}
         onClick={() => onChange(value - 1)}
         disabled={minusDisabled}
@@ -89,7 +101,7 @@ export function MarginRow({ testIdSuffix, value, onChange, glow }: MarginRowProp
       </button>
       <input
         type="number"
-        data-testid={`margin-input-${testIdSuffix}`}
+        data-testid={`margin-input-${idPrefix}${testIdSuffix}`}
         data-margin-glow={glow ? 'true' : undefined}
         value={value}
         min={0}
@@ -111,7 +123,7 @@ export function MarginRow({ testIdSuffix, value, onChange, glow }: MarginRowProp
       />
       <button
         type="button"
-        data-testid={`margin-plus-${testIdSuffix}`}
+        data-testid={`margin-plus-${idPrefix}${testIdSuffix}`}
         aria-label={`Increase ${sideLabel} margin`}
         onClick={() => onChange(value + 1)}
         className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
