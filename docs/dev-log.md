@@ -16,6 +16,15 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-050 · PricingFeed `setReferences` / `clearReferences` seam
+
+- **Extended the `PricingFeed` interface** (`src/services/feed/types.ts`) with `setReferences(Partial<Record<Pair, number>>)` and `clearReferences()`. The implementation merges finite values into the existing module-level `references` map that `tick()` already reads first, so the mean-reversion target moves on the next tick while mids/RNG state are untouched. `clearReferences()` reverts to the baked mids (re-seeding anchors if the feed is running, else leaving the map empty for the baked-file fallback).
+- **`tick()` is unchanged** — this is the whole point: when the external adapter never calls `setReferences` (the default/simulated path), the seeded sequence is byte-identical. The seed-42 golden test still returns `[1.1715, 1.1714, …]`.
+- Tests: `setReferences` drifts the mid toward a new anchor; non-finite values and untouched pairs are ignored; `clearReferences` reverts toward the baked mid.
+- Gates: typecheck ✓ · `pricingFeed.test.ts` ✓ (9 tests; +3 new, golden unchanged).
+
+---
+
 ## FXSW-049 · Per-deal lifecycle event log (v3 foundation)
 
 - **New `src/types/lifecycle.ts`** — `LifecyclePhase` (REQUEST → PICKUP → RELEASE → PRICE_BACK → RESPONSE), `DealLifecycleEvent`, `AppliedMargin` (spot single-pair / forward two-component), and `QuoteContext`. These are display-only phases derived by *observing* the existing SI/RFS transitions; **no new canonical machine states** (per `03-trade-state-model.md` v3 note).

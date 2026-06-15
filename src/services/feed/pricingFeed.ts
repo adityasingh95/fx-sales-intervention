@@ -136,4 +136,28 @@ export const pricingFeed: PricingFeed = {
     references.clear();
     normal = () => 0;
   },
+
+  setReferences(next) {
+    // Move the mean-reversion target only; `tick()` reads `references` first
+    // (line: `references.get(pair) ?? referenceMids[pair]`), so the next tick
+    // drifts toward the new anchor. Mids/RNG state are untouched.
+    for (const pair of PAIRS) {
+      const v = next[pair];
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        references.set(pair, v);
+      }
+    }
+  },
+
+  clearReferences() {
+    // Revert to the baked reference mids (used when the external feed is
+    // disabled). If the feed is running, re-seed the anchors; otherwise leave
+    // the map empty so `tick()` falls back to the baked file.
+    references.clear();
+    if (intervalId !== null) {
+      for (const pair of PAIRS) {
+        references.set(pair, referenceMids[pair]);
+      }
+    }
+  },
 };

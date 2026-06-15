@@ -91,6 +91,48 @@ describe('pricingFeed', () => {
     expect(ticks).toHaveLength(1);
   });
 
+  it('setReferences shifts the mean-reversion target; the mid drifts toward it', () => {
+    setSeed(42);
+    const mids: number[] = [];
+    pricingFeed.subscribe('EURUSD', (t) => mids.push(t.mid));
+    pricingFeed.start();
+    vi.advanceTimersByTime(TICK); // baked ~1.1715
+    pricingFeed.setReferences({ EURUSD: 1.3 });
+    vi.advanceTimersByTime(TICK * 200);
+    const last = mids[mids.length - 1];
+    expect(last).toBeGreaterThan(1.27);
+    expect(last).toBeLessThan(1.33);
+  });
+
+  it('setReferences ignores non-finite values and untouched pairs', () => {
+    setSeed(42);
+    const jpy: number[] = [];
+    pricingFeed.subscribe('USDJPY', (t) => jpy.push(t.mid));
+    pricingFeed.start();
+    vi.advanceTimersByTime(TICK);
+    const base = jpy[jpy.length - 1];
+    pricingFeed.setReferences({ EURUSD: 1.3, USDJPY: Number.NaN });
+    vi.advanceTimersByTime(TICK * 200);
+    const last = jpy[jpy.length - 1];
+    // NaN ignored → USDJPY anchor unchanged → still hovering near its baked mid.
+    expect(last).toBeGreaterThan(base - 1);
+    expect(last).toBeLessThan(base + 1);
+  });
+
+  it('clearReferences reverts the anchor to the baked mid', () => {
+    setSeed(42);
+    const mids: number[] = [];
+    pricingFeed.subscribe('EURUSD', (t) => mids.push(t.mid));
+    pricingFeed.start();
+    vi.advanceTimersByTime(TICK);
+    pricingFeed.setReferences({ EURUSD: 1.3 });
+    vi.advanceTimersByTime(TICK * 200);
+    expect(mids[mids.length - 1]).toBeGreaterThan(1.27);
+    pricingFeed.clearReferences();
+    vi.advanceTimersByTime(TICK * 300);
+    expect(mids[mids.length - 1]).toBeLessThan(1.2);
+  });
+
   it('getLatest returns null before any tick, then the latest tick', () => {
     expect(pricingFeed.getLatest('USDJPY')).toBeNull();
     pricingFeed.start();

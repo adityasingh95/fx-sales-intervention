@@ -18,6 +18,13 @@ export interface PricingFeed {
   getLatest(pair: Pair): PriceTick | null;
   start(): void;
   stop(): void;
+  // Optional external-anchor seam (FXSW-050). An opt-in market-data adapter
+  // (see src/services/feed/external/) calls setReferences to move the
+  // mean-reversion target; the randomizer keeps ticking between updates.
+  // clearReferences reverts to the build-time baked mids. Never called on the
+  // default (simulated) path, so the seeded golden sequence is unaffected.
+  setReferences(mids: Partial<Record<Pair, number>>): void;
+  clearReferences(): void;
 }
 
 export type DealEvent =
