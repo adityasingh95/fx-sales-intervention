@@ -5,6 +5,7 @@ import { dealMachine, type DealEvent as ParentDealEvent } from '@/state/machines
 import type { Deal, RejectionReason } from '@/types/deal';
 import type { DealChannel } from '@/types/scenario';
 import type { DealLifecycleEvent, QuoteContext } from '@/types/lifecycle';
+import { makeRequestId, makeTradeId } from '@/lib/ids';
 import { lifecyclePhaseFor } from './lifecyclePhase';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
@@ -26,6 +27,9 @@ export type DealEntry = {
   siState: string;
   rfsState: string;
   dealable: boolean;
+  // Display request identifier assigned at creation (FXSW-066), shown in the
+  // Active + Historic blotters and detail view.
+  requestId: string;
   // Timestamped lifecycle journey (FXSW-049), captured live and carried into
   // the HistoricEntry on archival for the detail-view timeline.
   events: DealLifecycleEvent[];
@@ -48,6 +52,10 @@ export type HistoricEntry = {
   finalRfsState: string;
   outcome: HistoricOutcome;
   archivedAt: number;
+  // Display identifiers (FXSW-066). `requestId` carries over from the active
+  // entry; `tradeId` is assigned only when the deal actually executed.
+  requestId: string;
+  tradeId?: string;
   events: DealLifecycleEvent[];
 };
 
@@ -106,6 +114,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
   addDeal: (deal, rejectionReasons = [], channel = 'SI') => {
     if (get().deals.has(deal.dealId)) return;
 
+    const requestId = makeRequestId();
     const actor = createActor(dealMachine, { input: { dealId: deal.dealId } });
     actor.start();
     const ctx = actor.getSnapshot().context;
@@ -134,13 +143,17 @@ export const useDealsStore = create<DealsState>((set, get) => ({
       queueMicrotask(() => {
         const cur = useDealsStore.getState().deals.get(deal.dealId);
         if (!cur) return;
+        const outcome = outcomeFromFinalStates(cur.siState, cur.rfsState);
         const historicEntry: HistoricEntry = {
           deal: cur.deal,
           rejectionReasons: cur.rejectionReasons,
           finalSiState: cur.siState,
           finalRfsState: cur.rfsState,
-          outcome: outcomeFromFinalStates(cur.siState, cur.rfsState),
+          outcome,
           archivedAt: Date.now(),
+          requestId: cur.requestId,
+          // A Trade ID is only minted for deals that actually executed.
+          tradeId: outcome === 'Executed' ? makeTradeId() : undefined,
           events: cur.events,
         };
         cur.actor.stop();
@@ -225,6 +238,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
         siState: initialSi,
         rfsState: initialRfs,
         dealable: initialSi === 'Initial',
+        requestId,
         events: initialEvents,
       });
       return { deals: next };

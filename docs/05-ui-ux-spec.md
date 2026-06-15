@@ -596,3 +596,16 @@ Visual treatment for:
 
 `PricingPanel` is now a folder of sub-components (`src/features/ticket/pricing/`);
 every existing `data-testid` is preserved on its original element.
+
+## 17. v3 feedback refinements (FXSW-062…067)
+
+- **Markup-mode toggle** — the All-in / Per-component buttons are a stable
+  module-level component (no longer remounted each tick), removing hover flicker.
+- **Forward All-in bid/ask** — show the marked-up client outright (spot + points
+  + both margin components per side); the mid stays the un-marked reference. The
+  forward-points component row has its own Balance/Zero
+  (`margin-balance-fwd` / `margin-zero-fwd`).
+- **Timeline** — adds a "Quote withdrawn" row (`data-phase="WITHDRAWN"`).
+- **Blotter columns (v3 only)** — Active: Request ID + Value Date; Historic:
+  Request ID + Trade ID + Value Date. GA layout is unchanged; the detail overlay
+  shows Request ID + Trade ID (`detail-request-id` / `detail-trade-id`).

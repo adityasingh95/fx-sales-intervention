@@ -53,7 +53,7 @@ export default function HistoricDetailPanel() {
 
   if (!openHistoricId || !entry) return null;
 
-  const { deal, rejectionReasons, outcome, archivedAt, events } = entry;
+  const { deal, rejectionReasons, outcome, archivedAt, events, requestId, tradeId } = entry;
   const priceBack = [...events].reverse().find((e) => e.phase === 'PRICE_BACK');
 
   return (
@@ -96,6 +96,23 @@ export default function HistoricDetailPanel() {
             <span className="font-mono text-xs uppercase tracking-tight text-text-dim">
               {formatTime(archivedAt)}
             </span>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+            <span className="text-text-mute">
+              Request ID{' '}
+              <span data-testid="detail-request-id" className="font-mono text-text-dim">
+                {requestId}
+              </span>
+            </span>
+            {tradeId ? (
+              <span className="text-text-mute">
+                Trade ID{' '}
+                <span data-testid="detail-trade-id" className="font-mono text-text-dim">
+                  {tradeId}
+                </span>
+              </span>
+            ) : null}
           </div>
 
           <ReasonsPanel reasons={rejectionReasons} />

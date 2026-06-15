@@ -6,6 +6,7 @@ describe('lifecyclePhaseFor', () => {
     expect(lifecyclePhaseFor('SI', 'PickUpSent')).toBe('PICKUP');
     expect(lifecyclePhaseFor('SI', 'QuoteSent')).toBe('PRICE_BACK');
     expect(lifecyclePhaseFor('SI', 'HoldSent')).toBe('RELEASE');
+    expect(lifecyclePhaseFor('SI', 'WithdrawSent')).toBe('WITHDRAWN');
     expect(lifecyclePhaseFor('SI', 'TradeConfirmed')).toBe('RESPONSE');
     expect(lifecyclePhaseFor('SI', 'ClientRejected')).toBe('RESPONSE');
     expect(lifecyclePhaseFor('SI', 'TraderRejected')).toBe('RESPONSE');
@@ -15,7 +16,6 @@ describe('lifecyclePhaseFor', () => {
     expect(lifecyclePhaseFor('SI', 'Initial')).toBeNull();
     expect(lifecyclePhaseFor('SI', 'PickedUp')).toBeNull();
     expect(lifecyclePhaseFor('SI', 'Quoted')).toBeNull();
-    expect(lifecyclePhaseFor('SI', 'WithdrawSent')).toBeNull();
     expect(lifecyclePhaseFor('SI', 'RejectSent')).toBeNull();
   });
 

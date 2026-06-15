@@ -124,3 +124,11 @@ single phase source is chosen per deal (RFS for ESP auto-priced deals, SI
 otherwise) so the shared PRICE_BACK/RESPONSE transitions the parent fans into
 both children are not double-logged. State names and `data-*` test attributes
 remain the compatibility contract.
+
+### v3 note — withdrawn-quote phase (FXSW-065)
+
+The observed-phase set adds `WITHDRAWN`: the SI `WithdrawSent` ack state (entered
+on Quoted → Withdraw, before bouncing back to PickedUp) maps to it, so a trader
+take-back appears on the timeline. This is still an *observation* of existing
+transitions — no new canonical state or event is introduced. The full observed
+set is REQUEST, PICKUP, RELEASE, PRICE_BACK, WITHDRAWN, RESPONSE.

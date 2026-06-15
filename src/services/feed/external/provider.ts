@@ -10,7 +10,13 @@ import type { MidMap } from './types';
 // suit the 5-minute poll cadence. The aggregate close `c` is already quoted in
 // our pair convention (EURUSD ≈ 1.17, USDJPY ≈ 157), so no inversion is needed
 // — unlike the build-time Frankfurter script which quotes USD-base rates.
-const BASE_URL = 'https://api.polygon.io/v2/aggs/ticker';
+//
+// Endpoint: Massive (https://massive.com) — the rebrand of Polygon.io (2025-10).
+// The legacy `api.polygon.io` host has been retired, so we target `api.massive.com`;
+// the path, `C:{PAIR}` ticker convention, and `apiKey` query param are unchanged.
+// Naming the provider is permitted here only (adapter code) per the v3
+// brand-neutrality exception — never in UI strings or build-output identifiers.
+const BASE_URL = 'https://api.massive.com/v2/aggs/ticker';
 
 const PRECISION: Record<Pair, number> = {
   EURUSD: 4,

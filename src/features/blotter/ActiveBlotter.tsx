@@ -1,5 +1,7 @@
 import clsx from 'clsx';
+import { isV3 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
+import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { isHistoric, useActiveDeals, type DealEntry } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
@@ -9,18 +11,27 @@ import ReasonsCell from './ReasonsCell';
 import StatusCell from './StatusCell';
 import { derivedStatus, type DisplayStatus } from './statusFromMachines';
 
+// FXSW-066: Request ID + Value date columns are v3-only; the GA layout is
+// unchanged.
+const v3Cols = isV3();
+
 const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'status', label: 'Status', width: 'w-[110px]' },
   { key: 'time', label: 'Time', width: 'w-[80px]' },
+  ...(v3Cols ? [{ key: 'requestId', label: 'Request ID', width: 'w-[120px]' }] : []),
   { key: 'client', label: 'Client', width: 'w-[160px]' },
   { key: 'account', label: 'Account', width: 'w-[100px]' },
   { key: 'pair', label: 'CCY Pair', width: 'w-[80px]' },
   { key: 'side', label: 'Side', width: 'w-[60px]' },
   { key: 'amount', label: 'Amount', width: 'w-[120px]' },
   { key: 'tenor', label: 'Tenor', width: 'w-[60px]' },
+  ...(v3Cols ? [{ key: 'valueDate', label: 'Value Date', width: 'w-[100px]' }] : []),
   { key: 'rate', label: 'Rate', width: 'w-[120px]' },
   { key: 'reasons', label: 'Reasons', width: 'flex-1 min-w-[200px]' },
 ];
+
+const valueDateFor = (entry: DealEntry): string =>
+  formatSettlementDate(valueDateForTenor(new Date(entry.deal.createdAt), entry.deal.tenor));
 
 // Left-edge bar color per docs/02 §2 row treatment.
 const BAR_FOR: Record<DisplayStatus, string> = {
@@ -70,6 +81,11 @@ function Row({ entry }: { entry: DealEntry }) {
       <div className="w-[80px] font-mono text-xs tabular-nums text-text-dim">
         {formatTime(entry.deal.createdAt)}
       </div>
+      {v3Cols && (
+        <div className="w-[120px] font-mono text-xs uppercase text-text-dim">
+          {entry.requestId}
+        </div>
+      )}
       <div className="w-[160px] text-text">{entry.deal.clientName}</div>
       <div className="w-[100px] font-mono text-xs uppercase text-text-dim">
         {entry.deal.accountCode}
@@ -95,6 +111,11 @@ function Row({ entry }: { entry: DealEntry }) {
       <div className="w-[60px] pl-2 font-mono text-xs uppercase text-text-dim">
         {entry.deal.tenor}
       </div>
+      {v3Cols && (
+        <div className="w-[100px] font-mono text-xs tabular-nums text-text-dim">
+          {valueDateFor(entry)}
+        </div>
+      )}
       <div className="w-[120px]">
         <RateCell pair={entry.deal.pair} />
       </div>
@@ -129,7 +150,7 @@ export function ActiveBlotter() {
             )}
           </div>
         ) : (
-          <div className="min-w-[1100px]">
+          <div className={v3Cols ? 'min-w-[1320px]' : 'min-w-[1100px]'}>
             <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
               {columns.map((col) => (
                 <div key={col.key} className={col.width}>
@@ -204,6 +225,12 @@ function ActiveCard({ entry }: { entry: DealEntry }) {
           <ReasonsCell reasons={entry.rejectionReasons} />
         </span>
       </div>
+      {v3Cols && (
+        <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase text-text-mute">
+          <span>{entry.requestId}</span>
+          <span>Val {valueDateFor(entry)}</span>
+        </div>
+      )}
     </button>
   );
 }

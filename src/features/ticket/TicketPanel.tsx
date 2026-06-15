@@ -257,6 +257,7 @@ export default function TicketPanel() {
                 fwdPoints={fwdPoints}
                 markupMode={markupMode}
                 onMarkupModeChange={setMarkupMode}
+                marginPair={marginPair}
                 fwdMarginPair={effectiveFwdMargin}
                 onFwdMarginPairChange={setFwdMarginPair}
               />

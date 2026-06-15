@@ -138,12 +138,22 @@ export function MarginRow({
 export interface BalanceZeroRowProps {
   marginPair: MarginPair;
   onMarginPairChange: (next: MarginPair) => void;
+  // FXSW-064: the forward-points component row reuses this with distinct testids
+  // (margin-balance-fwd / margin-zero-fwd) and a 0 floor. Defaults preserve the
+  // spot row's verbatim ids and MIN_MARGIN floor.
+  idPrefix?: string;
+  minMargin?: number;
 }
 
-export function BalanceZeroRow({ marginPair, onMarginPairChange }: BalanceZeroRowProps) {
+export function BalanceZeroRow({
+  marginPair,
+  onMarginPairChange,
+  idPrefix = '',
+  minMargin = MIN_MARGIN,
+}: BalanceZeroRowProps) {
   const handleBalance = (): void => {
     const avg = Math.round((marginPair.bid + marginPair.ask) / 2);
-    const clamped = Math.max(MIN_MARGIN, avg);
+    const clamped = Math.max(minMargin, avg);
     onMarginPairChange({ bid: clamped, ask: clamped });
   };
   const handleZero = (): void => {
@@ -153,7 +163,7 @@ export function BalanceZeroRow({ marginPair, onMarginPairChange }: BalanceZeroRo
     <div className="flex items-center justify-center gap-2">
       <button
         type="button"
-        data-testid="margin-balance"
+        data-testid={`margin-balance-${idPrefix}`.replace(/-$/, '')}
         onClick={handleBalance}
         className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"
       >
@@ -161,7 +171,7 @@ export function BalanceZeroRow({ marginPair, onMarginPairChange }: BalanceZeroRo
       </button>
       <button
         type="button"
-        data-testid="margin-zero"
+        data-testid={`margin-zero-${idPrefix}`.replace(/-$/, '')}
         onClick={handleZero}
         className="rounded-sm border border-border bg-bg-elevated px-2 py-1 text-xs font-medium text-text-dim transition-colors hover:border-red/60 hover:text-text"
       >

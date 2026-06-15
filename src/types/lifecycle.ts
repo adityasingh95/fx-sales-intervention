@@ -7,7 +7,13 @@ import type { MarginPair } from './deal';
 // These are display-only phases derived by *observing* the existing SI/RFS
 // transitions; no new canonical machine states are introduced (see
 // docs/03-trade-state-model.md v3 note).
-export type LifecyclePhase = 'REQUEST' | 'PICKUP' | 'RELEASE' | 'PRICE_BACK' | 'RESPONSE';
+export type LifecyclePhase =
+  | 'REQUEST'
+  | 'PICKUP'
+  | 'RELEASE'
+  | 'PRICE_BACK'
+  | 'WITHDRAWN'
+  | 'RESPONSE';
 
 // The margin actually applied when the trader priced the deal. Spot deals
 // carry a single bid/ask pair; forwards (FXSW-054+) carry independent spot and

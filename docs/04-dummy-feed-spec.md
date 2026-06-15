@@ -123,3 +123,12 @@ is permitted only in this adapter code, never in UI strings or build output.
 A deterministic, seeded-per-(pair, tenor) source `forwardPointsFeed.get(pair,
 tenor)` uses a separate RNG instance (SPOT = 0, monotonic by tenor). It sits
 behind a small interface so a real forward curve can replace it later.
+
+### 8.4 External endpoint update (FXSW-062)
+
+The provider rebranded from Polygon.io to Massive (2025-10); the legacy
+`api.polygon.io` host was retired. The adapter `BASE_URL` is now
+`https://api.massive.com/v2/aggs/ticker`; the `C:{PAIR}` ticker convention,
+previous-close path, and `apiKey` query param are unchanged. As the call is made
+from the browser it depends on the provider returning permissive CORS headers;
+static hosting has no proxy fallback.

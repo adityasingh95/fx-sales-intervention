@@ -1,9 +1,9 @@
 import clsx from 'clsx';
 import { formatRate } from '@/lib/format';
-import { allInRate } from '@/lib/pips';
+import { allInRate, clientAskFromForward, clientBidFromForward } from '@/lib/pips';
 import type { Pair, PriceTick } from '@/services/feed/types';
 import type { MarginPair, Tenor } from '@/types/deal';
-import { MarginRow } from './MarginControls';
+import { BalanceZeroRow, MarginRow } from './MarginControls';
 
 // Forward outright pricing (v3, FXSW-057). Shows the forward points and the
 // all-in outright (spot + points), plus a markup-mode toggle:
@@ -15,6 +15,38 @@ import { MarginRow } from './MarginControls';
 
 export type MarkupMode = 'all-in' | 'component';
 
+// Module-level so its identity is stable across the panel's ~300ms tick
+// re-renders. Declaring it inside the component body remounted both buttons on
+// every render, causing hover flicker and intermittently dropped clicks.
+function ToggleButton({
+  mode,
+  label,
+  active,
+  onSelect,
+}: {
+  mode: MarkupMode;
+  label: string;
+  active: boolean;
+  onSelect: (mode: MarkupMode) => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={`markup-mode-${mode}`}
+      aria-pressed={active}
+      onClick={() => onSelect(mode)}
+      className={clsx(
+        'rounded-sm border px-2 py-1 text-xs font-medium transition-colors',
+        active
+          ? 'border-border-focus text-text'
+          : 'border-border text-text-dim hover:text-text',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 export interface ForwardPointsPanelProps {
   pair: Pair;
   tenor: Tenor;
@@ -22,6 +54,9 @@ export interface ForwardPointsPanelProps {
   fwdPoints: number;
   markupMode: MarkupMode;
   onMarkupModeChange: (mode: MarkupMode) => void;
+  // The spot (Trader Rate) margin — folded into the all-in figures so the
+  // outright reflects the full client markup.
+  marginPair: MarginPair;
   fwdMarginPair: MarginPair;
   onFwdMarginPairChange: (next: MarginPair) => void;
   marginGlow?: boolean;
@@ -36,30 +71,24 @@ export default function ForwardPointsPanel({
   fwdPoints,
   markupMode,
   onMarkupModeChange,
+  marginPair,
   fwdMarginPair,
   onFwdMarginPairChange,
   marginGlow = false,
 }: ForwardPointsPanelProps) {
-  const allInBid = tick ? allInRate(tick.bid, fwdPoints, pair) : null;
+  // All-in bid/ask are the *client* outright — spot + forward points marked up
+  // by both margin components, per side — so Balance/Zero and the per-side
+  // forward-points margin visibly move them (matches ClientSummaryPanel). The
+  // mid stays the un-marked outright reference.
+  const allInBid =
+    tick === null
+      ? null
+      : clientBidFromForward(tick.bid, fwdPoints, marginPair.bid, fwdMarginPair.bid, pair);
   const allInMid = tick ? allInRate(tick.mid, fwdPoints, pair) : null;
-  const allInAsk = tick ? allInRate(tick.ask, fwdPoints, pair) : null;
-
-  const ToggleButton = ({ mode, label }: { mode: MarkupMode; label: string }) => (
-    <button
-      type="button"
-      data-testid={`markup-mode-${mode}`}
-      aria-pressed={markupMode === mode}
-      onClick={() => onMarkupModeChange(mode)}
-      className={clsx(
-        'rounded-sm border px-2 py-1 text-xs font-medium transition-colors',
-        markupMode === mode
-          ? 'border-border-focus text-text'
-          : 'border-border text-text-dim hover:text-text',
-      )}
-    >
-      {label}
-    </button>
-  );
+  const allInAsk =
+    tick === null
+      ? null
+      : clientAskFromForward(tick.ask, fwdPoints, marginPair.ask, fwdMarginPair.ask, pair);
 
   return (
     <section
@@ -73,8 +102,18 @@ export default function ForwardPointsPanel({
           Forward {tenor}
         </h2>
         <div data-testid="markup-mode-toggle" className="flex gap-1">
-          <ToggleButton mode="all-in" label="All-in" />
-          <ToggleButton mode="component" label="Per-component" />
+          <ToggleButton
+            mode="all-in"
+            label="All-in"
+            active={markupMode === 'all-in'}
+            onSelect={onMarkupModeChange}
+          />
+          <ToggleButton
+            mode="component"
+            label="Per-component"
+            active={markupMode === 'component'}
+            onSelect={onMarkupModeChange}
+          />
         </div>
       </div>
 
@@ -137,6 +176,12 @@ export default function ForwardPointsPanel({
               />
             </div>
           </div>
+          <BalanceZeroRow
+            marginPair={fwdMarginPair}
+            onMarginPairChange={onFwdMarginPairChange}
+            idPrefix="fwd-"
+            minMargin={0}
+          />
         </div>
       ) : (
         <p className="text-[11px] leading-snug text-text-mute">

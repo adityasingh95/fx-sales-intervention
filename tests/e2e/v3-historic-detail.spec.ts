@@ -49,6 +49,10 @@ test('v3 historical detail — clickable historic row opens timeline overlay', a
     'Executed',
   );
 
+  // FXSW-066: a Request ID and (since the deal executed) a Trade ID are shown.
+  await expect(page.getByTestId('detail-request-id')).toHaveText(/^REQ-/);
+  await expect(page.getByTestId('detail-trade-id')).toHaveText(/^TRD-/);
+
   // The timeline shows the lifecycle phases in order.
   const timeline = page.getByTestId('timeline-panel');
   await expect(timeline).toBeVisible();

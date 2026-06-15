@@ -10,6 +10,7 @@ const PHASE_LABEL: Record<LifecyclePhase, string> = {
   PICKUP: 'Picked up',
   RELEASE: 'Released',
   PRICE_BACK: 'Priced back',
+  WITHDRAWN: 'Quote withdrawn',
   RESPONSE: 'Response',
 };
 

@@ -16,6 +16,73 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-067 · v3 feedback-fix docs
+
+- Documented the v3 feedback fixes across the spec pack and this log (see entries
+  below). No new canonical states; all changes remain behind `?dev=v3`.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (457) · build ✓ · `test:e2e` ✓ (8/8);
+  brand-neutral build output (provider name confined to the adapter endpoint).
+
+---
+
+## FXSW-066 · Request ID / Trade ID / Value date in blotters
+
+- **Synthetic display identifiers**: new `src/lib/ids.ts` (`makeRequestId` →
+  `REQ-XXXXXX`, `makeTradeId` → `TRD-XXXXXX`). `requestId` is minted in
+  `dealsStore.addDeal` for every deal; `tradeId` only in the archive closure when
+  `outcome === 'Executed'`. Stored on `DealEntry` / `HistoricEntry`, not on `Deal`.
+- **Blotters** (v3-gated, GA layout untouched): Active gains Request ID + Value
+  date columns; Historic gains Request ID + Trade ID + Value date. Wrapper
+  `min-w` widened under v3; mobile cards get a compact line. Value date reuses
+  `valueDateForTenor` + `formatSettlementDate` (`src/lib/time.ts`).
+- **Detail overlay** surfaces Request ID + Trade ID (`detail-request-id` /
+  `detail-trade-id`).
+- User-directed: synthetic IDs + new columns.
+
+---
+
+## FXSW-065 · Withdrawn quote as a separate lifecycle event
+
+- Added `WITHDRAWN` to `LifecyclePhase`; mapped SI `WithdrawSent → WITHDRAWN` in
+  `lifecyclePhase.ts` (previously unmapped, so a take-back left no timeline
+  trace). `TimelinePanel` renders it as "Quote withdrawn". RFS withdraw bounces
+  straight to `PickedUp` (auto path), so SI-only mapping suffices.
+
+---
+
+## FXSW-064 · Forward all-in figures reflect markup + forward Balance/Zero
+
+- The forward panel's All-in bid/ask were spot + points only and ignored the
+  markup, so Balance/Zero and per-side forward points never moved them (user
+  items 2 + 4). They now use `clientBidFromForward` / `clientAskFromForward`
+  (`src/lib/pips.ts`) — spot + points + spot margin + forward-points margin per
+  side — matching `ClientSummaryPanel`. The mid stays the un-marked outright.
+- `BalanceZeroRow` reused for the forward-points component row (`idPrefix="fwd-"`,
+  `minMargin={0}` so Zero/Balance can reach 0); spot testids preserved verbatim.
+- User-directed: reflect full markup.
+
+---
+
+## FXSW-063 · Fix markup-mode toggle flicker
+
+- `ToggleButton` was declared inside `ForwardPointsPanel`, giving it a new
+  identity on every ~300ms tick re-render → unmount/remount → hover flicker and
+  intermittently dropped clicks. Hoisted to module scope (pure, props-driven).
+
+---
+
+## FXSW-062 · External feed endpoint → Massive
+
+- The adapter targeted the retired `api.polygon.io` host (Polygon.io rebranded to
+  Massive, 2025-10), causing `ERR_NAME_NOT_RESOLVED` in the browser. Switched
+  `BASE_URL` to `https://api.massive.com/v2/aggs/ticker`; the `C:{PAIR}` ticker
+  convention and `apiKey` query param are unchanged. Provider name permitted in
+  adapter code only (rule #2 exception); UI strings stay generic.
+- Follow-up flagged: the call runs in the browser, so it needs CORS support from
+  Massive; static Pages has no proxy fallback.
+
+---
+
 ## FXSW-061 · v3 spec docs + CLAUDE.md exceptions + phase summary
 
 - **Appended v3 sections** to the spec pack mirroring the v2 precedent: `02` §10 (functional: ingestion / forwards / forward injection / historical detail), `03` §9 (lifecycle-log note — no new canonical states), `04` §8 (external feed seam + forward points), `05` §15–16 (`?dev=v3` gate + v3 visuals), `07` §12 (forward injection), `09` §16 (per-component forward suggestion).

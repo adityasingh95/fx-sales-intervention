@@ -301,3 +301,22 @@ v3 is a superset of GA (all former v2 features are already GA).
   reason (applied margin, whether AI-suggested, and the rationale), and a
   timestamped lifecycle timeline: request → pickup → release → price-back →
   response.
+
+## 11. v3 feedback refinements (behind ?dev=v3)
+
+Post-launch refinements from hands-on testing (FXSW-062…067):
+
+- **External feed endpoint** — the market-data provider rebranded; the adapter
+  now targets the current host (`api.massive.com`). User-visible strings stay
+  generic; the call runs in the browser and therefore depends on the provider's
+  CORS support (no proxy on static hosting).
+- **Forward all-in price** — the All-in bid/ask now reflect the full client
+  markup (spot + forward points + spot margin + forward-points margin, per side),
+  so Balance/Zero and the per-side forward-points margin move them. The
+  forward-points component row gets its own Balance/Zero (floor 0).
+- **Withdrawn quote** — a trader take-back (Quoted → Withdraw) is now recorded as
+  its own `WITHDRAWN` timeline phase.
+- **Identifiers** — every deal carries a synthetic Request ID (Active + Historic);
+  executed deals also get a Trade ID (Historic). Request ID, Trade ID, and the
+  tenor-aware Value date appear as v3-only blotter columns and in the detail
+  overlay.

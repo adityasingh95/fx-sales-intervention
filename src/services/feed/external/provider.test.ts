@@ -24,6 +24,7 @@ describe('provider.fetchMids', () => {
       .mockResolvedValue(okResponse(1.1));
     await fetchMids('secret key', ['EURUSD'], fetchImpl as unknown as typeof fetch);
     const url = String((fetchImpl.mock.calls[0] as unknown[])[0]);
+    expect(url).toContain('https://api.massive.com/v2/aggs/ticker');
     expect(url).toContain('C:EURUSD');
     expect(url).toContain('apiKey=secret%20key');
   });
