@@ -41,7 +41,7 @@ export default function DevInjector() {
       entry.actor.stop();
     }
     useDealsStore.setState({ deals: new Map(), historic: [] });
-    useUiStore.setState({ openDealId: null });
+    useUiStore.setState({ openDealId: null, openHistoricId: null });
   };
 
   if (isMobile) {

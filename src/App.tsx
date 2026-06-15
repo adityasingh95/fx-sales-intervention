@@ -9,6 +9,7 @@ import ThemeToggle from '@/features/notifications/ThemeToggle';
 import ToastStack from '@/features/notifications/ToastStack';
 import { useNotificationSound } from '@/features/notifications/useNotificationSound';
 import ExternalFeedPanel from '@/features/settings/ExternalFeedPanel';
+import HistoricDetailPanel from '@/features/ticket/HistoricDetailPanel';
 import TicketPanel from '@/features/ticket/TicketPanel';
 import { isV3 } from '@/lib/devVersion';
 import { useSettingsStore } from '@/state/stores/settingsStore';
@@ -93,6 +94,7 @@ export default function App() {
         </section>
       </main>
       <TicketPanel />
+      {isV3() && <HistoricDetailPanel />}
       <ToastStack />
     </div>
   );

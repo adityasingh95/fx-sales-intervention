@@ -10,6 +10,7 @@ import { usePrice } from '@/services/feed/usePrice';
 import { getMarketContext } from '@/services/suggestion/marketContext';
 import { forwardPointsFeed } from '@/services/feed/forwardPoints';
 import { useSuggestionState } from './useSuggestionState';
+import { useQuoteContextCapture } from './useQuoteContextCapture';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import { isForwardTenor, type MarginPair } from '@/types/deal';
@@ -49,6 +50,10 @@ export default function TicketPanel() {
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
   const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
+  // FXSW-060: track whether the live margin came from the AI suggestion (and
+  // its rationale) so the markup reason can be captured at quote time.
+  const [aiApplied, setAiApplied] = useState(false);
+  const [appliedRationale, setAppliedRationale] = useState<string | null>(null);
   // Convenience setter for the AI-suggestion Apply path — writes both
   // sides equal so a single suggested pip value applies symmetrically.
   const setMargin = useCallback((n: number) => {
@@ -79,6 +84,8 @@ export default function TicketPanel() {
       setFwdMarginPair({ bid: 0, ask: 0 });
       setSavedFwdForUndo(null);
       setMarkupMode('component');
+      setAiApplied(false);
+      setAppliedRationale(null);
       setPricingMode('streaming');
       setFixedSide(null);
       setFrozenTick(null);
@@ -103,6 +110,15 @@ export default function TicketPanel() {
       useDealsStore.getState().forwardEvent(openDealId, { type: 'PickUp' });
     }
   }, [openDealId]);
+
+  // FXSW-060: capture the markup reason when the trader sends a price.
+  useQuoteContextCapture(entry, {
+    marginPair,
+    fwdMarginPair,
+    markupMode,
+    aiApplied,
+    appliedRationale,
+  });
 
   // Two-pass mount so the slide-in animates from `translate-x-full` to
   // `translate-x-0`. Reset whenever a different deal opens.
@@ -176,6 +192,10 @@ export default function TicketPanel() {
             onApply={(pips, fwdPips) => {
               setSavedPairForUndo(marginPair);
               setMarginPair({ bid: pips, ask: pips });
+              setAiApplied(true);
+              setAppliedRationale(
+                suggestion?.kind === 'ready' ? suggestion.rationale : null,
+              );
               if (fwdPips !== undefined) {
                 setSavedFwdForUndo(fwdMarginPair);
                 setFwdMarginPair({ bid: fwdPips, ask: fwdPips });
@@ -191,6 +211,8 @@ export default function TicketPanel() {
                 setFwdMarginPair(savedFwdForUndo);
                 setSavedFwdForUndo(null);
               }
+              setAiApplied(false);
+              setAppliedRationale(null);
             }}
             onRecompute={computeAndSetSuggestion}
             onReject={() =>

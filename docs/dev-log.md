@@ -16,6 +16,17 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-060 · Historical trade detail view + markup-reason capture
+
+- **`uiStore`** gains `openHistoricId` + `openHistoric`/`closeHistoric`; opening either overlay closes the other.
+- **`HistoricBlotter`** rows/cards become `<button>`s under `isV3()` (GA stays `<div>`s), preserving `data-deal-id`/`data-outcome`, and open the detail overlay.
+- **New `TimelinePanel`** — renders the captured lifecycle events as a timestamped list (request → pickup → released → priced back → response) with the Clock icon; `data-testid="timeline-panel"`, `data-phase` per row.
+- **New `HistoricDetailPanel`** — read-only overlay reusing the TicketPanel shell (slide-in, Esc + backdrop close, no footer/machine). Shows outcome pill + archived time, reuses `ReasonsPanel`/`SummaryPanel`/`DealSummaryPanel`, a **markup-reason** block (applied margin, AI-suggested vs manual, rationale — spot or forward component shape), and the timeline. Mounted in `App` under `isV3()`.
+- **Markup-reason capture** wired via the new `useQuoteContextCapture` hook (extracted to keep TicketPanel at 289 lines): on the QuoteSent transition it merges the applied margin + AI flag + rationale into the PRICE_BACK lifecycle event; resets on return to PickedUp so a re-quote re-records. `TicketPanel` tracks `aiApplied`/`appliedRationale` set on Apply and cleared on Undo.
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (455; +3 HistoricDetailPanel).
+
+---
+
 ## FXSW-059 · Dev Injector forward toggle + parameterized injection
 
 - **`ScenarioOverrides` ({ tenor? })** added to `types/scenario.ts`; `player.inject(id, overrides?)` and `buildDeal` apply a tenor override over the scenario's deal; `dealFeed.inject` + the `DealFeed` interface thread it through. Defaults preserve SPOT, so the 7 scenarios are reused, not duplicated.

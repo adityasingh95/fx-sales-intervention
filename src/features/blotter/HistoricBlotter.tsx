@@ -1,7 +1,9 @@
 import clsx from 'clsx';
 import { dealtCcyCode, formatTime } from '@/lib/format';
+import { isV3 } from '@/lib/devVersion';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
+import { useUiStore } from '@/state/stores/uiStore';
 
 // Cap per docs/02 §3 Capacity — keep the rendered slice bounded.
 const HISTORIC_CAP = 100;
@@ -25,12 +27,18 @@ const OUTCOME_COLOR: Record<HistoricOutcome, string> = {
   Cancelled: 'text-text-dim',
 };
 
-function Row({ entry }: { entry: HistoricEntry }) {
+function Row({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div
+    <Tag
+      type={onOpen ? 'button' : undefined}
       data-deal-id={entry.deal.dealId}
       data-outcome={entry.outcome}
-      className="flex items-center border-b border-border bg-bg-app px-4 py-2 text-sm text-text-dim"
+      onClick={onOpen}
+      className={clsx(
+        'flex w-full items-center border-b border-border bg-bg-app px-4 py-2 text-left text-sm text-text-dim',
+        onOpen && 'transition-colors hover:bg-bg-row-hover',
+      )}
     >
       <div className="w-[80px] font-mono text-xs tabular-nums">{formatTime(entry.archivedAt)}</div>
       <div className="w-[160px]">{entry.deal.clientName}</div>
@@ -54,19 +62,25 @@ function Row({ entry }: { entry: HistoricEntry }) {
       <div className={clsx('flex flex-1 min-w-[160px] items-center', OUTCOME_COLOR[entry.outcome])}>
         {entry.outcome}
       </div>
-    </div>
+    </Tag>
   );
 }
 
 // FXSW-042 — mobile card-stack row. Two-line layout:
 //   Row 1: [time] [amount + ccy] [pair]
 //   Row 2: [client] · [outcome]
-function HistoricCard({ entry }: { entry: HistoricEntry }) {
+function HistoricCard({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div
+    <Tag
+      type={onOpen ? 'button' : undefined}
       data-deal-id={entry.deal.dealId}
       data-outcome={entry.outcome}
-      className="flex w-full flex-col gap-1.5 rounded-md border border-border bg-bg-panel px-3 py-2 text-sm text-text-dim"
+      onClick={onOpen}
+      className={clsx(
+        'flex w-full flex-col gap-1.5 rounded-md border border-border bg-bg-panel px-3 py-2 text-left text-sm text-text-dim',
+        onOpen && 'transition-colors hover:bg-bg-row-hover',
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs tabular-nums">{formatTime(entry.archivedAt)}</span>
@@ -80,7 +94,7 @@ function HistoricCard({ entry }: { entry: HistoricEntry }) {
         <span className="truncate">{entry.deal.clientName}</span>
         <span className={clsx('ml-auto', OUTCOME_COLOR[entry.outcome])}>{entry.outcome}</span>
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -89,6 +103,12 @@ export function HistoricBlotter() {
   const visible = all.slice(0, HISTORIC_CAP);
   const isMobile = useIsMobile();
   const useCards = isMobile;
+  // FXSW-060: under v3, rows open the read-only detail overlay. On the bare
+  // GA URL they stay non-interactive <div>s.
+  const clickable = isV3();
+  const openHistoric = useUiStore((s) => s.openHistoric);
+  const onOpenFor = (id: string): (() => void) | undefined =>
+    clickable ? () => openHistoric(id) : undefined;
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
@@ -105,7 +125,13 @@ export function HistoricBlotter() {
                 No historic deals yet.
               </div>
             ) : (
-              visible.map((entry) => <HistoricCard key={entry.deal.dealId} entry={entry} />)
+              visible.map((entry) => (
+                <HistoricCard
+                  key={entry.deal.dealId}
+                  entry={entry}
+                  onOpen={onOpenFor(entry.deal.dealId)}
+                />
+              ))
             )}
           </div>
         ) : (
@@ -123,7 +149,9 @@ export function HistoricBlotter() {
                   No historic deals yet.
                 </div>
               ) : (
-                visible.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
+                visible.map((entry) => (
+                  <Row key={entry.deal.dealId} entry={entry} onOpen={onOpenFor(entry.deal.dealId)} />
+                ))
               )}
             </div>
           </div>
