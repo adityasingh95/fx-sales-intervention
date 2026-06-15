@@ -1,4 +1,5 @@
 import type { Pair } from '@/services/feed/types';
+import type { MarginPair } from '@/types/deal';
 
 // Pip math per docs/02 §2 + §4.4 + §4.5. CLAUDE.md mandates this module
 // as the single source of truth for pip / margin arithmetic — no inline
@@ -58,3 +59,36 @@ export const estimatedProfitUsd = (
   if (midRate === 0) return 0;
   return profitInQuote / midRate;
 };
+
+// --- Forward pricing (v3, FXSW-054) -----------------------------------------
+// A forward outright = spot rate + forward points (points quoted in pips).
+// The trader marks up the spot component and the forward-points component
+// independently; the client price is the all-in rate widened by the *sum* of
+// both margins, so the existing spot client-rate semantics are reused.
+
+export const allInRate = (spotRate: number, fwdPoints: number, pair: Pair): number =>
+  roundTo(spotRate + fwdPoints * pipSizeFor(pair), DECIMALS[pair]);
+
+// Component-wise margin total per side (bid/ask).
+export const sumMargins = (a: MarginPair, b: MarginPair): MarginPair => ({
+  bid: a.bid + b.bid,
+  ask: a.ask + b.ask,
+});
+
+export const clientBidFromForward = (
+  spotBid: number,
+  fwdPoints: number,
+  spotMarginPips: number,
+  fwdMarginPips: number,
+  pair: Pair,
+): number =>
+  clientBidFromTrader(allInRate(spotBid, fwdPoints, pair), spotMarginPips + fwdMarginPips, pair);
+
+export const clientAskFromForward = (
+  spotAsk: number,
+  fwdPoints: number,
+  spotMarginPips: number,
+  fwdMarginPips: number,
+  pair: Pair,
+): number =>
+  clientAskFromTrader(allInRate(spotAsk, fwdPoints, pair), spotMarginPips + fwdMarginPips, pair);

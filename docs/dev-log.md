@@ -16,6 +16,15 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-054 · Forward types + pip math + value dates
+
+- **`types/deal.ts`** — widened `Tenor` to `SPOT | 1W | 2W | 1M | 2M | 3M | 6M | 9M | 1Y`, added `TENORS`/`FORWARD_TENORS`/`isForwardTenor`, and the swap seam: `LegKind` (`NEAR | FAR`), `DealLeg`, and an optional `Deal.legs`. The widening is pure — SPOT deals, scenarios, and machines are unaffected; v3 derives the single near leg from `tenor`, so `legs` stays optional/unused for now.
+- **`lib/pips.ts`** (single source of truth) — `allInRate(spot, fwdPoints, pair)` (forward outright = spot + points×pip), `sumMargins` (component totals per side), and `clientBidFromForward`/`clientAskFromForward` which compose the existing spot client-rate semantics over the all-in rate with the summed spot+forward margins. No new rounding logic — reuses the private `roundTo`/`DECIMALS`.
+- **`lib/time.ts`** — `valueDateForTenor(tradeDate, tenor)`: spot (T+2) shifted by the tenor period (week tenors add calendar days; month/year tenors add months) then rolled forward to a business day. The `rollForward` seam is where a real holiday calendar could later slot in.
+- Gates: typecheck ✓ · lint ✓ · `pips.test.ts` (13) + `time.test.ts` (11) ✓.
+
+---
+
 ## FXSW-053 · External feed status indicator + settings popover
 
 - **New `src/features/settings/ExternalFeedPanel.tsx`** — a header control (gear icon + status `Pill`) rendered only under `isV3()` (gated in `App.tsx`, placed before `ThemeToggle`). The popover holds a password-style API-key input (bound to `settingsStore.externalFeedKey`) and an enable checkbox (disabled until a key is present). Status is read live via `externalFeed.subscribeStatus`.
