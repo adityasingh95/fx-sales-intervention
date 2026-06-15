@@ -47,6 +47,7 @@ export default function TicketPanel() {
   // FXSW-057: forward-points margin (component mode) + markup mode. Spot deals
   // ignore both.
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
+  const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
   // Convenience setter for the AI-suggestion Apply path — writes both
   // sides equal so a single suggested pip value applies symmetrically.
@@ -76,6 +77,7 @@ export default function TicketPanel() {
       });
       setSavedPairForUndo(null);
       setFwdMarginPair({ bid: 0, ask: 0 });
+      setSavedFwdForUndo(null);
       setMarkupMode('component');
       setPricingMode('streaming');
       setFixedSide(null);
@@ -171,14 +173,23 @@ export default function TicketPanel() {
           <SuggestionPanel
             suggestion={suggestion}
             currentMargin={margin}
-            onApply={(pips) => {
+            onApply={(pips, fwdPips) => {
               setSavedPairForUndo(marginPair);
               setMarginPair({ bid: pips, ask: pips });
+              if (fwdPips !== undefined) {
+                setSavedFwdForUndo(fwdMarginPair);
+                setFwdMarginPair({ bid: fwdPips, ask: fwdPips });
+                setMarkupMode('component');
+              }
             }}
             onUndo={() => {
               if (savedPairForUndo) {
                 setMarginPair(savedPairForUndo);
                 setSavedPairForUndo(null);
+              }
+              if (savedFwdForUndo) {
+                setFwdMarginPair(savedFwdForUndo);
+                setSavedFwdForUndo(null);
               }
             }}
             onRecompute={computeAndSetSuggestion}

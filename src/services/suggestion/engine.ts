@@ -1,3 +1,4 @@
+import { suggestForwardPointsMargin } from './forwardEngine';
 import { CREDIT_DECLINE_RATIONALE, buildRationale } from './rationale';
 import type {
   ClientTier,
@@ -146,12 +147,24 @@ export function suggestMargin(input: SuggestionInput): MarginSuggestion {
     });
   }
 
-  // 5. Floor & rounding
+  // 5. Floor & rounding (spot component)
   const final = Math.max(1, Math.round(base));
+
+  // 6. Forward-points component (v3). The spot rule chain above is unchanged;
+  // for non-SPOT deals we add a separate forward-points margin and surface it
+  // as its own factor in the Why table.
+  const tenor = input.deal.tenor ?? 'SPOT';
+  let fwdPointsPips: number | undefined;
+  if (tenor !== 'SPOT') {
+    const fwd = suggestForwardPointsMargin(tenor, input);
+    fwdPointsPips = fwd.pips;
+    factors.push(fwd.factor);
+  }
 
   return {
     kind: 'ready',
     suggestedPips: final,
+    ...(fwdPointsPips !== undefined ? { fwdPointsPips } : {}),
     confidence: computeConfidence(input),
     rationale: buildRationale(factors, final, input),
     factors,

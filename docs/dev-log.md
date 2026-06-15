@@ -16,6 +16,17 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-058 · AI per-component forward suggestion
+
+- **`SuggestionInput.deal.tenor`** (optional, defaults to SPOT) and **`ReadySuggestion.fwdPointsPips`** (optional) added to `types.ts` — backward-compatible, so all existing engine/rationale/profile tests pass untouched.
+- **New `forwardEngine.ts`** — `suggestForwardPointsMargin(tenor, input)` returns a forward-points margin that widens with tenor (and with thin liquidity) plus a `Forward tenor` factor. Kept separate so the spot rule chain in `engine.ts` is unchanged.
+- **`engine.ts`** — after computing the spot component, non-SPOT deals append the forward-points margin + factor and surface `fwdPointsPips`. The spot `suggestedPips` is independent of tenor.
+- **`SuggestionPanel`** — `onApply(next, fwdPips?)`; forward suggestions show "spot pips · +N fwd pips" and the applied row reflects both; Apply passes both components.
+- **`TicketPanel`** — Apply writes both the spot margin and (for forwards) the forward-points margin, switches to component mode, and saves both for a lossless Undo; reset clears the new saved-fwd state.
+- Gates: typecheck ✓ · lint ✓ · full suite ✓ (450; +4 forward engine tests).
+
+---
+
 ## FXSW-057 · Forward UI — ForwardPointsPanel, LegTabs, summary + client changes
 
 - **New `pricing/ForwardPointsPanel.tsx`** (renders for non-SPOT deals) — forward points, all-in outright bid/mid/ask, and a markup-mode toggle. In **component** mode it shows an independent forward-points margin row (reusing `MarginRow` with a `fwd-` id prefix → `margin-input-fwd-bid/ask`); in **all-in** mode the spot Trader Rate margin applies to the whole outright and the forward row is hidden. New testids: `forward-points-panel`, `fwd-points`, `all-in-bid/mid/ask`, `markup-mode-toggle`.
