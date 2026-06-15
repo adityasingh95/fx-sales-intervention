@@ -16,6 +16,20 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-051 · External market-data adapter + poller
+
+- **New `src/services/feed/external/`** — `provider.ts` (fetches the previous-close forex aggregate `C:{PAIR}/prev`; the close is already in our pair convention so no inversion is needed, unlike the build-time Frankfurter script; `ProviderError` carries a `rateLimited` flag; `fetchImpl` is injectable so no real network call runs under Vitest), `poller.ts` (pure self-rescheduling controller: immediate first poll, 5-min cadence, exponential backoff capped at 30 min, distinct `rate-limited` vs `error` status), `externalFeed.ts` (module singleton bridging successful polls into `pricingFeed.setReferences`, broadcasting a coarse `ExternalFeedStatus`), and `types.ts`.
+- **Brand-neutrality exception applied per plan:** the provider is named only in `provider.ts` adapter code; status values are generic (`off/connecting/live/error/rate-limited`) and carry no vendor name.
+- **OFF by default** — nothing here runs until `enable(apiKey)` is called (wired in the next ticket), so tests/E2E keep the simulated deterministic feed.
+- Gates: typecheck ✓ · lint ✓ · `provider.test.ts` + `poller.test.ts` ✓ (10 tests).
+
+**Agent-directed decisions:**
+
+- **Previous-close aggregate endpoint** over real-time last-quote: it's on the provider's free tier and refreshes slowly enough for a 5-min anchor poll, matching the user's stated rate constraint. Real-time can swap in behind the same `fetchMids` seam later.
+- **setTimeout self-reschedule** rather than `setInterval`, so error backoff is expressed by simply scheduling the next run later — no separate interval-cancel dance.
+
+---
+
 ## FXSW-050 · PricingFeed `setReferences` / `clearReferences` seam
 
 - **Extended the `PricingFeed` interface** (`src/services/feed/types.ts`) with `setReferences(Partial<Record<Pair, number>>)` and `clearReferences()`. The implementation merges finite values into the existing module-level `references` map that `tick()` already reads first, so the mean-reversion target moves on the next tick while mids/RNG state are untouched. `clearReferences()` reverts to the baked mids (re-seeding anchors if the feed is running, else leaving the map empty for the baked-file fallback).
