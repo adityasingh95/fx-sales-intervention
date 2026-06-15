@@ -75,6 +75,10 @@ export interface MarginRowProps {
   // spot margin row. Defaults to '' — existing spot ids are unchanged.
   idPrefix?: string;
   labelPrefix?: string;
+  // FXSW-068: for a one-sided request the non-quotable side cannot be priced,
+  // so its markup row is locked (input + both steppers disabled). Defaults to
+  // editable.
+  disabled?: boolean;
 }
 
 export function MarginRow({
@@ -84,8 +88,9 @@ export function MarginRow({
   glow,
   idPrefix = '',
   labelPrefix = '',
+  disabled = false,
 }: MarginRowProps) {
-  const minusDisabled = value <= 0;
+  const minusDisabled = disabled || value <= 0;
   const sideLabel = `${labelPrefix}${testIdSuffix === 'bid' ? 'bid' : 'ask'}`;
   return (
     <div className="flex items-center justify-center gap-1">
@@ -106,6 +111,7 @@ export function MarginRow({
         value={value}
         min={0}
         step={1}
+        disabled={disabled}
         onChange={(e) => {
           const n = Math.floor(Number(e.target.value));
           if (Number.isFinite(n)) onChange(n);
@@ -119,14 +125,20 @@ export function MarginRow({
             onChange(value - 1);
           }
         }}
-        className={clsx('h-8 w-14', stepperInput, glow ? glowBorder : 'border-border')}
+        className={clsx(
+          'h-8 w-14',
+          stepperInput,
+          glow ? glowBorder : 'border-border',
+          disabled && 'cursor-not-allowed opacity-40',
+        )}
       />
       <button
         type="button"
         data-testid={`margin-plus-${idPrefix}${testIdSuffix}`}
         aria-label={`Increase ${sideLabel} margin`}
         onClick={() => onChange(value + 1)}
-        className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text"
+        disabled={disabled}
+        className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-bg-elevated text-text-dim transition-colors hover:border-blue/60 hover:text-text disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-dim"
       >
         <Plus size={14} aria-hidden />
       </button>

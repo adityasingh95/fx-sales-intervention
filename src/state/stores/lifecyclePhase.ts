@@ -21,9 +21,12 @@ const SI_PHASE: Record<string, LifecyclePhase | undefined> = {
 };
 
 // ESP (auto-priced) deals never leave SI `Initial`, so their timeline is
-// derived from the RFS machine instead.
+// derived from the RFS machine instead. The machine auto-prices straight to
+// `Executable`, which is a distinct AUTO_PRICE waypoint — not a trader
+// PRICE_BACK — so the timeline reads "Auto-priced" rather than "Priced back"
+// (FXSW-070).
 const RFS_PHASE: Record<string, LifecyclePhase | undefined> = {
-  Executable: 'PRICE_BACK',
+  Executable: 'AUTO_PRICE',
   TradeConfirmed: 'RESPONSE',
   Expired: 'RESPONSE',
   ClientClosed: 'RESPONSE',

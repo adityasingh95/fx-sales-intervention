@@ -12,6 +12,7 @@ export type LifecyclePhase =
   | 'PICKUP'
   | 'RELEASE'
   | 'PRICE_BACK'
+  | 'AUTO_PRICE'
   | 'WITHDRAWN'
   | 'RESPONSE';
 

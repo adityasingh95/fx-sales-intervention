@@ -21,9 +21,10 @@ test('v3 forward injection — forward points, all-in rates, component markup', 
     'off',
   );
 
-  // Choose a 3M forward, then inject the off-hours scenario.
+  // Choose a 3M forward, then inject a two-sided inquiry (both bid + ask are
+  // quotable, so the Balance/Zero shortcuts below are meaningful).
   await page.getByTestId('forward-tenor-select').selectOption('3M');
-  await page.getByTestId('inject-OFF_HOURS_INTERVENTION').click();
+  await page.getByTestId('inject-BOTH_SIDED_INQUIRY').click();
 
   const activeBody = page.getByTestId('active-blotter-body');
   const row = activeBody.locator('[data-deal-id]').first();
@@ -63,4 +64,38 @@ test('v3 forward injection — forward points, all-in rates, component markup', 
   await expect(page.getByTestId('margin-balance-fwd')).toHaveCount(0);
   await page.getByTestId('markup-mode-component').click();
   await expect(page.getByTestId('margin-input-fwd-bid')).toBeVisible();
+});
+
+test('v3 one-sided forward — off-side markup is locked, Balance/Zero hidden (FXSW-068)', async ({
+  page,
+}) => {
+  test.setTimeout(20_000);
+
+  await page.addInitScript(() => {
+    (window as Window & { __seedFeed?: number }).__seedFeed = 42;
+    (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
+  });
+
+  await page.goto('/?dev=v3');
+
+  // OFF_HOURS is a SELL on a base-dealt pair → the bank quotes the BID only.
+  await page.getByTestId('forward-tenor-select').selectOption('3M');
+  await page.getByTestId('inject-OFF_HOURS_INTERVENTION').click();
+
+  const row = page.getByTestId('active-blotter-body').locator('[data-deal-id]').first();
+  await expect(row).toBeVisible({ timeout: 1_000 });
+  await row.click();
+  await expect(page.getByTestId('ticket-panel')).toBeVisible();
+  await expect(page.getByTestId('forward-points-panel')).toBeVisible();
+
+  // Spot markup: bid editable, ask locked, Balance/Zero gone.
+  await expect(page.getByTestId('margin-input-bid')).toBeEnabled();
+  await expect(page.getByTestId('margin-input-ask')).toBeDisabled();
+  await expect(page.getByTestId('margin-balance')).toHaveCount(0);
+  await expect(page.getByTestId('margin-zero')).toHaveCount(0);
+
+  // Forward-points markup mirrors the same lock.
+  await expect(page.getByTestId('margin-input-fwd-bid')).toBeEnabled();
+  await expect(page.getByTestId('margin-input-fwd-ask')).toBeDisabled();
+  await expect(page.getByTestId('margin-balance-fwd')).toHaveCount(0);
 });

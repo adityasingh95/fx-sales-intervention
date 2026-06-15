@@ -78,6 +78,35 @@ describe('HistoricDetailPanel', () => {
     expect(phases).toEqual(['REQUEST', 'PICKUP', 'PRICE_BACK', 'RESPONSE']);
   });
 
+  it('shows an auto-priced markup note + AUTO_PRICE timeline phase for ESP deals', () => {
+    useDealsStore.setState({
+      historic: [
+        {
+          ...entry,
+          tradeId: 'TRD-ESP001',
+          events: [
+            { phase: 'REQUEST', at: deal.createdAt, channel: 'RFS', toState: 'Queued' },
+            { phase: 'AUTO_PRICE', at: deal.createdAt + 50, channel: 'RFS', toState: 'Executable' },
+            {
+              phase: 'RESPONSE',
+              at: deal.createdAt + 2000,
+              channel: 'RFS',
+              toState: 'TradeConfirmed',
+            },
+          ],
+        },
+      ],
+    });
+    useUiStore.setState({ openHistoricId: 'd_hist' });
+    render(<HistoricDetailPanel />);
+    expect(screen.getByTestId('markup-reason').textContent).toContain('Auto-priced');
+
+    const phases = Array.from(
+      screen.getByTestId('timeline-panel').querySelectorAll('[data-phase]'),
+    ).map((el) => el.getAttribute('data-phase'));
+    expect(phases).toEqual(['REQUEST', 'AUTO_PRICE', 'RESPONSE']);
+  });
+
   it('notes when no price was sent', () => {
     useDealsStore.setState({
       historic: [

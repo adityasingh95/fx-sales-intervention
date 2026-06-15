@@ -609,3 +609,17 @@ every existing `data-testid` is preserved on its original element.
 - **Blotter columns (v3 only)** — Active: Request ID + Value Date; Historic:
   Request ID + Trade ID + Value Date. GA layout is unchanged; the detail overlay
   shows Request ID + Trade ID (`detail-request-id` / `detail-trade-id`).
+
+### 17.1 Second-round refinements (FXSW-068…071)
+
+- **One-sided markup lock** — for a one-sided request the non-quotable side's
+  margin stepper is `disabled` and the Balance/Zero shortcuts are hidden, in both
+  the spot and forward markup blocks (`restrictMarginSides`, driven by
+  `quoteSide`). Two-sided requests are unaffected.
+- **Read-only auto-priced ticket** — opening an `AUTO` (ESP) deal renders a
+  read-only ticket (`data-readonly="true"`, `auto-priced-note`) with the deal
+  terms + streamed client price, no pricing panel or footer; PickUp is not fired.
+- **Timeline / markup reason** — ESP deals show an "Auto-priced"
+  (`data-phase="AUTO_PRICE"`) row and a "streamed within tolerance" markup note.
+- **Forward points** — the figure is suffixed `pips` (the `fwd-points` testid
+  still wraps the value only).

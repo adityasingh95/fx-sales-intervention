@@ -20,7 +20,7 @@ describe('lifecyclePhaseFor', () => {
   });
 
   it('maps RFS phases for the ESP auto-priced path', () => {
-    expect(lifecyclePhaseFor('RFS', 'Executable')).toBe('PRICE_BACK');
+    expect(lifecyclePhaseFor('RFS', 'Executable')).toBe('AUTO_PRICE');
     expect(lifecyclePhaseFor('RFS', 'TradeConfirmed')).toBe('RESPONSE');
     expect(lifecyclePhaseFor('RFS', 'Expired')).toBe('RESPONSE');
     expect(lifecyclePhaseFor('RFS', 'ClientClosed')).toBe('RESPONSE');

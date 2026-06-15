@@ -55,6 +55,8 @@ export default function HistoricDetailPanel() {
 
   const { deal, rejectionReasons, outcome, archivedAt, events, requestId, tradeId } = entry;
   const priceBack = [...events].reverse().find((e) => e.phase === 'PRICE_BACK');
+  // ESP deals are auto-priced — there's no trader markup to explain (FXSW-070).
+  const autoPriced = events.some((e) => e.phase === 'AUTO_PRICE');
 
   return (
     <div
@@ -137,6 +139,11 @@ export default function HistoricDetailPanel() {
                   {priceBack.rationale ? ` — ${priceBack.rationale}` : ''}
                 </div>
               </>
+            ) : autoPriced ? (
+              <p className="text-sm text-text-mute">
+                Auto-priced — streamed to the client within tolerance, no manual markup
+                applied.
+              </p>
             ) : (
               <p className="text-sm text-text-mute">
                 No price was sent to the client for this deal.

@@ -92,4 +92,20 @@ describe('ForwardPointsPanel', () => {
     fireEvent.click(screen.getByTestId('margin-zero-fwd'));
     expect(onFwd).toHaveBeenCalledWith({ bid: 0, ask: 0 });
   });
+
+  it('locks the non-quotable side and hides Balance/Zero for a one-sided request (FXSW-068)', () => {
+    // BID-only request: the ask forward markup cannot be priced.
+    renderPanel({ restrictMarginSides: true, quoteSide: 'BID' });
+    expect(screen.getByTestId('margin-input-fwd-bid')).not.toBeDisabled();
+    expect(screen.getByTestId('margin-input-fwd-ask')).toBeDisabled();
+    expect(screen.queryByTestId('margin-balance-fwd')).toBeNull();
+    expect(screen.queryByTestId('margin-zero-fwd')).toBeNull();
+  });
+
+  it('keeps both forward sides editable for a two-sided request', () => {
+    renderPanel({ restrictMarginSides: true, quoteSide: 'BOTH' });
+    expect(screen.getByTestId('margin-input-fwd-bid')).not.toBeDisabled();
+    expect(screen.getByTestId('margin-input-fwd-ask')).not.toBeDisabled();
+    expect(screen.getByTestId('margin-balance-fwd')).toBeTruthy();
+  });
 });

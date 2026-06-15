@@ -40,6 +40,10 @@ export interface PricingPanelProps {
   // absent, the v1 single-input UI renders driven by `margin`.
   marginPair?: MarginPair;
   onMarginPairChange?: (next: MarginPair) => void;
+  // FXSW-068 (v3): lock the non-quotable side's margin row + hide Balance/Zero
+  // for a one-sided request (only the quoted side can be priced). Defaults to
+  // false so the GA layout is unchanged.
+  restrictMarginSides?: boolean;
 }
 
 export default function PricingPanel({
@@ -56,8 +60,14 @@ export default function PricingPanel({
   quoteSide = 'BOTH',
   marginPair,
   onMarginPairChange,
+  restrictMarginSides = false,
 }: PricingPanelProps) {
   const useDualMargin = marginPair !== undefined && onMarginPairChange !== undefined;
+  // One-sided request → only the quoted side's markup is editable, and the
+  // two-sided Balance/Zero shortcuts are meaningless.
+  const bidMarginLocked = restrictMarginSides && quoteSide === 'ASK';
+  const askMarginLocked = restrictMarginSides && quoteSide === 'BID';
+  const showBalanceZero = !(restrictMarginSides && quoteSide !== 'BOTH');
   const prevBid = useRef<number | null>(null);
   const prevAsk = useRef<number | null>(null);
   const [bidFlash, setBidFlash] = useState<FlashDir>(null);
@@ -172,6 +182,7 @@ export default function PricingPanel({
                 onMarginPairChange({ bid: Math.max(0, Math.floor(n)), ask: marginPair.ask })
               }
               glow={marginGlow}
+              disabled={bidMarginLocked}
             />
           )}
         </div>
@@ -202,13 +213,16 @@ export default function PricingPanel({
                 onMarginPairChange({ bid: marginPair.bid, ask: Math.max(0, Math.floor(n)) })
               }
               glow={marginGlow}
+              disabled={askMarginLocked}
             />
           )}
         </div>
       </div>
 
       {useDualMargin ? (
-        <BalanceZeroRow marginPair={marginPair} onMarginPairChange={onMarginPairChange} />
+        showBalanceZero && (
+          <BalanceZeroRow marginPair={marginPair} onMarginPairChange={onMarginPairChange} />
+        )
       ) : (
         <SingleMarginControl margin={margin} onMarginChange={onMarginChange} glow={marginGlow} />
       )}

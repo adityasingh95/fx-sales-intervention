@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { formatRate } from '@/lib/format';
 import { allInRate, clientAskFromForward, clientBidFromForward } from '@/lib/pips';
+import type { QuoteSide } from '@/lib/quoteSide';
 import type { Pair, PriceTick } from '@/services/feed/types';
 import type { MarginPair, Tenor } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
@@ -60,6 +61,10 @@ export interface ForwardPointsPanelProps {
   fwdMarginPair: MarginPair;
   onFwdMarginPairChange: (next: MarginPair) => void;
   marginGlow?: boolean;
+  // FXSW-068 (v3): which side(s) the request can be quoted on, and whether to
+  // lock the non-quotable side's forward-points markup + hide Balance/Zero.
+  quoteSide?: QuoteSide;
+  restrictMarginSides?: boolean;
 }
 
 const fmtPoints = (n: number): string => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
@@ -75,7 +80,12 @@ export default function ForwardPointsPanel({
   fwdMarginPair,
   onFwdMarginPairChange,
   marginGlow = false,
+  quoteSide = 'BOTH',
+  restrictMarginSides = false,
 }: ForwardPointsPanelProps) {
+  const bidMarginLocked = restrictMarginSides && quoteSide === 'ASK';
+  const askMarginLocked = restrictMarginSides && quoteSide === 'BID';
+  const showBalanceZero = !(restrictMarginSides && quoteSide !== 'BOTH');
   // All-in bid/ask are the *client* outright — spot + forward points marked up
   // by both margin components, per side — so Balance/Zero and the per-side
   // forward-points margin visibly move them (matches ClientSummaryPanel). The
@@ -119,8 +129,9 @@ export default function ForwardPointsPanel({
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-xs uppercase tracking-tight text-text-mute">Forward points</span>
-        <span data-testid="fwd-points" className="font-mono tabular-nums text-text">
-          {fmtPoints(fwdPoints)}
+        <span className="font-mono tabular-nums text-text">
+          <span data-testid="fwd-points">{fmtPoints(fwdPoints)}</span>
+          <span className="ml-1 text-xs text-text-mute">pips</span>
         </span>
       </div>
 
@@ -161,6 +172,7 @@ export default function ForwardPointsPanel({
                   onFwdMarginPairChange({ bid: Math.max(0, Math.floor(n)), ask: fwdMarginPair.ask })
                 }
                 glow={marginGlow}
+                disabled={bidMarginLocked}
               />
             </div>
             <div className="flex flex-1 justify-center">
@@ -173,15 +185,18 @@ export default function ForwardPointsPanel({
                   onFwdMarginPairChange({ bid: fwdMarginPair.bid, ask: Math.max(0, Math.floor(n)) })
                 }
                 glow={marginGlow}
+                disabled={askMarginLocked}
               />
             </div>
           </div>
-          <BalanceZeroRow
-            marginPair={fwdMarginPair}
-            onMarginPairChange={onFwdMarginPairChange}
-            idPrefix="fwd-"
-            minMargin={0}
-          />
+          {showBalanceZero && (
+            <BalanceZeroRow
+              marginPair={fwdMarginPair}
+              onMarginPairChange={onFwdMarginPairChange}
+              idPrefix="fwd-"
+              minMargin={0}
+            />
+          )}
         </div>
       ) : (
         <p className="text-[11px] leading-snug text-text-mute">

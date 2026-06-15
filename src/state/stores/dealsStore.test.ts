@@ -139,7 +139,7 @@ describe('dealsStore', () => {
   it('ESP deals derive the timeline from the RFS machine', () => {
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_esp' }), [], 'ESP');
     const events = useDealsStore.getState().deals.get('d_esp')?.events ?? [];
-    expect(events.map((e) => e.phase)).toEqual(['REQUEST', 'PRICE_BACK']);
+    expect(events.map((e) => e.phase)).toEqual(['REQUEST', 'AUTO_PRICE']);
     expect(events.every((e) => e.channel === 'RFS')).toBe(true);
   });
 
