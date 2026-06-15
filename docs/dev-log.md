@@ -16,6 +16,14 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-055 · Seeded forward-points feed
+
+- **Extracted `makeRng` (+ added `hashSeed`) to `src/services/feed/rng.ts`** and imported it back into `pricingFeed.ts`. The Mulberry32 implementation is identical, so the seed-42 golden sequence is unchanged (verified).
+- **New `src/services/feed/forwardPoints.ts`** — `forwardPointsFeed.get(pair, tenor)` returns deterministic points (in pips), seeded *independently* of the spot RNG via `hashSeed('{pair}:{tenor}') ^ FWD_SEED`, so it never perturbs the spot stream. Magnitude scales with tenor (rate-differential shape), sign is per-pair, SPOT = 0, with a small (±0.3 pip) deterministic jitter. Exposed behind a tiny `ForwardPointsFeed` interface so a real forward curve can replace it later.
+- Gates: typecheck ✓ · lint ✓ · `forwardPoints.test.ts` (4) + `pricingFeed.test.ts` (9, golden unchanged) ✓.
+
+---
+
 ## FXSW-054 · Forward types + pip math + value dates
 
 - **`types/deal.ts`** — widened `Tenor` to `SPOT | 1W | 2W | 1M | 2M | 3M | 6M | 9M | 1Y`, added `TENORS`/`FORWARD_TENORS`/`isForwardTenor`, and the swap seam: `LegKind` (`NEAR | FAR`), `DealLeg`, and an optional `Deal.legs`. The widening is pure — SPOT deals, scenarios, and machines are unaffected; v3 derives the single near leg from `tenor`, so `legs` stays optional/unused for now.
