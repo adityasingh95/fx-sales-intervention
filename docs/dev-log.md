@@ -16,6 +16,22 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-049 · Per-deal lifecycle event log (v3 foundation)
+
+- **New `src/types/lifecycle.ts`** — `LifecyclePhase` (REQUEST → PICKUP → RELEASE → PRICE_BACK → RESPONSE), `DealLifecycleEvent`, `AppliedMargin` (spot single-pair / forward two-component), and `QuoteContext`. These are display-only phases derived by *observing* the existing SI/RFS transitions; **no new canonical machine states** (per `03-trade-state-model.md` v3 note).
+- **New `src/state/stores/lifecyclePhase.ts`** — pure `lifecyclePhaseFor(channel, toState)` mapper, kept out of the store for isolated testing and to stay under the 300-line limit. Maps only trader-meaningful waypoints; ack-only `*Sent` and steady states return null.
+- **`dealsStore` instrumented** — `DealEntry` and `HistoricEntry` gain `events: DealLifecycleEvent[]`. The existing SI/RFS subscribers append a mapped event immutably (`replaceEntry`); a `REQUEST` event is seeded at deal creation. A per-deal `phaseChannel` (RFS for ESP auto-priced deals, SI otherwise) selects a single source so the shared PRICE_BACK/RESPONSE transitions the parent fans into both children aren't double-logged. `events` is copied into the `HistoricEntry` in the archive closure.
+- **New `recordQuoteContext(dealId, ctx)` store action** — merges the markup reason (applied margin / AI-suggested / rationale) into the most recent PRICE_BACK event; defensive fallback appends one if none exists yet. UI callers wired in a later ticket.
+- **New `useHistoricDealById` selector** for the upcoming detail view.
+- Gates: typecheck ✓ · lint ✓ · `dealsStore.test.ts` + `lifecyclePhase.test.ts` + `HistoricBlotter.test.tsx` ✓ (22 tests; +3 new).
+
+**Agent-directed decisions:**
+
+- **Single phase-source per deal (`phaseChannel`).** Logging from both SI and RFS would double-count the PRICE_BACK/RESPONSE transitions the parent machine fans into both children. Picking RFS for ESP (where SI never leaves `Initial`) and SI otherwise yields a clean, dedup-free timeline without a separate dedup pass.
+- **`snap.event?.type` guarded.** XState fires some transitions (initial/delayed `after`) without a typed triggering event at runtime; the trigger field is optional, so an absent event is recorded as `undefined` rather than throwing.
+
+---
+
 ## FXSW-048 · Reinstate the `?dev=v3` gate (Phase 8 / v3 foundation)
 
 - **Re-added `src/lib/devVersion.ts`** — the path FXSW-047 deleted — following the URL-flag pattern documented in `05-ui-ux-spec.md` §12/§14. Exports `devVersion: 'v1' | 'v3'` (parsed once from `?dev=v3`) and `isV3()`. Components and services branch on `isV3()`; no version prop is threaded through the tree. The legacy `?dev=1` flag and any other `dev` value resolve to `v1`, so the bare-URL GA tree is unchanged.
