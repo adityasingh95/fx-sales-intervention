@@ -58,6 +58,9 @@ export interface ForwardPointsPanelProps {
   fwdPoints: ForwardPointsPair;
   markupMode: MarkupMode;
   onMarkupModeChange: (mode: MarkupMode) => void;
+  // FXSW-079 (v4): NDF has no all-in/per-component choice — markup is always on
+  // the points — so the toggle is hidden. Defaults to true.
+  showMarkupToggle?: boolean;
   // The spot (Trader Rate) margin — folded into the all-in figures so the
   // outright reflects the full client markup.
   marginPair: MarginPair;
@@ -79,6 +82,7 @@ export default function ForwardPointsPanel({
   fwdPoints,
   markupMode,
   onMarkupModeChange,
+  showMarkupToggle = true,
   marginPair,
   fwdMarginPair,
   onFwdMarginPairChange,
@@ -109,20 +113,22 @@ export default function ForwardPointsPanel({
         <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
           Forward {tenor}
         </h2>
-        <div data-testid="markup-mode-toggle" className="flex gap-1">
-          <ToggleButton
-            mode="all-in"
-            label="All-in"
-            active={markupMode === 'all-in'}
-            onSelect={onMarkupModeChange}
-          />
-          <ToggleButton
-            mode="component"
-            label="Per-component"
-            active={markupMode === 'component'}
-            onSelect={onMarkupModeChange}
-          />
-        </div>
+        {showMarkupToggle && (
+          <div data-testid="markup-mode-toggle" className="flex gap-1">
+            <ToggleButton
+              mode="all-in"
+              label="All-in"
+              active={markupMode === 'all-in'}
+              onSelect={onMarkupModeChange}
+            />
+            <ToggleButton
+              mode="component"
+              label="Per-component"
+              active={markupMode === 'component'}
+              onSelect={onMarkupModeChange}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">

@@ -44,6 +44,10 @@ export interface PricingPanelProps {
   // for a one-sided request (only the quoted side can be priced). Defaults to
   // false so the GA layout is unchanged.
   restrictMarginSides?: boolean;
+  // FXSW-079 (v4): NDF takes no spot-level markup, so the spot margin controls
+  // (per-side rows + Balance/Zero) are removed while the rate cells stay (the
+  // trader still freezes the spot for the outright). Defaults to true.
+  showSpotMargin?: boolean;
 }
 
 export default function PricingPanel({
@@ -61,8 +65,10 @@ export default function PricingPanel({
   marginPair,
   onMarginPairChange,
   restrictMarginSides = false,
+  showSpotMargin = true,
 }: PricingPanelProps) {
-  const useDualMargin = marginPair !== undefined && onMarginPairChange !== undefined;
+  const useDualMargin =
+    showSpotMargin && marginPair !== undefined && onMarginPairChange !== undefined;
   // One-sided request → only the quoted side's markup is editable, and the
   // two-sided Balance/Zero shortcuts are meaningless.
   const bidMarginLocked = restrictMarginSides && quoteSide === 'ASK';
@@ -219,7 +225,7 @@ export default function PricingPanel({
         </div>
       </div>
 
-      {useDualMargin ? (
+      {!showSpotMargin ? null : useDualMargin ? (
         showBalanceZero && (
           <BalanceZeroRow marginPair={marginPair} onMarginPairChange={onMarginPairChange} />
         )

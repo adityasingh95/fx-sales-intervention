@@ -67,6 +67,39 @@ describe('<TicketPanel />', () => {
     expect(panel).toHaveTextContent('Outside trading window');
   });
 
+  it('NDF ticket is points-only: no spot-margin block or markup toggle; ndf-note + points margin shown (FXSW-079)', () => {
+    act(() => {
+      useDealsStore
+        .getState()
+        .addDeal(makeDeal({ dealId: 'd_ndf', tenor: '3M', instrumentType: 'NDF' }), ['OFF_HOURS']);
+      useUiStore.getState().openTicket('d_ndf');
+    });
+    render(<TicketPanel />);
+    const panel = screen.getByTestId('ticket-panel');
+    expect(panel).toHaveAttribute('data-instrument', 'NDF');
+    expect(screen.getByTestId('ndf-note')).toBeInTheDocument();
+    // The Trader Rate cells stay (the spot is still needed for the outright),
+    // but the spot-margin steppers and Balance/Zero are removed.
+    expect(screen.getByTestId('bid-cell')).toBeInTheDocument();
+    expect(screen.queryByTestId('margin-input-bid')).toBeNull();
+    expect(screen.queryByTestId('margin-balance')).toBeNull();
+    // No all-in/per-component toggle for an NDF.
+    expect(screen.queryByTestId('markup-mode-toggle')).toBeNull();
+    // Markup is taken on the forward points — those steppers remain.
+    expect(screen.getByTestId('margin-input-fwd-bid')).toBeInTheDocument();
+  });
+
+  it('a SPOT deal keeps the spot-margin block and shows no ndf-note (FXSW-079)', () => {
+    act(() => {
+      useDealsStore.getState().addDeal(makeDeal(), ['OFF_HOURS']);
+      useUiStore.getState().openTicket('d_ticket');
+    });
+    render(<TicketPanel />);
+    expect(screen.getByTestId('ticket-panel')).toHaveAttribute('data-instrument', 'SPOT');
+    expect(screen.queryByTestId('ndf-note')).toBeNull();
+    expect(screen.getByTestId('margin-input-bid')).toBeInTheDocument();
+  });
+
   it('Esc keypress calls uiStore.closeTicket()', () => {
     act(() => {
       useDealsStore.getState().addDeal(makeDeal(), ['OFF_HOURS']);

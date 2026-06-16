@@ -14,7 +14,7 @@ import { useSuggestionState } from './useSuggestionState';
 import { useQuoteContextCapture } from './useQuoteContextCapture';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import { isForwardTenor, type MarginPair } from '@/types/deal';
+import { instrumentOf, isForwardTenor, type MarginPair } from '@/types/deal';
 import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
@@ -151,13 +151,21 @@ export default function TicketPanel() {
   // In all-in markup mode the forward-points margin is held at zero (the spot
   // margin applies to the whole outright).
   const isForward = isForwardTenor(deal.tenor);
+  // FXSW-079: NDF is a points-only instrument — no spot-level markup and no
+  // all-in/per-component toggle. The spot margin contributes nothing and its UI
+  // is removed; markup is always taken on the forward points (component mode).
+  const instrument = instrumentOf(deal);
+  const isNdf = instrument === 'NDF';
+  const effectiveMarkupMode: MarkupMode = isNdf ? 'component' : markupMode;
   // FXSW-075: two-sided points flow through pricing — bid side uses bid points,
   // ask side uses ask points (see lib/pips outrightPair/clientForwardPair).
   const fwdPoints = isForward
     ? forwardPointsFeed.get(deal.pair, deal.tenor)
     : { bid: 0, ask: 0, mid: 0 };
+  // NDF zeroes the spot markup everywhere it feeds pricing.
+  const effectiveSpotMargin: MarginPair = isNdf ? { bid: 0, ask: 0 } : marginPair;
   const effectiveFwdMargin: MarginPair =
-    markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
+    effectiveMarkupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
   const quoteSide = quoteSideFor(deal.side, deal.dealtCcy);
   // v3 only — GA keeps both margin sides editable regardless of request side.
   const restrictMarginSides = isV3();
@@ -171,6 +179,7 @@ export default function TicketPanel() {
       <div
         data-testid="ticket-panel"
         data-deal-id={deal.dealId}
+        data-instrument={instrument}
         data-readonly={autoView ? 'true' : undefined}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -300,6 +309,7 @@ export default function TicketPanel() {
             marginPair={marginPair}
             onMarginPairChange={setMarginPair}
             restrictMarginSides={restrictMarginSides}
+            showSpotMargin={!isNdf}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}
@@ -307,14 +317,24 @@ export default function TicketPanel() {
           {isForward && (
             <>
               <LegTabs legs={deal.legs ?? []} />
+              {isNdf && (
+                <p
+                  data-testid="ndf-note"
+                  className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-[11px] leading-snug text-text-mute"
+                >
+                  Non-Deliverable Forward — cash-settled. Markup is taken on the
+                  forward points only; there is no spot-level markup.
+                </p>
+              )}
               <ForwardPointsPanel
                 pair={deal.pair}
                 tenor={deal.tenor}
                 tick={displayTick}
                 fwdPoints={fwdPoints}
-                markupMode={markupMode}
+                markupMode={effectiveMarkupMode}
                 onMarkupModeChange={setMarkupMode}
-                marginPair={marginPair}
+                showMarkupToggle={!isNdf}
+                marginPair={effectiveSpotMargin}
                 fwdMarginPair={effectiveFwdMargin}
                 onFwdMarginPairChange={setFwdMarginPair}
                 quoteSide={quoteSide}
@@ -324,7 +344,7 @@ export default function TicketPanel() {
           )}
           <ClientSummaryPanel
             tick={displayTick}
-            marginPair={marginPair}
+            marginPair={effectiveSpotMargin}
             notional={deal.notional}
             pair={deal.pair}
             quoteSide={quoteSide}

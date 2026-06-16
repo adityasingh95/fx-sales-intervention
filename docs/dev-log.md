@@ -917,6 +917,27 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (473) · build ✓ · `test:e2e` ✓
   (10/10). GA/v3 unaffected.
 
+## FXSW-079 · NDF pricing (points-only markup)
+
+- `TicketPanel`: resolves `instrumentOf(deal)`; for NDF zeroes the spot markup
+  everywhere it feeds pricing (`effectiveSpotMargin`), forces component markup
+  mode, adds `data-instrument` on the panel and an `ndf-note`. The Trader Rate
+  cells stay (the spot still feeds the outright) — only the markup is removed.
+- `PricingPanel`: `showSpotMargin` prop (default true) — NDF hides the per-side
+  spot-margin steppers and the Balance/Zero / single-margin footer while keeping
+  the bid/mid/ask cells + freeze controls.
+- `ForwardPointsPanel`: `showMarkupToggle` prop (default true) — NDF hides the
+  all-in/per-component toggle (markup is always on the points).
+- One-sided lock still applies (the existing `restrictMarginSides`/`quoteSide`
+  path is unchanged). All-in + P/L derive from the outright + points margin via
+  the existing `clientForwardPair`, with spot margin forced to zero.
+- Tests: `TicketPanel.test.tsx` — NDF hides spot-margin block + toggle, shows
+  `ndf-note` + points steppers; SPOT keeps the spot-margin block and shows no
+  note. New `tests/e2e/v4-ndf.spec.ts` exercises the `?dev=v4` instrument
+  selector → NDF injection → points-only ticket end to end.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
+  (11/11). GA/v3 unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
