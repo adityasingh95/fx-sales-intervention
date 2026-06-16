@@ -5,7 +5,9 @@ import {
   clientAskFromTrader,
   clientBidFromForward,
   clientBidFromTrader,
+  clientForwardPair,
   estimatedProfitUsd,
+  outrightPair,
   sumMargins,
   pipSizeFor,
 } from './pips';
@@ -92,5 +94,33 @@ describe('forward pricing (v3)', () => {
     expect(clientBidFromForward(1.1715, 0, 3, 0, 'EURUSD')).toBe(
       clientBidFromTrader(1.1715, 3, 'EURUSD'),
     );
+  });
+});
+
+describe('side-specific forward points (v3+, FXSW-074)', () => {
+  it('outrightPair: bid uses bid points, ask uses ask points (asymmetric even at zero margin)', () => {
+    const spot = { bid: 1.1715, ask: 1.1717, mid: 1.1716 };
+    const points = { bid: -27, ask: -23, mid: -25 };
+    const o = outrightPair(spot, points, 'EURUSD');
+    expect(o.bid).toBe(allInRate(1.1715, -27, 'EURUSD'));
+    expect(o.ask).toBe(allInRate(1.1717, -23, 'EURUSD'));
+    expect(o.mid).toBe(allInRate(1.1716, -25, 'EURUSD'));
+    // Asymmetric points => the outright spread differs from the raw spot spread,
+    // with no margin applied at all.
+    expect(o.ask - o.bid).not.toBeCloseTo(spot.ask - spot.bid, 10);
+  });
+
+  it('outrightPair: all-zero (SPOT) points collapse each side back to spot', () => {
+    const spot = { bid: 157.75, ask: 157.79, mid: 157.77 };
+    const o = outrightPair(spot, { bid: 0, ask: 0, mid: 0 }, 'USDJPY');
+    expect(o).toEqual(spot);
+  });
+
+  it('clientForwardPair: each side widens by its own points + margins', () => {
+    const spot = { bid: 1.1715, ask: 1.1717, mid: 1.1716 };
+    const points = { bid: -27, ask: -23, mid: -25 };
+    const p = clientForwardPair(spot, points, { bid: 2, ask: 4 }, { bid: 1, ask: 3 }, 'EURUSD');
+    expect(p.bid).toBe(clientBidFromForward(1.1715, -27, 2, 1, 'EURUSD'));
+    expect(p.ask).toBe(clientAskFromForward(1.1717, -23, 4, 3, 'EURUSD'));
   });
 });

@@ -842,6 +842,19 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   widens with tenor; mid monotonicity + sign preserved).
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (466) · `test:e2e` ✓ (10/10).
 
+## FXSW-074 · Bid/ask points through pricing math
+
+- `src/lib/pips.ts`: added `outrightPair(spot, points, pair)` and
+  `clientForwardPair(...)` — side-specific helpers that consume the two-sided
+  `ForwardPointsPair` (bid all-in uses bid points, ask uses ask points, mid uses
+  mid). SPOT (all-zero) points collapse each side back to spot. The selection
+  lives in `pips.ts`, not components (per CLAUDE.md "no pip math in components").
+- Pure additions — no consumer rewired yet, so v3 output is unchanged this
+  ticket. FXSW-075 wires the panels to these helpers + re-baselines snapshots.
+- Tests (strict TDD): asymmetric points → asymmetric outright at *zero* margin;
+  SPOT collapse; `clientForwardPair` side selection.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · `test:e2e` ✓ (10/10).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

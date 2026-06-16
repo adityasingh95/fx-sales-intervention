@@ -1,3 +1,4 @@
+import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { Pair } from '@/services/feed/types';
 import type { MarginPair } from '@/types/deal';
 
@@ -92,3 +93,37 @@ export const clientAskFromForward = (
   pair: Pair,
 ): number =>
   clientAskFromTrader(allInRate(spotAsk, fwdPoints, pair), spotMarginPips + fwdMarginPips, pair);
+
+// --- Side-specific forward points (v3+, FXSW-074) ---------------------------
+// The feed quotes two-sided forward points (FXSW-073). The trader outright is
+// therefore side-specific *before* any margin: the bid all-in uses the bid
+// points, the ask all-in uses the ask points, and the mid (used as the P/L
+// reference) uses the mid points. SPOT points are all-zero and collapse each
+// side back to the spot rate. Keeping this selection in pips.ts honours the
+// "no pip math in components" rule — consumers pass the whole points pair.
+
+export type SpotRates = { bid: number; ask: number; mid: number };
+export type OutrightRates = { bid: number; ask: number; mid: number };
+
+export const outrightPair = (
+  spot: SpotRates,
+  points: ForwardPointsPair,
+  pair: Pair,
+): OutrightRates => ({
+  bid: allInRate(spot.bid, points.bid, pair),
+  ask: allInRate(spot.ask, points.ask, pair),
+  mid: allInRate(spot.mid, points.mid, pair),
+});
+
+// Side-specific client prices for a forward: bid takes the bid points, ask the
+// ask points, each widened by its own (spot + forward) margin.
+export const clientForwardPair = (
+  spot: SpotRates,
+  points: ForwardPointsPair,
+  spotMargin: MarginPair,
+  fwdMargin: MarginPair,
+  pair: Pair,
+): MarginPair => ({
+  bid: clientBidFromForward(spot.bid, points.bid, spotMargin.bid, fwdMargin.bid, pair),
+  ask: clientAskFromForward(spot.ask, points.ask, spotMargin.ask, fwdMargin.ask, pair),
+});
