@@ -873,6 +873,31 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   required before E2E whenever runtime output changes.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · build ✓ · `test:e2e` ✓ (10/10).
 
+## FXSW-076 · Security Agent first review
+
+- Ran the independent, unprimed Security Agent cold against the Phase 9 build
+  (commit `3c4390a`). Output: `security/FXSW-077-review.md` — 11 findings
+  (0 Critical, 2 High, 5 Medium, 3 Low, 1 Info) across functional + technical
+  tracks, with a proposed resolution work-item.
+- Build-agent write boundary respected: the report was authored by the agent under
+  `security/` only; the build agent did not edit `/src`, `/tests`, or the report
+  content beyond commit.
+- One correction round: the first draft reproduced third-party vendor tokens inside
+  `security/`, violating the report's own brand-neutrality requirement (docs/10 §4).
+  Since `security/` is agent-owned, a follow-up agent redacted the literals
+  (generic descriptions + `file:line` pointers retained); `grep` for vendor tokens
+  over the report is now clean.
+
+## FXSW-077 · Phase 9 docs + summary + BACKLOG
+
+- `docs/phase-summaries/phase-09-v4-summary.md` written (scope, tickets, decisions,
+  security posture, gate results).
+- `docs/BACKLOG.md`: Phase 9 status note (FXSW-072…077 shipped); security work-item
+  transcribed as **FXSW-088** (renumbered from the agent's draft to avoid colliding
+  with the planned NDF ticket) for Phase 10 triage.
+- Phase 9 closed. Gates at close: typecheck ✓ · lint ✓ · `test:run` ✓ (469) ·
+  build ✓ · `test:e2e` ✓ (10/10); `dist/` brand-neutral.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

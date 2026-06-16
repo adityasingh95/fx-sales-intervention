@@ -47,10 +47,15 @@ GA spot baseline remain the determinism gate.
 ## Security review
 
 See `security/FXSW-077-review.md` for the cold end-of-phase review. The proposed
-resolution work-item is transcribed into `docs/BACKLOG.md` for Phase 10 triage;
-out-of-scope findings are recorded as accepted risk in the report.
+resolution work-item is transcribed into `docs/BACKLOG.md` as **FXSW-088** for
+Phase 10 triage; out-of-scope findings are recorded as accepted risk in the report.
 
-<!-- Security posture one-liner + severity counts added at FXSW-077 close. -->
+**Posture:** reasonable for a no-backend prototype — pricing math correct and
+centralised, margins floored at every input, terminal states inert, no XSS sinks,
+synthetic data plainly fictional — with concentrated risk in the external-call
+surface and build pipeline, plus two lifecycle invariants (one-sided lock, `*Sent`
+ack) enforced only in the UI/topology rather than the state layer. **11 findings:
+0 Critical, 2 High, 5 Medium, 3 Low, 1 Info.** No vendor names in the report.
 
 ## Gate results
 

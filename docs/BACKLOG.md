@@ -500,6 +500,15 @@ written; BACKLOG statuses updated.
 
 **Done when:** all gates green; brand-neutral grep over `dist/` clean.
 
+### Status note — Phase 9 shipped (FXSW-072…077)
+
+Phase 9 (FXSW-072…077) shipped on `claude/pricing-trades-phase-plan-h70vy7` and is
+tracked in `docs/dev-log.md` and `docs/phase-summaries/phase-09-v4-summary.md`. The
+end-of-phase Security Agent review is `security/FXSW-077-review.md` (0 Critical,
+2 High, 5 Medium, 3 Low, 1 Info); its proposed remediation is filed as **FXSW-088**
+(below) for Phase 10 triage. Next free ticket after the planned Phase 10–11 work and
+FXSW-088 is **FXSW-089**.
+
 ## Phase 10 — NDF (Non-Deliverable Forward)
 
 Adds the `instrumentType` discriminator and the NDF instrument (forward-points
@@ -622,6 +631,52 @@ per-leg tenors/points/value dates + net points used for execution.
 `phase-11-swaps-summary.md`; BACKLOG statuses updated; brand-neutral `dist/`.
 
 **Done when:** all gates green.
+
+## Phase 9 security remediation (triage into Phase 10)
+
+Transcribed from `security/FXSW-077-review.md` (the agent's proposed work-item;
+renumbered from its draft "FXSW-078" to avoid colliding with the planned NDF
+ticket). To be triaged against the specs and implemented in Phase 10. Findings not
+fixed are recorded as accepted risk in the report.
+
+### FXSW-088 — Phase 9 security remediation (external-call surface, build pipeline, hardening)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-077 · **Source:** `security/FXSW-077-review.md`
+
+**AC:**
+- External provider auth no longer uses a URL query string for the API key where
+  the provider permits a header; if query-param is unavoidable, the exposure is
+  documented and requests are batched to minimise key emission. (T-1)
+- The build defaults to the pinned committed reference mids; the live third-party
+  fetch is opt-**in** (not opt-out), and any consumed response is validated
+  field-by-field with `Number.isFinite` + range check before being written/used. (T-2)
+- Toolchain bumped: `vite >= 5.4.15` and `esbuild >= 0.25.0` (override if
+  transitive); `pnpm audit` reports zero moderate+ advisories. (T-3)
+- `index.html` ships a restrictive CSP `<meta>` (`default-src 'self'`;
+  `script-src 'self'`; `connect-src 'self'` + the single provider origin only when
+  the live feed is used); SRI added for emitted assets where feasible. (T-4)
+- One-sided side-lock enforced by a guard in the SI/deal machine (quotable side
+  carried in context), not by the UI `disabled` prop alone. (F-1)
+- `*Sent` acknowledgement model on RFS is either made symmetric with SI or
+  documented so no consumer reads RFS `Executable` as the client-facing "sent"
+  signal. (F-2)
+- Parent deal machine reconciles/terminates once both legs are terminal and routes
+  terminal/reject events to both legs; terminal protection is explicit, not only
+  topological. (F-3)
+- Vendor literals removed from test files outside `src/services/feed/external/`. (T-6)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, and `test:e2e` all pass.
+- The seed-42 golden and the GA spot + mid sequence are byte-stable.
+- Canonical state names and `data-*` test attributes are unchanged.
+- `dist/` remains brand-neutral in user-visible strings and contains no source maps.
+- The simulated feed remains the default and the only test/E2E path.
+
+**Triage notes (Build Agent, primed):** F-1/F-2/F-3 touch the XState layer — any
+guard/parent-state change must preserve canonical state names, the `*Sent`
+contract, and the 5s removal timing (Critical rules #6/#7/#9). Accepted-risk items
+(synthetic data as non-PII; v4 NDF/SWAP instrument lenses with no current code
+surface) stay as recorded in the report until the relevant code exists.
 
 ## Current known follow-ups
 
