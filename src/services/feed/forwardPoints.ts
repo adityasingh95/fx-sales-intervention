@@ -36,18 +36,42 @@ const ANNUAL_POINTS: Record<Pair, number> = {
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
-const cache = new Map<string, number>();
+// Two-sided points (FXSW-073). The `mid` is the original scalar (unchanged, so
+// the seed-42 stream and any existing mid expectations are byte-stable). The
+// bid/ask spread is derived deterministically from the tenor alone — it widens
+// monotonically with maturity and is symmetric around `mid` — so NO extra RNG
+// draws are taken. SPOT stays all-zero.
+export type ForwardPointsPair = {
+  bid: number;
+  ask: number;
+  mid: number;
+};
 
-function compute(pair: Pair, tenor: Tenor): number {
-  if (tenor === 'SPOT') return 0;
+// Half-spread in pips, a strictly increasing function of tenor (longer tenor →
+// wider points spread). Pair-independent and RNG-free, so it cannot perturb the
+// mid sequence. SPOT returns 0 (handled by the caller's SPOT short-circuit).
+function halfSpread(tenor: Tenor): number {
+  return round1(0.3 + 4 * TENOR_YEARS[tenor]);
+}
+
+const cache = new Map<string, ForwardPointsPair>();
+
+function computeMid(pair: Pair, tenor: Tenor): number {
   const base = ANNUAL_POINTS[pair] * TENOR_YEARS[tenor];
   const rng = makeRng(hashSeed(`${pair}:${tenor}`) ^ FWD_SEED);
   const jitter = (rng() - 0.5) * 0.6; // ±0.3 pip, deterministic
   return round1(base + jitter);
 }
 
+function compute(pair: Pair, tenor: Tenor): ForwardPointsPair {
+  if (tenor === 'SPOT') return { bid: 0, ask: 0, mid: 0 };
+  const mid = computeMid(pair, tenor);
+  const hs = halfSpread(tenor);
+  return { bid: round1(mid - hs), ask: round1(mid + hs), mid };
+}
+
 export type ForwardPointsFeed = {
-  get: (pair: Pair, tenor: Tenor) => number;
+  get: (pair: Pair, tenor: Tenor) => ForwardPointsPair;
 };
 
 export const forwardPointsFeed: ForwardPointsFeed = {

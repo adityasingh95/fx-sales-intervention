@@ -828,6 +828,20 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (464) · build ✓ · `test:e2e` ✓ (10/10).
   GA and `?dev=v3` unchanged.
 
+## FXSW-073 · Two-sided forward-points feed
+
+- `src/services/feed/forwardPoints.ts`: `forwardPointsFeed.get` now returns
+  `ForwardPointsPair { bid, ask, mid }`. `mid` is the original scalar — same
+  RNG, same jitter — so the seed sequence is byte-stable. The spread is derived
+  RNG-free from the tenor (`halfSpread = 0.3 + 4·years`), strictly widening with
+  maturity, symmetric around `mid`; SPOT is all-zero.
+- Consumer (`TicketPanel.tsx`) reads `.mid` for now, so v3 forward pricing is
+  unchanged this ticket — side-specific bid/ask wiring + v3 snapshot re-baseline
+  land in FXSW-074/075.
+- Tests: feed test rewritten for the pair shape (bid<mid<ask, symmetric, spread
+  widens with tenor; mid monotonicity + sign preserved).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (466) · `test:e2e` ✓ (10/10).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

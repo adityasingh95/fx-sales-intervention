@@ -151,7 +151,9 @@ export default function TicketPanel() {
   // In all-in markup mode the forward-points margin is held at zero (the spot
   // margin applies to the whole outright).
   const isForward = isForwardTenor(deal.tenor);
-  const fwdPoints = isForward ? forwardPointsFeed.get(deal.pair, deal.tenor) : 0;
+  // FXSW-073: feed is now two-sided. Pricing still consumes `mid` here so v3
+  // forward output is unchanged; side-specific bid/ask wiring lands in FXSW-074/075.
+  const fwdPoints = isForward ? forwardPointsFeed.get(deal.pair, deal.tenor).mid : 0;
   const effectiveFwdMargin: MarginPair =
     markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
   const quoteSide = quoteSideFor(deal.side, deal.dealtCcy);
