@@ -15,6 +15,8 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
 - [features/notifications.md](features/notifications.md) — **stable.** Toast + title flash + row flash + WebAudio chime + mute toggle + dispatcher dedupe.
 - [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1` / `?dev=v2`; collapses to a `Dev ▾` popover on mobile. Internals in [components/dev-injector.md](components/dev-injector.md).
+- [features/forward-pricing.md](features/forward-pricing.md) — *in-progress (v3, `?dev=v3`).* Outright forwards (tenors 1W–1Y): spot + forward points, all-in vs per-component markup, forward Balance/Zero (floor 0), `pips` unit, tenor-aware value dates, leg-tabs (swap-ready).
+- [features/historical-detail.md](features/historical-detail.md) — *in-progress (v3).* Read-only detail overlay on clickable Historic rows: deal terms, markup reason (or auto-priced note), lifecycle timeline.
 
 ## Components
 
@@ -23,6 +25,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/deal-machine.md](components/deal-machine.md) — parent actor, cross-model coordination, context shape.
 - [components/status-derivation.md](components/status-derivation.md) — `(rfsState, siState, dealable) → DisplayStatus` mapping.
 - [components/pricing-feed.md](components/pricing-feed.md) — random-walk price simulator, Mulberry32 + Box-Muller, seedable.
+- [components/external-price-feed.md](components/external-price-feed.md) — *in-progress (v3, `?dev=v3`).* Opt-in runtime market-data adapter (generic external provider, no vendor named): GUI API key in `sessionStorage`, 5-min poll re-anchors the simulator, status pill (Off/Connecting/Live/Error/Rate limited), OFF by default.
 - [components/deal-feed.md](components/deal-feed.md) — scenario-driven event emitter, state-gate bridge to the store.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
@@ -38,6 +41,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [data-models/price-tick.md](data-models/price-tick.md) — single price update shape.
 - [data-models/client-profile.md](data-models/client-profile.md) — **stable.** Per-client tier + behaviour metadata; five seed profiles with Halcyon's neutral-prior acceptance rate.
 - [data-models/margin-suggestion.md](data-models/margin-suggestion.md) — **stable.** Discriminated union: `kind: 'ready'` vs `kind: 'credit-decline'`. Panel-local `applied` and `computing` states separate from engine output.
+- [data-models/deal-lifecycle-phase.md](data-models/deal-lifecycle-phase.md) — *in-progress (v3).* Display-only timeline phases (REQUEST/PICKUP/RELEASE/PRICE_BACK/AUTO_PRICE/WITHDRAWN/RESPONSE) observed from SI/RFS transitions; no new canonical states.
 
 ## Decisions (ADRs)
 

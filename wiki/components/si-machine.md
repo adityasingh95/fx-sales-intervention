@@ -1,7 +1,8 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-16
 sources:
   - docs/03-trade-state-model.md
+  - docs/phase-summaries/phase-08-v3-summary.md
 status: stable
 ticket: FXSW-010
 ---
@@ -72,6 +73,10 @@ ESP deals: SI stays at `Initial` indefinitely; on RFS `TradeConfirmed` the paren
 States like `PickUpSent`, `QuoteSent`, `WithdrawSent`, `RejectSent`, `HoldSent` represent **in-flight** actions awaiting backend acknowledgement. Each transitions to its post-ack state via an `after: { ackDelay: 'NextState' }` transition. The delay is sourced from `src/state/machines/timings.ts` (`ackDelayMs = 250` by default; zero-able in tests via `timings.ackDelayMs = 0`).
 
 Rationale captured in [decisions/ADR-0009-simulated-ack-delays.md](../decisions/ADR-0009-simulated-ack-delays.md).
+
+## Observed as `WITHDRAWN` in the v3 timeline (FXSW-065)
+
+The v3 [lifecycle event log](../data-models/deal-lifecycle-phase.md) **observes** the `WithdrawSent` transition (`Quoted` → `Withdraw` → `WithdrawSent` → `PickedUp`) and records it as the `WITHDRAWN` timeline waypoint so the [historical detail](../features/historical-detail.md) shows the trader's quote take-back. This adds **no new canonical state or event** — `WithdrawSent` is unchanged; the phase is a display-only derivation mapped in `src/state/stores/lifecyclePhase.ts`. (Likewise SI `QuoteSent`→`PRICE_BACK`, `HoldSent`→`RELEASE`, `PickUpSent`→`PICKUP`.)
 
 ## Why a `Removed` cleanup state
 
