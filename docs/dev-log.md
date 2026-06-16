@@ -946,9 +946,28 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   unchanged; table min-widths widened only under v4.
 - Extended `tests/e2e/v4-ndf.spec.ts` to assert the row's `deal-instrument` cell.
 - Phase 10 end-of-phase Security Agent review: `security/FXSW-081-review.md`
-  (see that file; proposed work-item transcribed into the backlog).
+  (9 findings: 0C/2H/4M/2L/1I), authored under `security/` by the unprimed agent;
+  brand-neutral (verified).
+- **In-phase fix of the review's NDF correctness regressions (F-1/F-3/F-4):** the
+  review found NDF spot-markup inertness was enforced only on the manual ticket
+  branch, so the auto-priced (ESP) NDF applied a 3-pip spot markup (F-1, High), the
+  quote-context capture recorded a phantom spot markup (F-3), and the auto view kept
+  the markup toggle (F-4) — all regressions against FXSW-079's own AC. Fixed by
+  computing the effective (NDF-zeroed) spot margin + markup mode **once** and sharing
+  them across the manual branch, the auto branch, and `useQuoteContextCapture`. Added
+  an auto-priced-NDF E2E. The deeper state/math-layer enforcement (F-2) + toolchain
+  (T-1) + carried-over external hardening (T-2/T-3/T-4) are filed as FXSW-089.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
-  (11/11). GA/v3 unaffected.
+  (12/12). GA/v3 unaffected.
+
+## FXSW-081 · Phase 10 docs + summary + BACKLOG
+
+- `docs/phase-summaries/phase-10-ndf-summary.md` finalised (scope, tickets,
+  decisions, security posture, gates).
+- `docs/BACKLOG.md`: Phase 10 status note (FXSW-078…081 shipped); remaining security
+  work filed as **FXSW-089** (overlaps the still-open FXSW-088); next free ticket
+  **FXSW-090**.
+- Phase 10 closed.
 
 ## Notes
 

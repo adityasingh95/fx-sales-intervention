@@ -506,8 +506,16 @@ Phase 9 (FXSW-072…077) shipped on `claude/pricing-trades-phase-plan-h70vy7` an
 tracked in `docs/dev-log.md` and `docs/phase-summaries/phase-09-v4-summary.md`. The
 end-of-phase Security Agent review is `security/FXSW-077-review.md` (0 Critical,
 2 High, 5 Medium, 3 Low, 1 Info); its proposed remediation is filed as **FXSW-088**
-(below) for Phase 10 triage. Next free ticket after the planned Phase 10–11 work and
-FXSW-088 is **FXSW-089**.
+(below) for Phase 10 triage.
+
+### Status note — Phase 10 shipped (FXSW-078…081)
+
+Phase 10 (FXSW-078…081) shipped on the same branch; see `docs/dev-log.md` and
+`docs/phase-summaries/phase-10-ndf-summary.md`. The end-of-phase review is
+`security/FXSW-081-review.md` (0 Critical, 2 High, 4 Medium, 2 Low, 1 Info). Its
+three NDF points-only correctness findings (F-1/F-3/F-4) were fixed in-phase during
+FXSW-080 close; the remaining hardening + the deeper inertness refactor are filed as
+**FXSW-089** (below). Next free ticket is **FXSW-090**.
 
 ## Phase 10 — NDF (Non-Deliverable Forward)
 
@@ -677,6 +685,46 @@ guard/parent-state change must preserve canonical state names, the `*Sent`
 contract, and the 5s removal timing (Critical rules #6/#7/#9). Accepted-risk items
 (synthetic data as non-PII; v4 NDF/SWAP instrument lenses with no current code
 surface) stay as recorded in the report until the relevant code exists.
+
+## Phase 10 security remediation (triage into Phase 11)
+
+Transcribed from `security/FXSW-081-review.md`. The three NDF points-only
+correctness findings (F-1 auto-priced spot markup, F-3 audit record, F-4
+auto-view toggle) were **fixed in-phase** during FXSW-080 close — they were
+functional regressions against FXSW-079's own AC, not hardening gaps. The
+remaining items (the deeper state/math-layer enforcement plus the carried-over
+external-surface + toolchain hardening) are filed below for Phase 11 triage.
+This **overlaps FXSW-088** (Phase 9 remediation, still open) on the external-call
+surface + toolchain — do them together.
+
+### FXSW-089 — Phase 10 security remediation (NDF inertness depth + toolchain + carried-over hardening)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-080 · **Source:** `security/FXSW-081-review.md`
+
+**AC:**
+- NDF spot-markup inertness is enforced **structurally**, not only at the render
+  boundary: either clamp the effective spot margin to zero for NDF in one shared
+  helper keyed off `instrumentOf(deal)` that every consumer goes through, or have
+  the pricing helpers ignore the spot margin for NDF — so the raw `marginPair`
+  state can never reintroduce a markup via the keyboard/AI-Apply paths. (F-2)
+  *(F-1/F-3/F-4 already fixed in FXSW-080; this is the residual defense-in-depth.)*
+- Toolchain bumped: `vite >= 5.4.20`, `vitest >= 3.2.6` (≥1.6.1 minimum),
+  `@playwright/test`/`playwright >= 1.55.1`, `esbuild`/`@babel/core` updated
+  transitively; `pnpm audit` reports zero high+ advisories. (T-1)
+- External provider auth no longer uses a URL query string for the API key where
+  a header is accepted; otherwise documented + batched. (T-2, overlaps FXSW-088)
+- Build defaults to the pinned committed reference mids (live fetch opt-IN);
+  consumed responses validated field-by-field (`Number.isFinite` + range). (T-3,
+  overlaps FXSW-088)
+- `index.html` ships a restrictive CSP `<meta>`; SRI added where feasible. (T-4,
+  overlaps FXSW-088)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass.
+- Seed-42 golden, GA spot + mid sequence, and v3 forward goldens byte-stable for
+  non-NDF instruments; canonical state names + `data-*` unchanged.
+- `dist/` brand-neutral in user-visible strings; no source maps.
+- Simulated feed remains the default and only test/E2E path.
 
 ## Current known follow-ups
 

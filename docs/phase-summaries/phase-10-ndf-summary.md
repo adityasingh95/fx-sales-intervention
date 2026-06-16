@@ -43,15 +43,27 @@ and the GA spot + mid sequence remain the determinism gate.
 
 ## Security review
 
-See `security/FXSW-081-review.md` for the cold end-of-phase review. The proposed
-resolution work-item is transcribed into `docs/BACKLOG.md`; out-of-scope findings
-are recorded as accepted risk in the report.
+See `security/FXSW-081-review.md` for the cold end-of-phase review. **9 findings:
+0 Critical, 2 High, 4 Medium, 2 Low, 1 Info.**
 
-<!-- Security posture one-liner + severity counts added at FXSW-081 close. -->
+**Posture:** the `instrumentOf()` resolver is consistent at every read site and the
+SPOT→forward coercion is correct, but the review found that NDF spot-markup
+inertness was enforced in a single render path — so the **auto-priced (ESP) NDF
+view still applied a 3-pip spot markup** (F-1, High), the quote-context audit
+recorded a phantom spot markup (F-3), and the auto view kept the markup toggle
+(F-4). These three were **functional regressions against FXSW-079's own AC, so they
+were fixed in-phase** during FXSW-080 close: the effective (NDF-zeroed) spot margin
+is now computed once and shared by the manual ticket, the auto view, and the capture
+hook, and a new auto-priced-NDF E2E guards the path. The remaining items — the
+deeper state/math-layer enforcement (F-2) and the carried-over external-surface +
+toolchain hardening (T-1 toolchain advisories, T-2/T-3/T-4) — are filed as
+**FXSW-089** (overlapping the still-open FXSW-088) for Phase 11 triage. No vendor
+names in the report.
 
 ## Gate results
 
 - typecheck (`tsc -b`) ✓ · lint (zero warnings) ✓ · unit/component `test:run` ✓
-  (475 tests) · `build` ✓ · `test:e2e` ✓ (11/11, incl. the new `v4-ndf` spec).
+  (475 tests) · `build` ✓ · `test:e2e` ✓ (12/12, incl. the two `v4-ndf` specs —
+  manual + auto-priced).
 - GA spot golden + seed-42 sequence unchanged; v3 forward output unchanged from
   Phase 9; all new behaviour is `?dev=v4`-gated.

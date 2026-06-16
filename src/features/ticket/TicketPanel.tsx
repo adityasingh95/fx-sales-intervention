@@ -123,11 +123,22 @@ export default function TicketPanel() {
     }
   }, [openDealId]);
 
-  // FXSW-060: capture the markup reason when the trader sends a price.
+  // FXSW-079/080: NDF is points-only. The effective spot margin is zeroed for an
+  // NDF at this single boundary so EVERY consumer below — the manual ticket, the
+  // auto-priced view, and the quote-context capture — gets the inert value and no
+  // render path can reintroduce a spot markup (security F-1/F-2/F-3).
+  const instrument = entry ? instrumentOf(entry.deal) : 'SPOT';
+  const isNdf = instrument === 'NDF';
+  const effectiveSpotMargin: MarginPair = isNdf ? { bid: 0, ask: 0 } : marginPair;
+  const effectiveMarkupMode: MarkupMode = isNdf ? 'component' : markupMode;
+
+  // FXSW-060: capture the markup reason when the trader sends a price. The
+  // captured spot margin is the *effective* one, so an NDF record carries a zero
+  // spot component matching the price actually sent (security F-3).
   useQuoteContextCapture(entry, {
-    marginPair,
+    marginPair: effectiveSpotMargin,
     fwdMarginPair,
-    markupMode,
+    markupMode: effectiveMarkupMode,
     aiApplied,
     appliedRationale,
   });
@@ -151,19 +162,13 @@ export default function TicketPanel() {
   // In all-in markup mode the forward-points margin is held at zero (the spot
   // margin applies to the whole outright).
   const isForward = isForwardTenor(deal.tenor);
-  // FXSW-079: NDF is a points-only instrument — no spot-level markup and no
-  // all-in/per-component toggle. The spot margin contributes nothing and its UI
-  // is removed; markup is always taken on the forward points (component mode).
-  const instrument = instrumentOf(deal);
-  const isNdf = instrument === 'NDF';
-  const effectiveMarkupMode: MarkupMode = isNdf ? 'component' : markupMode;
   // FXSW-075: two-sided points flow through pricing — bid side uses bid points,
   // ask side uses ask points (see lib/pips outrightPair/clientForwardPair).
+  // `instrument`/`isNdf`/`effectiveSpotMargin`/`effectiveMarkupMode` are computed
+  // once above (so the capture hook + both render branches share them).
   const fwdPoints = isForward
     ? forwardPointsFeed.get(deal.pair, deal.tenor)
     : { bid: 0, ask: 0, mid: 0 };
-  // NDF zeroes the spot markup everywhere it feeds pricing.
-  const effectiveSpotMargin: MarginPair = isNdf ? { bid: 0, ask: 0 } : marginPair;
   const effectiveFwdMargin: MarginPair =
     effectiveMarkupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
   const quoteSide = quoteSideFor(deal.side, deal.dealtCcy);
@@ -225,21 +230,33 @@ export default function TicketPanel() {
               </p>
               <SummaryPanel deal={deal} />
               {isForward && (
-                <ForwardPointsPanel
-                  pair={deal.pair}
-                  tenor={deal.tenor}
-                  tick={displayTick}
-                  fwdPoints={fwdPoints}
-                  markupMode={markupMode}
-                  onMarkupModeChange={setMarkupMode}
-                  marginPair={marginPair}
-                  fwdMarginPair={{ bid: 0, ask: 0 }}
-                  onFwdMarginPairChange={() => {}}
-                />
+                <>
+                  {isNdf && (
+                    <p
+                      data-testid="ndf-note"
+                      className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-[11px] leading-snug text-text-mute"
+                    >
+                      Non-Deliverable Forward — cash-settled. Markup is taken on the
+                      forward points only; there is no spot-level markup.
+                    </p>
+                  )}
+                  <ForwardPointsPanel
+                    pair={deal.pair}
+                    tenor={deal.tenor}
+                    tick={displayTick}
+                    fwdPoints={fwdPoints}
+                    markupMode={effectiveMarkupMode}
+                    onMarkupModeChange={setMarkupMode}
+                    showMarkupToggle={!isNdf}
+                    marginPair={effectiveSpotMargin}
+                    fwdMarginPair={{ bid: 0, ask: 0 }}
+                    onFwdMarginPairChange={() => {}}
+                  />
+                </>
               )}
               <ClientSummaryPanel
                 tick={displayTick}
-                marginPair={marginPair}
+                marginPair={effectiveSpotMargin}
                 notional={deal.notional}
                 pair={deal.pair}
                 quoteSide={quoteSide}
