@@ -624,20 +624,22 @@ every existing `data-testid` is preserved on its original element.
 - **Forward points** — the figure is suffixed `pips` (the `fwd-points` testid
   still wraps the value only).
 
-## 18. v4 enhancements (behind `?dev=v4`)
+## 18. Instrument & pricing UI extensions (Phase 9–11)
 
-v4 is gated by `?dev=v4` and is a superset of v3 (§16). Bare-URL GA is unchanged;
-v3 (`?dev=v3`) is frozen. New `data-*` attributes below are additive — existing
-ones keep their meaning.
+Bid/ask forward points (§18.1) is a v3-level refinement and shows under `?dev=v3`
+and above. The instrument UIs (§18.2–18.5) are gated by the new `?dev=v4`
+(a superset of v3, §16). Bare-URL GA is spot-only and unchanged. New `data-*`
+attributes below are additive.
 
-### 18.1 Bid/ask forward points
+### 18.1 Bid/ask forward points (v3 and above)
 
 The forward-points row shows **two** values, bid and ask (`fwd-points-bid` /
-`fwd-points-ask`), each suffixed `pips`, with the un-marked `mid` retained as the
-reference. The marked-up All-in bid/ask already combine spot + points + margin
-per side (§17); under v4 the points component differs by side before margin, so
-the two All-in cells can diverge with zero margin. Under v3 both points cells show
-the same value (`bid === ask`), preserving the v3 look.
+`fwd-points-ask`), each suffixed `pips`, with the un-marked mid retained as the
+reference (`fwd-points-mid`). This replaces the single `fwd-points` cell for v3
+outright forwards. The marked-up All-in bid/ask already combine spot + points +
+margin per side (§17); the points component now differs by side before margin, so
+the two All-in cells can diverge with zero margin. v3 outright-forward component
+and E2E snapshots are re-baselined when this lands.
 
 ### 18.2 Instrument selector (Dev Injector)
 

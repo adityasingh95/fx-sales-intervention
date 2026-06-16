@@ -92,7 +92,7 @@ CI must pass `lint`, `typecheck`, `test:run`, and `test:e2e` before merge.
 10. **AI Margin Suggestion is deterministic:** no real model call in this prototype.
 11. **Build agent write boundary:** do not write to `wiki/`, `raw/`, or `security/`; `wiki/`+`raw/` are Wiki Agent-owned and `security/` is Security Agent-owned, unless an explicit one-time bootstrap exception is recorded.
 12. **Dev-log update:** each implementation task should append a concise entry to `docs/dev-log.md` unless the task is purely metadata cleanup.
-13. **`?dev=v4` gate (Phase 9+):** new instruments (NDF, swap) and bid/ask forward points live behind `?dev=v4` in `src/lib/devVersion.ts`. v4 is a superset of v3; v3 and GA stay frozen. `Deal.instrumentType` (`SPOT|OUTRIGHT|NDF|SWAP`) is the instrument discriminator. See `docs/02` §12.
+13. **v4 gate + bid/ask points (Phase 9+):** bid/ask forward points apply to `?dev=v3` outright forwards and above (v3 forward goldens re-baselined; GA spot + mid sequence unchanged). New instruments — NDF, swap — live behind a new `?dev=v4` gate in `src/lib/devVersion.ts` (superset of v3). `Deal.instrumentType` (`SPOT|OUTRIGHT|NDF|SWAP`) is the instrument discriminator. See `docs/02` §12.
 14. **Security Agent (5th agent):** an independent, unprimed reviewer runs at the end of every phase (Phase 9+), writing findings under `security/` only. See `docs/10-security-agent-spec.md`.
 
 ## Before editing X, read Y

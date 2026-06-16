@@ -133,21 +133,24 @@ previous-close path, and `apiKey` query param are unchanged. As the call is made
 from the browser it depends on the provider returning permissive CORS headers;
 static hosting has no proxy fallback.
 
-## 9. v4 feed extensions (behind `?dev=v4`)
+## 9. Forward-points & swap feed extensions
 
-All v4 feed work is deterministic and seeded; the seed-42 golden and the v3
-single-value behaviour are unchanged. Under v3 the new two-sided helpers collapse
-to `bid === ask === mid`, so v3 output is byte-identical.
+All new feed work is deterministic and seeded. The **mid sequence is unchanged**
+(and so is the GA spot golden) — the changes only add side and leg values derived
+from the existing mids. Two-sided points (§9.1) apply from `?dev=v3` up; swap
+points (§9.2) are consumed only by v4 swaps.
 
-### 9.1 Two-sided forward points
+### 9.1 Two-sided forward points (v3 and above)
 
 `forwardPointsFeed.get(pair, tenor)` returns a `ForwardPointsPair`
-`{ bid, ask, mid }` instead of a scalar (the scalar becomes `mid`). The bid/ask
-spread is derived deterministically from the same per-(pair, tenor) RNG used for
-`mid`, widening monotonically with tenor (longer tenor → wider points spread) and
-symmetric around `mid` (bid = mid − half-spread, ask = mid + half-spread). SPOT
-remains `{ bid: 0, ask: 0, mid: 0 }`. Existing callers that want the old behaviour
-read `.mid`; v3 paths use `.mid` for both sides.
+`{ bid, ask, mid }` instead of a scalar (the old scalar becomes `mid`). The
+bid/ask spread is derived **deterministically from `mid` and the tenor** —
+widening monotonically with tenor (longer tenor → wider points spread), symmetric
+around `mid` (bid = mid − half-spread, ask = mid + half-spread) — so **no extra
+RNG draws are taken and the `mid` sequence is unchanged**. SPOT remains
+`{ bid: 0, ask: 0, mid: 0 }`. Under v3 the bid/ask values are now used for
+outright forwards (previously both sides used the single value), so v3 forward
+pricing snapshots are re-baselined; GA spot is unaffected.
 
 ### 9.2 Swap points
 

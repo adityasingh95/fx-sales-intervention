@@ -336,30 +336,35 @@ A second round of refinements (FXSW-068…071):
   within tolerance.
 - **Forward-points unit** — the forward-points figure is suffixed `pips`.
 
-## 12. v4 enhancements (behind `?dev=v4`)
+## 12. Instrument & pricing extensions (Phase 9–11)
 
-Phase 9–11 work lands behind a new `?dev=v4` URL gate; bare-URL GA behaviour is
-unchanged. `src/lib/devVersion.ts` widens to `'v1' | 'v3' | 'v4'` and exports
-`isV4()`. **v4 is a superset of v3** — every v3 feature is on under v4, and v4
-adds the items below. v3 itself is frozen: its single-value forward points and
-seed-42 golden remain the determinism gate, so the bid/ask-points split and the
-new instruments are v4-only.
+Two related bodies of work land across Phases 9–11. **Bid/ask forward points**
+(§12.1) is a *v3-level* refinement: it changes how existing `?dev=v3` outright
+forwards are priced, and v4 inherits it. The new **instruments** — NDF (§12.2)
+and swaps (§12.3) — land behind a new `?dev=v4` URL gate; `src/lib/devVersion.ts`
+widens to `'v1' | 'v3' | 'v4'` and exports `isV4()`, with v4 a superset of v3.
+Bare-URL GA is spot-only and unaffected throughout.
 
-### 12.1 Bid/ask forward points
+### 12.1 Bid/ask forward points (v3 and above)
 
 Today a single forward-points scalar is added to both sides; bid/ask asymmetry
-only enters through margins. Under v4, forward points are quoted **two-sided** —
-a `{ bid, ask }` pair per (pair, tenor) — so the outright bid and ask differ even
-before any markup.
+only enters through margins. Forward points become **two-sided** — a
+`{ bid, ask }` pair per (pair, tenor) — so the outright bid and ask differ even
+before any markup. This applies to **all v3 outright forwards** (and v4); GA is
+spot-only so it is unaffected.
 
-- The simulated feed returns a points pair (see `docs/04` §9). Under v3 the pair
-  collapses to `bid === ask === mid` so v3 behaviour is byte-identical.
+- The simulated feed returns a points pair derived deterministically from the
+  existing per-(pair, tenor) `mid`, so the mid sequence is unchanged and only the
+  new side values are added (see `docs/04` §9.1).
 - Outright bid uses the bid points, outright ask uses the ask points. All-in
   client price and estimated P/L derive from the side-specific outright.
+- **v3 is no longer byte-frozen for forwards.** v3 outright-forward pricing
+  snapshots and E2E expectations are re-baselined when this lands; the GA spot
+  golden and the mid sequence are unchanged.
 - Swaps extend this to **up to four** point values — a bid/ask pair per leg
   (near and far).
 
-### 12.2 Instrument types and NDF
+### 12.2 Instrument types and NDF (behind `?dev=v4`)
 
 `Deal` gains an explicit `instrumentType: 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP'`
 discriminator (v4). It is orthogonal to `tenor`: `SPOT`/`OUTRIGHT` describe the
@@ -384,7 +389,7 @@ instrument:
 No fixing/settlement-rate modelling is introduced — the prototype keeps NDF as a
 markup-restricted outright.
 
-### 12.3 Swaps
+### 12.3 Swaps (behind `?dev=v4`)
 
 An **FX swap** is two legs priced together: a NEAR leg and a FAR leg. Phase 11
 supports **forward-forward** swaps — near and far may each be SPOT or any forward

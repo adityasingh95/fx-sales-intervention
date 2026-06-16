@@ -801,10 +801,14 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   reviews the build cold at the end of each phase and files findings under
   `security/`.
 - User-directed decisions: phasing Points → NDF → Swaps with the Security Agent
-  stood up first; swaps allow forward-forward; all new work behind `?dev=v4`;
-  findings to `/security/` with fixes as FXSW backlog tickets.
-- Agent-directed: putting the bid/ask-points split under v4 (not v3) to keep the
-  v3 seed-42 golden frozen; instruments modelled as a `Deal.instrumentType`
+  stood up first; swaps allow forward-forward; **bid/ask forward points apply to
+  v3 outright forwards** (not v4-only), while NDF/swaps sit behind a new `?dev=v4`
+  gate; findings to `/security/` with fixes as FXSW backlog tickets.
+- Consequence of the v3 decision: v3 outright-forward goldens/snapshots are
+  re-baselined (the spread is derived from `mid` with no extra RNG draws, so the
+  GA spot golden and mid sequence are unchanged).
+- Agent-directed: keeping the `?dev=v4` gate itself as Phase 9 scaffolding (first
+  consumed by NDF in Phase 10); instruments modelled as a `Deal.instrumentType`
   discriminator with swaps reusing the existing `Deal.legs` seam (no new states).
 - Touched: `docs/02` §12–13, `docs/03` §10, `docs/04` §9, `docs/05` §18,
   `docs/10-security-agent-spec.md` (new), `security/CLAUDE.md` + `security/TEMPLATE.md`

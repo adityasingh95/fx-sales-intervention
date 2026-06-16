@@ -403,14 +403,17 @@ FXSW-048…061) and the two v3 feedback rounds (FXSW-062…071) shipped and are
 tracked in `docs/dev-log.md` and `docs/phase-summaries/`. The next free ticket is
 **FXSW-072**.
 
-## Phase 9 — v4 gate + bid/ask forward points + Security Agent
+## Phase 9 — bid/ask forward points (v3) + v4 gate scaffolding + Security Agent
 
-New `?dev=v4` gate (superset of v3; v3 frozen). Forward points become two-sided
-(bid/ask), and the independent **Security Agent** is stood up to review the build
-at the end of this and every later phase. Specs: `docs/02` §12.1/§13, `docs/04`
-§9.1, `docs/05` §18.1, `docs/10-security-agent-spec.md`.
+**Bid/ask forward points** is a v3-level refinement: existing `?dev=v3` outright
+forwards now price each side off its own points value (v4 inherits it). v3 forward
+goldens are re-baselined; the GA spot golden and the mid sequence are unchanged.
+The new `?dev=v4` gate is introduced here as scaffolding (first consumed by NDF in
+Phase 10). The independent **Security Agent** is stood up to review the build at
+the end of this and every later phase. Specs: `docs/02` §12, `docs/04` §9.1,
+`docs/05` §18.1, `docs/10-security-agent-spec.md`.
 
-### FXSW-072 — `?dev=v4` gate (superset of v3)
+### FXSW-072 — `?dev=v4` gate scaffolding (superset of v3)
 
 **Effort:** S · **TDD:** Alongside · **Depends on:** —
 
@@ -418,51 +421,57 @@ at the end of this and every later phase. Specs: `docs/02` §12.1/§13, `docs/04
 - `src/lib/devVersion.ts` widens `DevVersion` to `'v1' | 'v3' | 'v4'`; add
   `isV4()`. `isV4()` implies all v3 behaviour (v4 ⊇ v3): every existing `isV3()`
   call site stays true under `?dev=v4`.
-- Bare URL and `?dev=v3` are byte-for-byte unchanged.
+- Bare URL and `?dev=v3` are byte-for-byte unchanged. (First consumer: NDF,
+  Phase 10 — no v4-gated behaviour ships in this ticket.)
 
 **TDD:** `devVersion.test.ts` — `?dev=v4` → `isV3() && isV4()`; `?dev=v3` →
 `isV3() && !isV4()`; no flag → neither.
 
 **Done when:** all gates green; no v3/GA behaviour change.
 
-### FXSW-073 — Two-sided forward-points feed
+### FXSW-073 — Two-sided forward-points feed (v3+)
 
-**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-072
+**Effort:** M · **TDD:** Strict · **Depends on:** —
 
 **AC:**
-- `forwardPointsFeed.get(pair, tenor)` returns `{ bid, ask, mid }` (scalar →
-  `mid`); deterministic spread from the existing per-(pair, tenor) RNG, widening
-  monotonically with tenor, symmetric around `mid`; SPOT → all-zero.
-- v3/GA callers read `.mid`; under v3 both sides use `.mid` (byte-identical).
+- `forwardPointsFeed.get(pair, tenor)` returns `{ bid, ask, mid }` (old scalar →
+  `mid`); spread derived deterministically from `mid` + tenor (**no extra RNG
+  draws**), widening monotonically with tenor, symmetric around `mid`; SPOT →
+  all-zero.
+- The `mid` sequence is unchanged, so the GA spot golden is intact.
 
-**TDD:** feed unit tests for `bid ≤ mid ≤ ask`, monotonic spread by tenor, seed-42
-golden unchanged for `.mid`.
+**TDD:** feed unit tests for `bid ≤ mid ≤ ask`, monotonic spread by tenor; assert
+the `mid` sequence equals the pre-change scalar (golden unchanged).
 
-**Done when:** all gates green; seed-42 golden intact.
+**Done when:** all gates green; GA spot golden intact.
 
-### FXSW-074 — Bid/ask points through pricing math
+### FXSW-074 — Bid/ask points through pricing math (v3+)
 
 **Effort:** M · **TDD:** Strict · **Depends on:** FXSW-073
 
 **AC:**
 - `lib/pips.ts`: outright bid uses points `.bid`, ask uses points `.ask`; All-in
-  price + estimated P/L are side-specific. v3 path passes `{bid:mid,ask:mid}`.
+  price + estimated P/L are side-specific. Applies to v3 outright forwards.
 - No pip/margin math inlined in components.
 
 **TDD:** `pips` unit tests for asymmetric points → asymmetric outright with zero
-margin; v3 equivalence test.
+margin.
 
 **Done when:** all gates green.
 
-### FXSW-075 — Bid/ask points UI (v4)
+### FXSW-075 — Bid/ask points UI + re-baseline v3 snapshots (v3+)
 
-**Effort:** S · **TDD:** Alongside · **Depends on:** FXSW-074
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-074
 
 **AC:**
 - Forward-points row shows `fwd-points-bid` / `fwd-points-ask` (each suffixed
-  `pips`) plus the `mid` reference, under v4 only; v3 shows the single value.
+  `pips`) plus the `fwd-points-mid` reference, replacing the single `fwd-points`
+  cell for v3 outright forwards.
+- v3 outright-forward component and E2E snapshots are re-baselined to the
+  side-specific values.
 
-**TDD:** component test — two point cells under `?dev=v4`, one under `?dev=v3`.
+**TDD:** component test — two point cells + mid under `?dev=v3`; updated v3
+forward E2E expectations.
 
 **Done when:** all gates green; no console errors.
 
