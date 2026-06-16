@@ -25,6 +25,8 @@ test('v4 NDF injection — points-only ticket: no spot margin, no markup toggle,
 
   const row = page.getByTestId('active-blotter-body').locator('[data-deal-id]').first();
   await expect(row).toBeVisible({ timeout: 1_000 });
+  // FXSW-080: the v4-only instrument column shows the instrument on the row.
+  await expect(row.getByTestId('deal-instrument')).toHaveText('NDF');
   await row.click();
 
   const panel = page.getByTestId('ticket-panel');

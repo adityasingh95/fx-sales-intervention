@@ -938,6 +938,18 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
   (11/11). GA/v3 unaffected.
 
+## FXSW-080 · NDF surfaces + Security Agent pass (Phase 10)
+
+- Added a v4-only **Instrument** column (`deal-instrument`) to the Active and
+  Historic blotters and an Instrument field to the historic detail panel, all
+  showing `instrumentOf(deal)`. Gated on `isV4()` so GA + v3 layouts are byte-
+  unchanged; table min-widths widened only under v4.
+- Extended `tests/e2e/v4-ndf.spec.ts` to assert the row's `deal-instrument` cell.
+- Phase 10 end-of-phase Security Agent review: `security/FXSW-081-review.md`
+  (see that file; proposed work-item transcribed into the backlog).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
+  (11/11). GA/v3 unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

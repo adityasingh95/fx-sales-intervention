@@ -1,8 +1,9 @@
 import clsx from 'clsx';
-import { isV3 } from '@/lib/devVersion';
+import { isV3, isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { instrumentOf } from '@/types/deal';
 import { isHistoric, useActiveDeals, type DealEntry } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import AmountCell from './AmountCell';
@@ -14,6 +15,8 @@ import { derivedStatus, type DisplayStatus } from './statusFromMachines';
 // FXSW-066: Request ID + Value date columns are v3-only; the GA layout is
 // unchanged.
 const v3Cols = isV3();
+// FXSW-080: instrument column is v4-only; GA + v3 layouts are unchanged.
+const v4Cols = isV4();
 
 const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'status', label: 'Status', width: 'w-[110px]' },
@@ -25,6 +28,7 @@ const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'side', label: 'Side', width: 'w-[60px]' },
   { key: 'amount', label: 'Amount', width: 'w-[120px]' },
   { key: 'tenor', label: 'Tenor', width: 'w-[60px]' },
+  ...(v4Cols ? [{ key: 'instrument', label: 'Instrument', width: 'w-[90px]' }] : []),
   ...(v3Cols ? [{ key: 'valueDate', label: 'Value Date', width: 'w-[100px]' }] : []),
   { key: 'rate', label: 'Rate', width: 'w-[120px]' },
   { key: 'reasons', label: 'Reasons', width: 'flex-1 min-w-[200px]' },
@@ -111,6 +115,14 @@ function Row({ entry }: { entry: DealEntry }) {
       <div className="w-[60px] pl-2 font-mono text-xs uppercase text-text-dim">
         {entry.deal.tenor}
       </div>
+      {v4Cols && (
+        <div
+          data-testid="deal-instrument"
+          className="w-[90px] font-mono text-xs uppercase text-text-dim"
+        >
+          {instrumentOf(entry.deal)}
+        </div>
+      )}
       {v3Cols && (
         <div className="w-[100px] font-mono text-xs tabular-nums text-text-dim">
           {valueDateFor(entry)}
@@ -150,7 +162,7 @@ export function ActiveBlotter() {
             )}
           </div>
         ) : (
-          <div className={v3Cols ? 'min-w-[1320px]' : 'min-w-[1100px]'}>
+          <div className={v4Cols ? 'min-w-[1410px]' : v3Cols ? 'min-w-[1320px]' : 'min-w-[1100px]'}>
             <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
               {columns.map((col) => (
                 <div key={col.key} className={col.width}>

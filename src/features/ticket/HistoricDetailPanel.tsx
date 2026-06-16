@@ -2,7 +2,9 @@ import clsx from 'clsx';
 import { Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Pill from '@/components/Pill';
+import { isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
+import { instrumentOf } from '@/types/deal';
 import { useHistoricDealById, type HistoricOutcome } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import type { AppliedMargin } from '@/types/lifecycle';
@@ -112,6 +114,14 @@ export default function HistoricDetailPanel() {
                 Trade ID{' '}
                 <span data-testid="detail-trade-id" className="font-mono text-text-dim">
                   {tradeId}
+                </span>
+              </span>
+            ) : null}
+            {isV4() ? (
+              <span className="text-text-mute">
+                Instrument{' '}
+                <span data-testid="deal-instrument" className="font-mono uppercase text-text-dim">
+                  {instrumentOf(deal)}
                 </span>
               </span>
             ) : null}
