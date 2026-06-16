@@ -855,6 +855,24 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   SPOT collapse; `clientForwardPair` side selection.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · `test:e2e` ✓ (10/10).
 
+## FXSW-075 · Bid/ask points UI + v3 snapshot re-baseline
+
+- `ForwardPointsPanel`: prop `fwdPoints` is now the two-sided `ForwardPointsPair`.
+  The single `fwd-points` cell is replaced by three cells —
+  `fwd-points-bid` / `fwd-points-mid` / `fwd-points-ask` (each suffixed `pips`).
+  All-in bid/ask now go through `clientForwardPair` (bid uses bid points, ask
+  uses ask points); all-in mid uses mid points.
+- `ClientSummaryPanel`: `fwdPoints` switched to the pair; client bid/ask via
+  `clientForwardPair`, P/L mid reference uses mid points.
+- `TicketPanel`: threads the full `ForwardPointsPair` to both panels.
+- v3 outright-forward output is re-baselined to the side-specific values (this is
+  the one intended visible change of the arc). Updated `ForwardPointsPanel` unit
+  test (asymmetric points → bid/ask selection) and the v3-forwards E2E (asserts
+  the three point cells).
+- Note: `test:e2e` runs `vite preview` against `dist/`, so a `pnpm build` is
+  required before E2E whenever runtime output changes.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · build ✓ · `test:e2e` ✓ (10/10).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

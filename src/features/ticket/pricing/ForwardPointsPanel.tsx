@@ -1,7 +1,8 @@
 import clsx from 'clsx';
 import { formatRate } from '@/lib/format';
-import { allInRate, clientAskFromForward, clientBidFromForward } from '@/lib/pips';
+import { allInRate, clientForwardPair } from '@/lib/pips';
 import type { QuoteSide } from '@/lib/quoteSide';
+import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { Pair, PriceTick } from '@/services/feed/types';
 import type { MarginPair, Tenor } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
@@ -52,7 +53,9 @@ export interface ForwardPointsPanelProps {
   pair: Pair;
   tenor: Tenor;
   tick: PriceTick | null;
-  fwdPoints: number;
+  // FXSW-075: two-sided forward points — bid all-in uses bid points, ask uses
+  // ask points, the mid is the un-marked outright reference.
+  fwdPoints: ForwardPointsPair;
   markupMode: MarkupMode;
   onMarkupModeChange: (mode: MarkupMode) => void;
   // The spot (Trader Rate) margin — folded into the all-in figures so the
@@ -90,15 +93,10 @@ export default function ForwardPointsPanel({
   // by both margin components, per side — so Balance/Zero and the per-side
   // forward-points margin visibly move them (matches ClientSummaryPanel). The
   // mid stays the un-marked outright reference.
-  const allInBid =
-    tick === null
-      ? null
-      : clientBidFromForward(tick.bid, fwdPoints, marginPair.bid, fwdMarginPair.bid, pair);
-  const allInMid = tick ? allInRate(tick.mid, fwdPoints, pair) : null;
-  const allInAsk =
-    tick === null
-      ? null
-      : clientAskFromForward(tick.ask, fwdPoints, marginPair.ask, fwdMarginPair.ask, pair);
+  const clientAllIn = tick ? clientForwardPair(tick, fwdPoints, marginPair, fwdMarginPair, pair) : null;
+  const allInBid = clientAllIn?.bid ?? null;
+  const allInAsk = clientAllIn?.ask ?? null;
+  const allInMid = tick ? allInRate(tick.mid, fwdPoints.mid, pair) : null;
 
   return (
     <section
@@ -127,12 +125,31 @@ export default function ForwardPointsPanel({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-col gap-1">
         <span className="text-xs uppercase tracking-tight text-text-mute">Forward points</span>
-        <span className="font-mono tabular-nums text-text">
-          <span data-testid="fwd-points">{fmtPoints(fwdPoints)}</span>
-          <span className="ml-1 text-xs text-text-mute">pips</span>
-        </span>
+        <div className="grid grid-cols-3 gap-x-4 text-center">
+          <div>
+            <span data-testid="fwd-points-bid" className="font-mono tabular-nums text-text">
+              {fmtPoints(fwdPoints.bid)}
+            </span>
+            <span className="ml-1 text-xs text-text-mute">pips</span>
+            <div className="text-[10px] uppercase tracking-tight text-text-mute">Bid</div>
+          </div>
+          <div>
+            <span data-testid="fwd-points-mid" className="font-mono tabular-nums text-text-dim">
+              {fmtPoints(fwdPoints.mid)}
+            </span>
+            <span className="ml-1 text-xs text-text-mute">pips</span>
+            <div className="text-[10px] uppercase tracking-tight text-text-mute">Mid</div>
+          </div>
+          <div>
+            <span data-testid="fwd-points-ask" className="font-mono tabular-nums text-text">
+              {fmtPoints(fwdPoints.ask)}
+            </span>
+            <span className="ml-1 text-xs text-text-mute">pips</span>
+            <div className="text-[10px] uppercase tracking-tight text-text-mute">Ask</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-x-4 text-center">
