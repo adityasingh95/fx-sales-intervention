@@ -1,11 +1,12 @@
 ---
-last_updated: 2026-06-10
+last_updated: 2026-06-16
 sources:
   - docs/02-functional-spec.md
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
   - docs/phase-summaries/FXSW-021-summary.md
   - docs/phase-summaries/FXSW-042-followup-summary.md
+  - docs/phase-summaries/phase-08-v3-summary.md
 status: stable
 ticket: FXSW-014..FXSW-020
 ---
@@ -83,6 +84,27 @@ Layout (revised in Phase 6.1, item #1):
 - The native number-input spinner is suppressed globally (`input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none }` + `-moz-appearance: textfield` in `src/styles/global.css`) so the dedicated `−`/`+` buttons are the only adjustment surface and the side-by-side inputs stay aligned.
 
 Per-side testids carry a side suffix so the two `MarginRow`s are independently addressable: `margin-minus-bid` / `margin-input-bid` / `margin-plus-bid` and the `-ask` equivalents (v1's single control keeps the unsuffixed `margin-minus` / `margin-input` / `margin-plus`). The `BalanceZeroRow` exposes `margin-balance` and `margin-zero`. Each input keeps the `data-margin-glow="true"` 600ms indigo glow on change.
+
+> **Gating note:** this dual-margin layout shipped behind `?dev=v2` in Phase 6, but FXSW-047 promoted v2 to GA and removed the `?dev=v2`/`?theme=preview` flags. On current `main` the dual-margin layout is the default; the surviving preview flag is `?dev=v3` (see below). The broader v2-GA wording across these pages is stale pending a separate reconciliation pass.
+
+## One-sided markup lock (v3)
+
+For a **one-sided** request (`quoteSide !== 'BOTH'`) under v3, the non-quotable side's markup is locked so the trader can only mark up the side actually being quoted. `TicketPanel` sets `restrictMarginSides = isV3()` and threads it into both `PricingPanel` (spot) and `ForwardPointsPanel` (forward — see [forward-pricing.md](forward-pricing.md)):
+
+- the locked side's `MarginRow` stepper + input are **`disabled`** (via the `disabled` prop on `MarginRow`),
+- **Balance / Zero are hidden** when `restrictMarginSides && quoteSide !== 'BOTH'`.
+
+Testids are unchanged — the lock is a prop-driven `disabled` state, not a new element. The price cells were already side-gated. GA (no `?dev=v3`) keeps both sides editable. (FXSW-068)
+
+## ESP read-only view (v3)
+
+Under v3, opening a **happy auto-priced (ESP / `AUTO`) deal** no longer fires SI `PickUp` — there is nothing to intervene on. Instead `TicketPanel` opens a **read-only** view (`autoView`, latched once per open, entered when `isV3() && rfsState === 'Executable' && siState === 'Initial'`):
+
+- panel carries **`data-readonly="true"`**; header reads "Auto-priced",
+- shows the deal terms + the streamed client price only — **no Pricing Panel and no Footer** (no actions),
+- an **`auto-priced-note`** paragraph explains the price was streamed within tolerance with no manual markup.
+
+The same auto-priced framing surfaces later in the [historical detail](historical-detail.md) overlay (the `AUTO_PRICE` timeline phase + auto-priced markup note). GA behaviour is unchanged — opening an `AUTO` deal there is a no-op as before. (FXSW-069)
 
 ## Client Summary Panel (FXSW-019)
 

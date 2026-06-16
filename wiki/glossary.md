@@ -1,7 +1,8 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-16
 sources:
   - docs/00-glossary.md
+  - docs/phase-summaries/phase-08-v3-summary.md
 status: stable
 ---
 
@@ -113,6 +114,11 @@ Reference implementations publish these in a container at `/PRIVATE/FX/SALES/BLO
 | **Scenario** | A pre-canned sequence of events used for demos and E2E tests. See the [Scenarios section of the index](index.md#scenarios). |
 | **Dev Injector** | The hidden control panel at `?dev=1` that lets the operator inject scenarios on demand. See [features/dev-injector.md](features/dev-injector.md). |
 | **Rejection reason** | The flag indicating why auto-pricing failed. In v1: `OFF_HOURS`, `SIZE_LIMIT`, `CREDIT_LIMIT`. |
+| **`?dev=v3`** | URL preview flag enabling the v3 feature set (external feed, forwards, historical detail). Parsed by `isV3()`; the bare-URL GA app is unchanged. See [features/forward-pricing.md](features/forward-pricing.md). |
+| **External market-data feed** | Opt-in runtime adapter (v3) that polls a generic external market-data provider every 5 minutes to re-anchor the simulator. OFF by default; no vendor named. See [components/external-price-feed.md](components/external-price-feed.md). |
+| **Auto-priced** | An ESP deal streamed within tolerance with no manual markup. In v3 it opens a read-only ticket and shows the `AUTO_PRICE` timeline phase instead of `PRICE_BACK`. |
+| **Lifecycle phase / timeline** | Display-only waypoints (REQUEST/PICKUP/RELEASE/PRICE_BACK/AUTO_PRICE/WITHDRAWN/RESPONSE) observed from the SI/RFS machines for the v3 historical detail. See [data-models/deal-lifecycle-phase.md](data-models/deal-lifecycle-phase.md). |
+| **Request ID / Trade ID** | Synthetic display identifiers minted in v3 (`REQ-XXXXXX` at deal creation; `TRD-XXXXXX` at archive for executed deals). |
 
 ## Source
 
