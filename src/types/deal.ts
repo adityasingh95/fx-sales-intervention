@@ -28,6 +28,17 @@ export const FORWARD_TENORS: readonly Tenor[] = TENORS.filter((t) => t !== 'SPOT
 
 export const isForwardTenor = (tenor: Tenor): boolean => tenor !== 'SPOT';
 
+// v4 (FXSW-078): the instrument discriminator. `SPOT`/`OUTRIGHT` are the existing
+// single-leg deliverable deals (distinguished by tenor); `NDF` and `SWAP` are the
+// new v4 instruments. It is orthogonal to `tenor`.
+export type InstrumentType = 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP';
+
+// Default instrument for a deal that predates the discriminator (legacy/spot/
+// outright fixtures): SPOT tenor → SPOT, any forward tenor → OUTRIGHT. NDF and
+// SWAP are never derived — they must be set explicitly at construction.
+export const defaultInstrumentForTenor = (tenor: Tenor): InstrumentType =>
+  isForwardTenor(tenor) ? 'OUTRIGHT' : 'SPOT';
+
 // Leg model — the swap-extension seam (FXSW-054). v3 forwards are a single
 // NEAR leg; a later swap ticket adds a FAR leg with no type change. v3 derives
 // the (single) leg from `Deal.tenor`, so `legs` stays optional and unused for
@@ -51,7 +62,17 @@ export type Deal = {
   // Optional multi-leg description (swap seam). Absent for v3 spot + outright
   // forwards, which are fully described by `tenor`.
   legs?: DealLeg[];
+  // Instrument discriminator (v4, FXSW-078). Optional: legacy/spot/outright
+  // deals omit it and derive a default from `tenor` via `instrumentOf()`;
+  // `buildDeal` always sets it on injected deals. NDF/SWAP are only ever explicit.
+  instrumentType?: InstrumentType;
 };
+
+// Resolve a deal's instrument, deriving the default from tenor when the
+// discriminator is absent (legacy/spot/outright deals). Use this everywhere the
+// instrument is read so consumers never branch on a raw `undefined`.
+export const instrumentOf = (deal: Pick<Deal, 'instrumentType' | 'tenor'>): InstrumentType =>
+  deal.instrumentType ?? defaultInstrumentForTenor(deal.tenor);
 
 // Independent bid + ask markups. In v1 the single PricingPanel input
 // keeps both sides equal (the dual UI lands in FXSW-040). The AI

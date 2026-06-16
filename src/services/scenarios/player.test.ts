@@ -47,6 +47,43 @@ describe('createScenarioPlayer', () => {
     expect(emitted[0]).toMatchObject({ type: 'NEW_SI_DEAL', deal: { tenor: 'SPOT' } });
   });
 
+  it('derives instrumentType from tenor when no override is given (FXSW-078)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_inst',
+    });
+    // SPOT scenario → SPOT instrument.
+    player.inject('OFF_HOURS_INTERVENTION');
+    expect(emitted[0]).toMatchObject({ deal: { tenor: 'SPOT', instrumentType: 'SPOT' } });
+    // Forward tenor override → OUTRIGHT instrument.
+    player.inject('OFF_HOURS_INTERVENTION', { tenor: '3M' });
+    expect(emitted[1]).toMatchObject({ deal: { tenor: '3M', instrumentType: 'OUTRIGHT' } });
+  });
+
+  it('coerces an NDF on a SPOT request to the shortest forward tenor (FXSW-078)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_ndf',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'NDF' });
+    expect(emitted[0]).toMatchObject({
+      type: 'NEW_SI_DEAL',
+      deal: { instrumentType: 'NDF', tenor: '1W' },
+    });
+  });
+
+  it('keeps an explicit forward tenor for an NDF override (FXSW-078)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_ndf2',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'NDF', tenor: '6M' });
+    expect(emitted[0]).toMatchObject({ deal: { instrumentType: 'NDF', tenor: '6M' } });
+  });
+
   it('notifyDealState ignores non-matching dealId and non-matching state', () => {
     const emitted: DealEvent[] = [];
     const player = createScenarioPlayer({

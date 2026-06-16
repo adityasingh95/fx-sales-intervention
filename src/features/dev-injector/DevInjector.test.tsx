@@ -18,4 +18,9 @@ describe('DevInjector', () => {
     expect(screen.getByTestId('inject-QUOTE_DEALT_INQUIRY')).toBeInTheDocument();
     expect(screen.getByTestId('inject-RESET')).toBeInTheDocument();
   });
+
+  it('hides the v4 instrument selector on the bare URL (FXSW-078)', () => {
+    render(<DevInjector />);
+    expect(screen.queryByTestId('inject-instrument')).toBeNull();
+  });
 });

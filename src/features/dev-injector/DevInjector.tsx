@@ -1,13 +1,23 @@
 import clsx from 'clsx';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { isV3 } from '@/lib/devVersion';
+import { isV3, isV4 } from '@/lib/devVersion';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import { TENORS, type Tenor } from '@/types/deal';
-import { SCENARIO_IDS, type ScenarioId } from '@/types/scenario';
+import { SCENARIO_IDS, type ScenarioId, type ScenarioOverrides } from '@/types/scenario';
+
+// Injectable instruments (v4). `AUTO` derives SPOT/OUTRIGHT from the tenor (the
+// v3 behaviour); `NDF` is the Phase 10 instrument and forces a forward tenor.
+// SWAP is added when Phase 11 lands its pricing UI.
+type InjectInstrument = 'AUTO' | 'NDF';
+const INJECT_INSTRUMENTS: readonly InjectInstrument[] = ['AUTO', 'NDF'];
+const INSTRUMENT_LABEL: Record<InjectInstrument, string> = {
+  AUTO: 'Auto',
+  NDF: 'NDF',
+};
 
 // Compact labels for the header chip-style buttons.
 const LABEL: Record<ScenarioId, string> = {
@@ -30,9 +40,16 @@ export default function DevInjector() {
   // FXSW-059: v3 only — inject any scenario as a forward by overriding the
   // tenor at inject time. SPOT (default) keeps the bare-URL behaviour.
   const showForwardSelect = isV3();
+  // FXSW-078: v4 only — inject any scenario as a specific instrument (NDF now).
+  const showInstrumentSelect = isV4();
   const [tenor, setTenor] = useState<Tenor>('SPOT');
+  const [instrument, setInstrument] = useState<InjectInstrument>('AUTO');
   const injectScenario = (id: ScenarioId): void => {
-    dealFeed.inject(id, tenor === 'SPOT' ? undefined : { tenor });
+    const overrides: ScenarioOverrides = {};
+    if (tenor !== 'SPOT') overrides.tenor = tenor;
+    if (instrument !== 'AUTO') overrides.instrumentType = instrument;
+    const hasOverride = overrides.tenor !== undefined || overrides.instrumentType !== undefined;
+    dealFeed.inject(id, hasOverride ? overrides : undefined);
   };
 
   const resetSession = (): void => {
@@ -53,6 +70,9 @@ export default function DevInjector() {
         tenor={tenor}
         onTenorChange={setTenor}
         showForwardSelect={showForwardSelect}
+        instrument={instrument}
+        onInstrumentChange={setInstrument}
+        showInstrumentSelect={showInstrumentSelect}
       />
     );
   }
@@ -67,6 +87,9 @@ export default function DevInjector() {
       </span>
       {showForwardSelect && (
         <TenorSelect tenor={tenor} onChange={setTenor} />
+      )}
+      {showInstrumentSelect && (
+        <InstrumentSelect instrument={instrument} onChange={setInstrument} />
       )}
       {visibleScenarios.map((id) => (
         <button
@@ -114,6 +137,29 @@ function TenorSelect({ tenor, onChange }: TenorSelectProps) {
   );
 }
 
+interface InstrumentSelectProps {
+  instrument: InjectInstrument;
+  onChange: (i: InjectInstrument) => void;
+}
+
+function InstrumentSelect({ instrument, onChange }: InstrumentSelectProps) {
+  return (
+    <select
+      data-testid="inject-instrument"
+      aria-label="Injection instrument"
+      value={instrument}
+      onChange={(e) => onChange(e.target.value as InjectInstrument)}
+      className="shrink-0 rounded-sm border border-border bg-bg-elevated px-1 py-1 text-xs font-medium text-text-dim hover:border-blue/60 hover:text-text"
+    >
+      {INJECT_INSTRUMENTS.map((i) => (
+        <option key={i} value={i}>
+          {INSTRUMENT_LABEL[i]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 interface MobileDevInjectorProps {
   visibleScenarios: readonly ScenarioId[];
   onInject: (id: ScenarioId) => void;
@@ -121,6 +167,9 @@ interface MobileDevInjectorProps {
   tenor: Tenor;
   onTenorChange: (t: Tenor) => void;
   showForwardSelect: boolean;
+  instrument: InjectInstrument;
+  onInstrumentChange: (i: InjectInstrument) => void;
+  showInstrumentSelect: boolean;
 }
 
 function MobileDevInjector({
@@ -130,6 +179,9 @@ function MobileDevInjector({
   tenor,
   onTenorChange,
   showForwardSelect,
+  instrument,
+  onInstrumentChange,
+  showInstrumentSelect,
 }: MobileDevInjectorProps) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -187,6 +239,9 @@ function MobileDevInjector({
           >
             {showForwardSelect && (
               <TenorSelect tenor={tenor} onChange={onTenorChange} />
+            )}
+            {showInstrumentSelect && (
+              <InstrumentSelect instrument={instrument} onChange={onInstrumentChange} />
             )}
             {visibleScenarios.map((id) => (
               <button

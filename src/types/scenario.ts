@@ -1,9 +1,11 @@
-import type { Deal, RejectionReason, Tenor } from './deal';
+import type { Deal, InstrumentType, RejectionReason, Tenor } from './deal';
 
-// Per-injection overrides (FXSW-059). The Dev Injector can inject any scenario
-// as a forward by overriding the tenor at inject time — no scenario duplication.
+// Per-injection overrides (FXSW-059, FXSW-078). The Dev Injector can inject any
+// scenario as a forward (tenor) or as a specific instrument (instrumentType) at
+// inject time — no scenario duplication.
 export type ScenarioOverrides = {
   tenor?: Tenor;
+  instrumentType?: InstrumentType;
 };
 
 export type ScenarioId =

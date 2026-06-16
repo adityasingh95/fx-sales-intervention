@@ -1,5 +1,6 @@
 import type { DealEvent } from '@/services/feed/types';
 import type { Deal } from '@/types/deal';
+import { FORWARD_TENORS, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
 import type {
   FollowUpEvent,
   Scenario,
@@ -81,12 +82,26 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
     scenario: Scenario,
     dealId: string,
     overrides?: ScenarioOverrides,
-  ): Deal => ({
-    dealId,
-    createdAt: now(),
-    ...scenario.deal,
-    ...(overrides?.tenor ? { tenor: overrides.tenor } : {}),
-  });
+  ): Deal => {
+    const requestedTenor = overrides?.tenor ?? scenario.deal.tenor;
+    const instrumentType =
+      overrides?.instrumentType ??
+      scenario.deal.instrumentType ??
+      defaultInstrumentForTenor(requestedTenor);
+    // An NDF must carry a forward tenor (docs/02 §12.2); a SPOT request is
+    // coerced to the shortest forward tenor rather than rejected outright.
+    const tenor =
+      instrumentType === 'NDF' && !isForwardTenor(requestedTenor)
+        ? FORWARD_TENORS[0]
+        : requestedTenor;
+    return {
+      dealId,
+      createdAt: now(),
+      ...scenario.deal,
+      tenor,
+      instrumentType,
+    };
+  };
 
   return {
     inject(scenarioId, overrides) {

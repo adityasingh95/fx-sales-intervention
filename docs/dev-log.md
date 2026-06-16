@@ -898,6 +898,25 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
 - Phase 9 closed. Gates at close: typecheck ✓ · lint ✓ · `test:run` ✓ (469) ·
   build ✓ · `test:e2e` ✓ (10/10); `dist/` brand-neutral.
 
+## FXSW-078 · `instrumentType` discriminator + injector selector
+
+- `types/deal.ts`: added `InstrumentType = 'SPOT'|'OUTRIGHT'|'NDF'|'SWAP'`, an
+  optional `Deal.instrumentType`, `defaultInstrumentForTenor(tenor)` (SPOT→SPOT,
+  forward→OUTRIGHT), and an `instrumentOf(deal)` resolver. Optional + resolver
+  means zero churn to the ~13 legacy `Deal` fixtures while keeping the field
+  type-safe; `buildDeal` always sets it on injected deals.
+- `types/scenario.ts` + `player.ts`: `ScenarioOverrides.instrumentType`;
+  `buildDeal` resolves the instrument (override → scenario → derived) and coerces
+  an NDF on a SPOT request to the shortest forward tenor (`FORWARD_TENORS[0]`),
+  per docs/02 §12.2.
+- `DevInjector`: v4-only `inject-instrument` selector (`Auto` = derive from tenor;
+  `NDF` now; SWAP added in Phase 11), threaded through desktop + mobile.
+- Tests: `player.test.ts` — default derivation + NDF SPOT→forward coercion +
+  explicit-forward NDF; `DevInjector.test.tsx` — selector hidden on bare URL.
+  (v4 visibility + NDF injection covered by the NDF E2E in FXSW-079/080.)
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (473) · build ✓ · `test:e2e` ✓
+  (10/10). GA/v3 unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
