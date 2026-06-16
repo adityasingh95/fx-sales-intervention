@@ -25,6 +25,53 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## FXSW-071 · Forward-points unit label
+
+- The bare forward-points figure now carries a `pips` suffix (e.g. `−120.1 pips`)
+  so it reads as a quoted quantity rather than a stray number. The `fwd-points`
+  testid still wraps the value only.
+- Agent-directed clarity fix from live v3 feedback (item 5). The value itself
+  (e.g. EURUSD 1Y ≈ −120) is the simulated forward discount and was already
+  correct.
+
+---
+
+## FXSW-070 · Auto-priced timeline phase
+
+- ESP (auto-priced) deals previously mapped RFS `Executable → PRICE_BACK`, so the
+  detail timeline read "Priced back" for a deal no trader ever priced. Added a
+  distinct `AUTO_PRICE` phase (`src/types/lifecycle.ts`), remapped
+  `lifecyclePhase.ts`, and labelled it **"Auto-priced"** in `TimelinePanel`.
+- `HistoricDetailPanel` now shows an "Auto-priced — streamed within tolerance,
+  no manual markup applied" note for these deals instead of "No price was sent".
+- User-directed (item 3). Timeline is v3-only-visible; no GA behaviour changes.
+
+---
+
+## FXSW-069 · Read-only view for happy auto-priced deals
+
+- Opening a happy auto-priced (ESP / `AUTO`) deal under v3 no longer fires
+  `PickUp`; it opens a **read-only** ticket (`data-readonly`, `auto-priced-note`)
+  with the deal terms + streamed client price, and no pricing panel or footer.
+  An already auto-priced deal is no longer pulled into manual handling.
+- Latched once per open (`autoView`) so it stays stable after the deal
+  auto-confirms while SI remains `Initial`. Gated by `isV3()`; GA still picks up.
+- User-directed (item 2; "open read-only view").
+
+---
+
+## FXSW-068 · One-sided requests lock the off-side markup
+
+- For a one-sided request only the quotable side can be priced, so the
+  non-quotable side's margin stepper is now disabled and the two-sided
+  Balance/Zero shortcuts are hidden — in both the spot (`PricingPanel`) and
+  forward (`ForwardPointsPanel`) markup blocks. `MarginRow` gained a `disabled`
+  prop; the restriction is driven by `quoteSide` + a `restrictMarginSides` flag.
+- Gated by `isV3()` (GA keeps both sides editable); the price *cells* were
+  already side-gated. User-directed (item 1).
+
+---
+
 ## FXSW-066 · Request ID / Trade ID / Value date in blotters
 
 - **Synthetic display identifiers**: new `src/lib/ids.ts` (`makeRequestId` →

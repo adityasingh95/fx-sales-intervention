@@ -320,3 +320,18 @@ Post-launch refinements from hands-on testing (FXSW-062…067):
   executed deals also get a Trade ID (Historic). Request ID, Trade ID, and the
   tenor-aware Value date appear as v3-only blotter columns and in the detail
   overlay.
+
+A second round of refinements (FXSW-068…071):
+
+- **One-sided markup lock** — for a one-sided request only the quotable side can
+  be priced, so the non-quotable side's margin stepper is disabled and the
+  two-sided Balance/Zero shortcuts are hidden (spot + forward markup blocks). The
+  price cells were already side-gated.
+- **Happy auto-priced deals are read-only** — opening an `AUTO` (ESP) deal no
+  longer fires PickUp; it shows a read-only view (deal terms + streamed client
+  price, no pricing panel or footer) so an already auto-priced deal isn't pulled
+  into manual handling.
+- **Auto-priced timeline phase** — ESP deals record `AUTO_PRICE` ("Auto-priced")
+  instead of `PRICE_BACK`; the detail markup-reason notes the deal was auto-priced
+  within tolerance.
+- **Forward-points unit** — the forward-points figure is suffixed `pips`.

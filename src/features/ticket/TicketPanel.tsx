@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import StatusCell from '@/features/blotter/StatusCell';
 import { derivedStatus } from '@/features/blotter/statusFromMachines';
+import { isV3 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { quoteSideFor } from '@/lib/quoteSide';
 import type { PriceTick } from '@/services/feed/types';
@@ -50,6 +51,11 @@ export default function TicketPanel() {
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
   const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
+  // FXSW-069 (v3): a "happy" auto-priced (ESP) deal needs no manual
+  // intervention, so opening it shows a read-only view and does NOT fire
+  // PickUp. Latched once per open so it stays stable after the deal
+  // auto-confirms (RFS → TradeConfirmed) while SI remains `Initial`.
+  const [autoView, setAutoView] = useState(false);
   // FXSW-060: track whether the live margin came from the AI suggestion (and
   // its rationale) so the markup reason can be captured at quote time.
   const [aiApplied, setAiApplied] = useState(false);
@@ -102,11 +108,17 @@ export default function TicketPanel() {
     return () => document.removeEventListener('keydown', handler);
   }, [openDealId]);
 
-  // Fire SI PickUp once per open, only if the deal is still in Initial.
+  // Fire SI PickUp once per open, only if the deal is still in Initial — but
+  // never for a happy auto-priced (ESP) deal under v3 (rfs Executable + si
+  // Initial = AUTO). Those open read-only instead, so an already auto-priced
+  // deal isn't pulled into manual handling (FXSW-069).
   useEffect(() => {
     if (!openDealId) return;
     const cur = useDealsStore.getState().deals.get(openDealId);
-    if (cur && cur.siState === 'Initial') {
+    if (!cur) return;
+    const auto = isV3() && cur.rfsState === 'Executable' && cur.siState === 'Initial';
+    setAutoView(auto);
+    if (!auto && cur.siState === 'Initial') {
       useDealsStore.getState().forwardEvent(openDealId, { type: 'PickUp' });
     }
   }, [openDealId]);
@@ -142,6 +154,9 @@ export default function TicketPanel() {
   const fwdPoints = isForward ? forwardPointsFeed.get(deal.pair, deal.tenor) : 0;
   const effectiveFwdMargin: MarginPair =
     markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
+  const quoteSide = quoteSideFor(deal.side, deal.dealtCcy);
+  // v3 only — GA keeps both margin sides editable regardless of request side.
+  const restrictMarginSides = isV3();
 
   return (
     <div
@@ -152,9 +167,10 @@ export default function TicketPanel() {
       <div
         data-testid="ticket-panel"
         data-deal-id={deal.dealId}
+        data-readonly={autoView ? 'true' : undefined}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Sales Intervention ticket"
+        aria-label={autoView ? 'Auto-priced deal' : 'Sales Intervention ticket'}
         className={clsx(
           'absolute right-0 top-0 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-glass shadow-2xl backdrop-blur-xl backdrop-saturate-150 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[640px]',
           slidIn ? 'translate-x-0' : 'translate-x-full',
@@ -163,7 +179,7 @@ export default function TicketPanel() {
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <div className="flex items-center gap-3">
             <span className="font-sans text-sm font-medium text-text">
-              Sales Intervention
+              {autoView ? 'Auto-priced' : 'Sales Intervention'}
             </span>
             <span className="font-mono text-xs text-text-mute">{deal.dealId}</span>
           </div>
@@ -185,6 +201,42 @@ export default function TicketPanel() {
             </span>
           </div>
 
+          {autoView ? (
+            <>
+              <p
+                data-testid="auto-priced-note"
+                className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-sm text-text-dim"
+              >
+                This deal is auto-priced and streaming to the client within tolerance. No
+                manual intervention is required.
+              </p>
+              <SummaryPanel deal={deal} />
+              {isForward && (
+                <ForwardPointsPanel
+                  pair={deal.pair}
+                  tenor={deal.tenor}
+                  tick={displayTick}
+                  fwdPoints={fwdPoints}
+                  markupMode={markupMode}
+                  onMarkupModeChange={setMarkupMode}
+                  marginPair={marginPair}
+                  fwdMarginPair={{ bid: 0, ask: 0 }}
+                  onFwdMarginPairChange={() => {}}
+                />
+              )}
+              <ClientSummaryPanel
+                tick={displayTick}
+                marginPair={marginPair}
+                notional={deal.notional}
+                pair={deal.pair}
+                quoteSide={quoteSide}
+                fwdPoints={isForward ? fwdPoints : undefined}
+                fwdMarginPair={{ bid: 0, ask: 0 }}
+              />
+              <DealSummaryPanel deal={deal} />
+            </>
+          ) : (
+          <>
           <ReasonsPanel reasons={rejectionReasons} />
           <SuggestionPanel
             suggestion={suggestion}
@@ -240,9 +292,10 @@ export default function TicketPanel() {
               setFixedSide(null);
               setFrozenTick(null);
             }}
-            quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}
+            quoteSide={quoteSide}
             marginPair={marginPair}
             onMarginPairChange={setMarginPair}
+            restrictMarginSides={restrictMarginSides}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}
@@ -260,6 +313,8 @@ export default function TicketPanel() {
                 marginPair={marginPair}
                 fwdMarginPair={effectiveFwdMargin}
                 onFwdMarginPairChange={setFwdMarginPair}
+                quoteSide={quoteSide}
+                restrictMarginSides={restrictMarginSides}
               />
             </>
           )}
@@ -268,22 +323,26 @@ export default function TicketPanel() {
             marginPair={marginPair}
             notional={deal.notional}
             pair={deal.pair}
-            quoteSide={quoteSideFor(deal.side, deal.dealtCcy)}
+            quoteSide={quoteSide}
             fwdPoints={isForward ? fwdPoints : undefined}
             fwdMarginPair={effectiveFwdMargin}
           />
           <DealSummaryPanel deal={deal} />
+          </>
+          )}
         </div>
-        <TicketFooter
-          dealId={deal.dealId}
-          siState={siState}
-          pricingMode={pricingMode}
-          onReturnToStream={() => {
-            setPricingMode('streaming');
-            setFixedSide(null);
-            setFrozenTick(null);
-          }}
-        />
+        {!autoView && (
+          <TicketFooter
+            dealId={deal.dealId}
+            siState={siState}
+            pricingMode={pricingMode}
+            onReturnToStream={() => {
+              setPricingMode('streaming');
+              setFixedSide(null);
+              setFrozenTick(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
