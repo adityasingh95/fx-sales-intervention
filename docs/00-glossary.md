@@ -46,7 +46,11 @@ Domain terms used across this prototype. Use industry-standard FX terminology co
 | **Trader rate** | Internal rate before client margin is applied. |
 | **Margin / Markup** | Pip amount applied to the trader rate to produce the client price. |
 | **All-In Rate** | Spot rate plus forward points. |
-| **Forward points** | Difference between spot and forward rate, expressed in pips. |
+| **Forward points** | Difference between spot and forward rate, expressed in pips. Two-sided (bid/ask) from v3+. |
+| **Forward points bid/ask** | A bid and an ask points value per (pair, tenor); the outright differs by side before any margin. |
+| **Near leg / Far leg** | The earlier- and later-settling legs of a swap (`Deal.legs` kinds `NEAR` / `FAR`). |
+| **Swap differential / Net swap points** | Far-leg points minus near-leg points, per side; drives the swap client price and P/L. |
+| **Instrument type** | A deal's instrument discriminator: `SPOT`, `OUTRIGHT`, `NDF`, or `SWAP`. |
 | **Tenor** | Time from trade date to settlement. |
 | **Settlement date / Value date** | Date on which the trade delivers. |
 | **Fixing date** | Date on which the cash-settlement reference rate is observed for NDFs. |
@@ -101,3 +105,5 @@ SI events: `PickUp`, `PickUpAck`, `Hold`, `HoldAck`, `Reject`, `RejectAck`, `Quo
 | **Scenario** | Pre-canned sequence of events used for demos and E2E tests. |
 | **Dev Injector** | Hidden `?dev=1` control panel for injecting scenarios. |
 | **Rejection reason** | Reason auto-pricing failed. In v1: `OFF_HOURS`, `SIZE_LIMIT`, `CREDIT_LIMIT`. |
+| **`?dev=v3` / `?dev=v4`** | URL preview gates. v3 = forwards + dual margin etc.; v4 = NDF + swaps, a superset of v3. |
+| **Security Agent** | Independent, unprimed end-of-phase reviewer; writes functional + technical findings to `/security/`. |

@@ -322,3 +322,23 @@ spot component. A tenor factor widens the forward component with maturity (and
 with thin liquidity). The spot rule chain (§3–§8) is unchanged — implemented in a
 separate `forwardEngine.ts` — so existing factor and rationale tests pass. Apply
 writes both components; Undo restores both. The engine remains deterministic.
+
+## 17. v4 instruments — NDF + swap suggestion
+
+The engine stays deterministic and reuses the existing rule chain; the new
+instruments only change *which* component(s) the suggestion is applied to.
+
+- **Bid/ask forward points (v3+)** do not change the engine. The suggestion still
+  produces a single margin value applied to both sides on Apply; side asymmetry
+  comes from the feed points, not the suggestion.
+- **NDF** — only the forward-points component exists (no spot markup, see
+  `docs/02` §12.2). The engine returns `fwdPointsPips` only; `suggestedPips`
+  (spot) is not surfaced. Apply/Undo operate on the points margin alone.
+- **Swap** — the suggestion is offered only in **Total** markup mode and targets
+  the single net-points margin (computed via the same `forwardEngine.ts` tenor
+  factor, using the far tenor). In **Per-component** mode the AI suggestion is
+  **hidden** (no per-leg suggestion this arc). Apply writes the net margin; Undo
+  restores it.
+
+No new rule, factor, or rationale type is introduced — these are routing rules
+over the existing deterministic output.

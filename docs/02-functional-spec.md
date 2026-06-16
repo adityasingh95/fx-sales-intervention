@@ -387,7 +387,8 @@ instrument:
   the forward-points margin alone. The one-sided lock (§7.3) still applies.
 
 No fixing/settlement-rate modelling is introduced — the prototype keeps NDF as a
-markup-restricted outright.
+markup-restricted outright. The AI Margin Suggestion applies to the forward-points
+margin only (`docs/09` §17).
 
 ### 12.3 Swaps (behind `?dev=v4`)
 
@@ -411,6 +412,8 @@ tenor, with far strictly later than near. Legs are carried in the existing
 - Markups are constrained to the request parameters: a one-sided swap exposes
   only the quotable side's margins; the locked side's steppers are disabled and
   its Balance/Zero are hidden, per §7.3.
+- **AI Margin Suggestion** is offered only in **Total** mode (it suggests the net
+  points margin); it is hidden in **Per-component** mode (`docs/09` §17).
 
 The two coordinated state machines (RFS + SI) are unchanged — a swap is one deal
 with one lifecycle; the second leg is a pricing/display concern, not a new state

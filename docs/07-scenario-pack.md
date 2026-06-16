@@ -204,3 +204,15 @@ Under `?dev=v3` the Dev Injector adds a tenor selector. `player.inject` /
 `buildDeal` accept an optional `{ tenor }` override applied over the chosen
 scenario's deal; defaults preserve SPOT. The seven scenarios are not duplicated.
 Brand-neutral client names are unchanged.
+
+## 13. v4 — instrument injection
+
+Under `?dev=v4` the Dev Injector adds an **instrument selector** (and, for swaps,
+a **far-tenor** selector) alongside the v3 tenor control. `player.inject` /
+`buildDeal` accept optional `{ instrumentType, farTenor }` overrides applied over
+the chosen scenario's deal; defaults preserve the v3 behaviour (`SPOT`/`OUTRIGHT`
+from tenor). As with tenor, instruments are a **per-inject parameter** — the seven
+scenarios are **not** duplicated, and no instrument-specific scenario definitions
+are added. Injector validation (also in `buildDeal`): NDF requires a forward
+tenor; swap requires far strictly later than near. Bid/ask forward points apply to
+v3 outright forwards too, so no new scenario is needed to exercise them.

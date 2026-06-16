@@ -258,3 +258,51 @@ These are floors, not ceilings:
 - Cross-browser E2E — Chromium only in v1.
 - A11y automated audit (axe-core) — manual contrast check is sufficient for v1.
 - Mutation testing — disproportionate effort for prototype scope.
+
+## 10. v4 test coverage (Phase 9–11)
+
+New tests accompany each ticket; every gate (`lint`, `typecheck`, `test:run`,
+`test:e2e`, `build`) stays green. Determinism is preserved: the **GA spot golden
+and the `mid` sequence are unchanged**; only **v3 outright-forward** snapshots are
+re-baselined (Phase 9).
+
+### Phase 9 — bid/ask points + v4 gate
+
+- **Feed (`forwardPointsFeed`)** — `{ bid, ask, mid }` shape; `bid ≤ mid ≤ ask`;
+  spread widens monotonically with tenor; SPOT all-zero; assert the `mid`
+  sequence equals the pre-change scalar (no extra RNG draws).
+- **`pips.ts`** — asymmetric points → asymmetric outright with zero margin;
+  side-specific All-in + estimated P/L.
+- **UI** — `fwd-points-bid` / `fwd-points-ask` / `fwd-points-mid` render for v3
+  forwards; **re-baseline** v3 outright-forward component + E2E snapshots.
+- **Gate** — `devVersion.test.ts`: `?dev=v4` ⇒ `isV3() && isV4()`; `?dev=v3` ⇒
+  `isV3() && !isV4()`; no flag ⇒ neither. GA / `?dev=v3` byte-for-byte unchanged.
+
+### Phase 10 — NDF
+
+- **`buildDeal` / injector** — `instrumentType` default derivation; NDF rejects
+  SPOT tenor; `inject-instrument` validation.
+- **Pricing** — spot margin has **no** effect for NDF; points margin does;
+  one-sided lock honoured; AI suggestion targets the points margin only.
+- **UI / E2E** — `data-instrument="NDF"`, `ndf-note`, no spot-margin block; an
+  NDF-injection E2E exercising pickup → price → quote on the points-only ticket.
+
+### Phase 11 — Swaps
+
+- **Model** — leg construction (`NEAR`/`FAR`), forward-forward allowed, far ≤
+  near rejected (injector + `buildDeal`).
+- **`swapPointsFeed`** — `net = far − near` per side; forward-forward and
+  SPOT-near cases; pure composition (no new RNG).
+- **`pips.ts`** — net-points client price + P/L; Per-component vs Total markup;
+  one-sided gating across both legs + net.
+- **UI** — two-leg panel (`leg-near`/`leg-far`), `swap-net-bid`/`swap-net-ask`,
+  `swap-markup-mode`, per-scope Balance/Zero; AI suggestion shown in Total mode,
+  hidden in Per-component mode.
+- **Blotter / detail** — swap instrument cell, dual value dates, per-leg detail +
+  net; a swap-injection E2E covering both markup modes.
+
+### Each phase end
+
+- **Security Agent** review committed under `/security/FXSW-<lastTicket>-review.md`;
+  brand-neutral grep over `dist/` returns zero hits (new content only — pre-existing
+  provider references are tracked separately).
