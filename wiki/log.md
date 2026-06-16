@@ -137,6 +137,15 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - index.md — registered both new component pages; updated dev-injector feature entry.
 ##   - Brand-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write).
 
+## [2026-06-11] ingest | Phase 7 Light Theme (FXSW-043 → FXSW-046, main commit a622dce) — source docs/phase-summaries/FXSW-046-summary.md.
+##   - NEW features/theme-switching.md — opt-in light theme behind ?theme=preview; ThemeToggle (Sun/Moon, null when flag off); pure-parser/window-guarded URL-gate pattern (mirrors devVersion.ts); orthogonal to ?dev=v2.
+##   - NEW components/theme-store.md — Zustand theme store; resolveInitialMode (force-dark off / stored / prefers-color-scheme); sole writer of document.documentElement.dataset.theme; sessionStorage si.theme.
+##   - NEW decisions/ADR-0011-tailwind-rgb-variable-tokens.md — RGB-triple CSS-var migration: rgb(var(--color-X) / <alpha-value>) so utilities flip via cascade + keep opacity modifiers; captures the literal-hex bug (token file-content tests green while render pipeline broken; needs a visual gate).
+##   - overview.md §Current state → "Phase 7 closed (light theme behind ?theme=preview)"; corrected the stale "There is no Phase 6" line with a phase-progression note; test count 316 → 422.
+##   - index.md — registered the 3 new pages; glossary.md — added Preview flag + Light theme terms.
+##   - Boundary: writes confined to wiki/. Vendor-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write).
+##   - NOTE: this Phase 7 ingest was reviewed + approved as PR #18 and squash-merged to main on 2026-06-16, after the v2 (Phase 6/6.1) and v3 (Phase 8) ingests had already landed; the entries below/above preserve the change history in order.
+
 ## [2026-06-16] ingest | Phase 8 v3 + feedback rounds (FXSW-048–071; commits 1631e0a, f800115, eca0754) — sources docs/phase-summaries/phase-08-v3-summary.md + docs/dev-log.md FXSW-062–071 + spec §§ (02 §10/§11, 03 §9, 05 §16/§17/§17.1).
 ##   - NEW components/external-price-feed.md — opt-in runtime market-data adapter (generic provider, NO vendor/host named); GUI key in sessionStorage (si.externalFeedKey), 5-min poll re-anchors pricing-feed (setReferences/clearReferences), status pill Off/Connecting/Live/Error/Rate-limited, OFF by default; sim remains the only test path.
 ##   - NEW features/forward-pricing.md — tenors 1W–1Y, fwd points per (pair,tenor) seeded RNG, outright = spot+points, all-in vs per-component markup, all-in reflects full markup (FXSW-064), fwd Balance/Zero floor 0, fwd-points `pips` suffix (FXSW-071), LegTabs swap-ready, tenor selector (FXSW-059), value dates.
@@ -147,3 +156,4 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - components/si-machine.md — WithdrawSent observed as WITHDRAWN timeline phase (no new canonical state; FXSW-065).
 ##   - index.md + glossary.md — registered 4 new pages; added v3 terms.
 ##   - Vendor-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write); external provider described generically per ADR-0010 / CLAUDE.md §1 (the src/services/feed/external/ build-layer exception deliberately NOT applied to the wiki).
+##   - Also sanitized a pre-existing vendor-name leak in decisions/ADR-0005 (three commercial FX-data providers).

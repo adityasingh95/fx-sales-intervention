@@ -15,6 +15,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
 - [features/notifications.md](features/notifications.md) — **stable.** Toast + title flash + row flash + WebAudio chime + mute toggle + dispatcher dedupe.
 - [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1` / `?dev=v2`; collapses to a `Dev ▾` popover on mobile. Internals in [components/dev-injector.md](components/dev-injector.md).
+- [features/theme-switching.md](features/theme-switching.md) — **stable.** Light theme (`ThemeToggle` Sun/Moon + the pure-parser/guarded-getter URL-gate pattern). Shipped behind `?theme=preview` in Phase 7, promoted to GA in FXSW-047.
 - [features/forward-pricing.md](features/forward-pricing.md) — *in-progress (v3, `?dev=v3`).* Outright forwards (tenors 1W–1Y): spot + forward points, all-in vs per-component markup, forward Balance/Zero (floor 0), `pips` unit, tenor-aware value dates, leg-tabs (swap-ready).
 - [features/historical-detail.md](features/historical-detail.md) — *in-progress (v3).* Read-only detail overlay on clickable Historic rows: deal terms, markup reason (or auto-priced note), lifecycle timeline.
 
@@ -29,6 +30,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/deal-feed.md](components/deal-feed.md) — scenario-driven event emitter, state-gate bridge to the store.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
+- [components/theme-store.md](components/theme-store.md) — **stable.** Zustand theme store (`dark` / `light`); `?theme=preview` resolution, force-dark when flag off, sole writer of `document.documentElement.dataset.theme`.
 - [components/suggestion-engine.md](components/suggestion-engine.md) — **stable.** Deterministic rule engine, tier base + size + market + reason + behaviour deltas. Rationale builder + CREDIT_DECLINE_RATIONALE constant.
 - [components/dev-injector.md](components/dev-injector.md) — *in-progress (v2).* Dev injector internals: dev-version scenario gating (`?dev=1` vs `?dev=v2`), compact labels (`Hold/Release`), and the v2 mobile `Dev ▾` popover (fixed positioning to escape the header overflow clip).
 - [components/resize-handle.md](components/resize-handle.md) — *in-progress (v2).* Draggable blotter split (`?dev=v2`): the handle's `containerRef` live-read event contract paired with `App.tsx`'s grow-weighted-flex layout contract.
@@ -55,6 +57,7 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [decisions/ADR-0008-ai-indigo-accent.md](decisions/ADR-0008-ai-indigo-accent.md) — indigo-violet reserved exclusively for AI surfaces.
 - [decisions/ADR-0009-simulated-ack-delays.md](decisions/ADR-0009-simulated-ack-delays.md) — 250ms `*Sent` delays kept, zero-able in tests.
 - [decisions/ADR-0010-brand-neutral-product.md](decisions/ADR-0010-brand-neutral-product.md) — vendor names forbidden in shipped artifacts and (stricter) anywhere in the wiki layer.
+- [decisions/ADR-0011-tailwind-rgb-variable-tokens.md](decisions/ADR-0011-tailwind-rgb-variable-tokens.md) — Tailwind colour utilities reference RGB-triple CSS variables via `rgb(var(--color-X) / <alpha-value>)` so themes flip via the cascade and opacity modifiers survive.
 
 ## Scenarios
 
