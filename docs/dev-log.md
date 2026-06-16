@@ -815,6 +815,19 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   (new), `docs/BACKLOG.md` (Phase 9–11, FXSW-072…087), `CLAUDE.md`.
 - Gates: docs/specs only; no code changed.
 
+## FXSW-072 · `?dev=v4` gate scaffolding
+
+- `src/lib/devVersion.ts`: widened `DevVersion` to `'v1' | 'v3' | 'v4'` and added
+  `isV4()`. v4 is a superset of v3 — `isV3()` now returns true for both `'v3'` and
+  `'v4'`, so every existing v3 call site lights up under `?dev=v4` with no call-site
+  changes. First v4 consumer is NDF (Phase 10); nothing v4-gated ships here.
+- Decision (agent-directed): make `isV3()` cover v4 rather than thread a new flag
+  through the tree, matching the existing single-gate pattern.
+- Tests: `devVersion.test.ts` — added v3-not-v4, v4-superset, and no-flag-neither
+  cases (8 total).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (464) · build ✓ · `test:e2e` ✓ (10/10).
+  GA and `?dev=v3` unchanged.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
