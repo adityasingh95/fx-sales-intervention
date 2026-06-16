@@ -132,3 +132,46 @@ The provider rebranded from Polygon.io to Massive (2025-10); the legacy
 previous-close path, and `apiKey` query param are unchanged. As the call is made
 from the browser it depends on the provider returning permissive CORS headers;
 static hosting has no proxy fallback.
+
+## 9. v4 feed extensions (behind `?dev=v4`)
+
+All v4 feed work is deterministic and seeded; the seed-42 golden and the v3
+single-value behaviour are unchanged. Under v3 the new two-sided helpers collapse
+to `bid === ask === mid`, so v3 output is byte-identical.
+
+### 9.1 Two-sided forward points
+
+`forwardPointsFeed.get(pair, tenor)` returns a `ForwardPointsPair`
+`{ bid, ask, mid }` instead of a scalar (the scalar becomes `mid`). The bid/ask
+spread is derived deterministically from the same per-(pair, tenor) RNG used for
+`mid`, widening monotonically with tenor (longer tenor → wider points spread) and
+symmetric around `mid` (bid = mid − half-spread, ask = mid + half-spread). SPOT
+remains `{ bid: 0, ask: 0, mid: 0 }`. Existing callers that want the old behaviour
+read `.mid`; v3 paths use `.mid` for both sides.
+
+### 9.2 Swap points
+
+`swapPointsFeed.get(pair, nearTenor, farTenor)` returns the per-leg pairs and the
+net differential:
+
+```
+{
+  near: ForwardPointsPair,   // = forwardPointsFeed.get(pair, nearTenor)
+  far:  ForwardPointsPair,   // = forwardPointsFeed.get(pair, farTenor)
+  net:  { bid, ask }         // far − near, per side
+}
+```
+
+`net.bid = far.bid − near.bid`, `net.ask = far.ask − near.ask`. It is a pure
+composition of `forwardPointsFeed` (no new RNG), so a forward-forward swap
+(near = forward tenor) and an outright-vs-spot swap (near = SPOT) both fall out
+of the same source. `far` must be a later tenor than `near`; the caller enforces
+ordering (the feed does not reorder).
+
+### 9.3 Instrument-aware feed usage
+
+The feed itself is instrument-agnostic — it exposes spot, two-sided forward
+points, and swap points. Instrument semantics (NDF = forward-points markup only;
+swap = net-points pricing) live in `lib/pips.ts` and the ticket, not in the feed.
+The interfaces remain small so a real curve/swap source can replace the simulated
+ones without touching consumers.

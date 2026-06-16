@@ -396,6 +396,224 @@ Phase 8 promotes Phase 6 + Phase 7 from opt-in URL flags to the default-on behav
 
 **Done when:** all gates green; bare URL `/` (with no query string) shows DevInjector, the ResizeHandle, the ThemeToggle, and behaves identically to the prior `/?dev=v2&theme=preview`; brand-neutral grep over `dist/` returns zero hits.
 
+## Status note — v3 phase and feedback rounds (FXSW-048…071)
+
+The detailed entries above stop at FXSW-047. Phase 8 (v3, behind `?dev=v3`:
+FXSW-048…061) and the two v3 feedback rounds (FXSW-062…071) shipped and are
+tracked in `docs/dev-log.md` and `docs/phase-summaries/`. The next free ticket is
+**FXSW-072**.
+
+## Phase 9 — v4 gate + bid/ask forward points + Security Agent
+
+New `?dev=v4` gate (superset of v3; v3 frozen). Forward points become two-sided
+(bid/ask), and the independent **Security Agent** is stood up to review the build
+at the end of this and every later phase. Specs: `docs/02` §12.1/§13, `docs/04`
+§9.1, `docs/05` §18.1, `docs/10-security-agent-spec.md`.
+
+### FXSW-072 — `?dev=v4` gate (superset of v3)
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** —
+
+**AC:**
+- `src/lib/devVersion.ts` widens `DevVersion` to `'v1' | 'v3' | 'v4'`; add
+  `isV4()`. `isV4()` implies all v3 behaviour (v4 ⊇ v3): every existing `isV3()`
+  call site stays true under `?dev=v4`.
+- Bare URL and `?dev=v3` are byte-for-byte unchanged.
+
+**TDD:** `devVersion.test.ts` — `?dev=v4` → `isV3() && isV4()`; `?dev=v3` →
+`isV3() && !isV4()`; no flag → neither.
+
+**Done when:** all gates green; no v3/GA behaviour change.
+
+### FXSW-073 — Two-sided forward-points feed
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-072
+
+**AC:**
+- `forwardPointsFeed.get(pair, tenor)` returns `{ bid, ask, mid }` (scalar →
+  `mid`); deterministic spread from the existing per-(pair, tenor) RNG, widening
+  monotonically with tenor, symmetric around `mid`; SPOT → all-zero.
+- v3/GA callers read `.mid`; under v3 both sides use `.mid` (byte-identical).
+
+**TDD:** feed unit tests for `bid ≤ mid ≤ ask`, monotonic spread by tenor, seed-42
+golden unchanged for `.mid`.
+
+**Done when:** all gates green; seed-42 golden intact.
+
+### FXSW-074 — Bid/ask points through pricing math
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-073
+
+**AC:**
+- `lib/pips.ts`: outright bid uses points `.bid`, ask uses points `.ask`; All-in
+  price + estimated P/L are side-specific. v3 path passes `{bid:mid,ask:mid}`.
+- No pip/margin math inlined in components.
+
+**TDD:** `pips` unit tests for asymmetric points → asymmetric outright with zero
+margin; v3 equivalence test.
+
+**Done when:** all gates green.
+
+### FXSW-075 — Bid/ask points UI (v4)
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** FXSW-074
+
+**AC:**
+- Forward-points row shows `fwd-points-bid` / `fwd-points-ask` (each suffixed
+  `pips`) plus the `mid` reference, under v4 only; v3 shows the single value.
+
+**TDD:** component test — two point cells under `?dev=v4`, one under `?dev=v3`.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-076 — Security Agent bootstrap + first review
+
+**Effort:** M · **TDD:** n/a · **Depends on:** FXSW-075
+
+**AC:**
+- `/security/` exists with `CLAUDE.md` (unprimed operating prompt) and
+  `TEMPLATE.md`; `docs/10-security-agent-spec.md` published.
+- Security Agent runs cold against the current build and writes
+  `/security/FXSW-077-review.md` with functional + technical findings and a
+  proposed resolution work-item.
+- Build-agent write boundary excludes `/security/` (Security Agent-owned), per
+  `CLAUDE.md`.
+
+**Done when:** review file present; proposed tickets are actionable; report is
+brand-neutral.
+
+### FXSW-077 — Phase 9 docs + dev-log + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-076
+
+**AC:** dev-log entries for the phase; `docs/phase-summaries/phase-09-v4-summary.md`
+written; BACKLOG statuses updated.
+
+**Done when:** all gates green; brand-neutral grep over `dist/` clean.
+
+## Phase 10 — NDF (Non-Deliverable Forward)
+
+Adds the `instrumentType` discriminator and the NDF instrument (forward-points
+markup only). Specs: `docs/02` §12.2, `docs/05` §18.2–18.3, `docs/03` §10.
+
+### FXSW-078 — `instrumentType` field + injector selector
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-077
+
+**AC:**
+- `Deal.instrumentType: 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP'`; `ScenarioOverrides`
+  + `buildDeal` merge; default derived from tenor for legacy deals.
+- Dev Injector gains `inject-instrument` (v4-only); NDF requires a forward tenor
+  (SPOT rejected → shortest forward tenor).
+
+**TDD:** buildDeal default-derivation tests; injector validation test.
+
+**Done when:** all gates green; GA/v3 unaffected.
+
+### FXSW-079 — NDF pricing (points-only markup)
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-078
+
+**AC:**
+- NDF ticket removes the spot-margin block and the all-in/per-component toggle;
+  markup taken only on forward points; All-in + P/L from outright + points margin.
+- One-sided lock still applies; `data-instrument="NDF"`, `ndf-note` present.
+
+**TDD:** `pips`/ticket tests — spot margin has no effect for NDF; points margin
+does; lock honoured.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-080 — NDF surfaces + Security Agent pass
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** FXSW-079
+
+**AC:** `deal-instrument` cell in blotters/detail; Security Agent review
+`/security/FXSW-081-review.md` for Phase 10.
+
+**Done when:** all gates green.
+
+### FXSW-081 — Phase 10 docs + dev-log + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-080
+
+**Done when:** dev-log + `phase-10-ndf-summary.md` written; gates green.
+
+## Phase 11 — Swaps (forward-forward)
+
+Two-leg swaps priced on net points; component or total markup; either side or
+both. Specs: `docs/02` §12.3, `docs/04` §9.2, `docs/05` §18.4–18.5, `docs/03` §10.
+
+### FXSW-082 — Swap data model + injection
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-081
+
+**AC:**
+- `instrumentType:'SWAP'` populates `Deal.legs` (NEAR + FAR); near/far may each be
+  SPOT or forward (forward-forward); far strictly later than near.
+- Injector adds `inject-far-tenor` (v4-only); far ≤ near rejected.
+
+**TDD:** leg-construction + ordering-validation tests.
+
+**Done when:** all gates green; single-leg deals unaffected.
+
+### FXSW-083 — Swap points feed
+
+**Effort:** S · **TDD:** Strict · **Depends on:** FXSW-082
+
+**AC:** `swapPointsFeed.get(pair, near, far)` → `{ near, far, net{bid,ask} }`,
+`net = far − near` per side, pure composition of `forwardPointsFeed`.
+
+**TDD:** net-differential unit tests incl. forward-forward and SPOT-near cases.
+
+**Done when:** all gates green; seed-42 golden intact.
+
+### FXSW-084 — Swap pricing math
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-083
+
+**AC:** `lib/pips.ts` builds client price + P/L from net swap points; supports
+per-component (per-leg bid/ask margins) and total (net bid/ask margin) modes.
+
+**TDD:** `pips` tests for both markup modes and one-sided gating.
+
+**Done when:** all gates green.
+
+### FXSW-085 — Swap pricing UI
+
+**Effort:** L · **TDD:** Alongside · **Depends on:** FXSW-084
+
+**AC:**
+- Two-leg pricing panel (`leg-near`/`leg-far`), per-leg points, net row
+  (`swap-net-bid`/`swap-net-ask`), markup-mode toggle (`swap-markup-mode`),
+  per-scope Balance/Zero, one-sided lock across both legs + net.
+- `data-instrument="SWAP"`; `PricingPanel` stays a folder of sub-components and
+  files stay < 300 lines.
+
+**TDD:** component tests for both markup modes, side gating, net display.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-086 — Swap blotter + historic detail
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-085
+
+**AC:** swap instrument cell + dual value dates (near → far); detail overlay lists
+per-leg tenors/points/value dates + net points used for execution.
+
+**TDD:** blotter/detail component tests.
+
+**Done when:** all gates green.
+
+### FXSW-087 — Phase 11 Security Agent pass + docs + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-086
+
+**AC:** Security Agent review `/security/FXSW-087-review.md`; dev-log +
+`phase-11-swaps-summary.md`; BACKLOG statuses updated; brand-neutral `dist/`.
+
+**Done when:** all gates green.
+
 ## Current known follow-ups
 
 - Capture and attach the actual demo recording if needed.
