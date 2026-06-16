@@ -10,6 +10,8 @@ ticket: FXSW-043..FXSW-046
 
 # Feature — Theme Switching (Light Theme)
 
+> **Status update (FXSW-047):** this page documents the Phase 7 state, when the light theme shipped **behind `?theme=preview`**. FXSW-047 later **promoted the light theme to GA and removed the `?theme=preview` gate** (the toggle is no longer flag-gated). The mechanics below — `ThemeToggle`, the theme store, the token cascade — are unchanged; only the URL gate was dropped. Kept as the point-in-time ingest record per the wiki's change-history convention; a follow-up pass will fold the GA wording into the body.
+
 An **opt-in light theme** layered over the default dark workstation, gated behind the `?theme=preview` URL flag. When the flag is absent — the default on `main` — the app is **dark-only**, byte-for-byte unchanged: no toggle renders, and dark is forced regardless of any stored value or the operating system's colour-scheme preference. The flag is **orthogonal to `?dev=v2`** (the [dev-version gate](../components/dev-injector.md)); the two compose freely (`?dev=v2&theme=preview`).
 
 Landed Phase 7 (FXSW-043 → FXSW-046). The runtime state lives in the [theme store](../components/theme-store.md); the cascade mechanics that let Tailwind utilities flip colour are captured in [ADR-0011](../decisions/ADR-0011-tailwind-rgb-variable-tokens.md).

@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-16
 sources:
   - docs/04-dummy-feed-spec.md
 status: stable
@@ -54,7 +54,7 @@ Option 2: build-time bake to JSON via a `prebuild` script, with a hard-coded fal
 
 ## v2 path
 
-If a future version of the prototype needs **actual live ticks** instead of a synthesized walk, three providers worth evaluating: TraderMade (FX-first, WebSocket, generous free tier), OANDA v20 practice API (highest fidelity), Polygon.io FX (if equities + FX in one app later). All require an API key. Out of scope for v1 — the bake-at-build approach gives 95% of the demo value at 5% of the integration cost.
+If a future version of the prototype needs **actual live ticks** instead of a synthesized walk, several categories of commercial market-data provider would be worth evaluating — FX-first streaming (WebSocket, free/generous tiers), broker practice APIs (high fidelity), and combined equities+FX aggregators. All require an API key. Out of scope for v1 — the bake-at-build approach gives 95% of the demo value at 5% of the integration cost. (v3 later realised exactly this with the opt-in [external price feed](../components/external-price-feed.md), still describing the provider generically.)
 
 ## Sources
 

@@ -98,3 +98,37 @@ The feed exposes deterministic hooks for E2E reliability:
 - No persistence.
 - No authentication.
 - No real risk or credit engine.
+
+## 8. v3 external reference feed + forward points
+
+### 8.1 `setReferences` seam
+
+`PricingFeed` gains `setReferences(Partial<Record<Pair, number>>)` and
+`clearReferences()`. They mutate the reference-mid map that `tick()` already
+reads first; the tick/PRNG logic is unchanged, so the seeded sequence is
+identical whenever `setReferences` is never called.
+
+### 8.2 External adapter (opt-in)
+
+An adapter under `src/services/feed/external/` fetches provider quotes (the
+previous-close forex aggregate), maps them to pair mids, and calls
+`setReferences` every 5 minutes. The poller is pure: immediate first poll,
+exponential backoff (capped at 30 min), 429 → rate-limited, 5s fetch timeout,
+silent fallback to the last-known anchor. OFF by default and never exercised by
+tests/E2E, so determinism (seed-42 golden) is preserved. The real provider name
+is permitted only in this adapter code, never in UI strings or build output.
+
+### 8.3 Forward points
+
+A deterministic, seeded-per-(pair, tenor) source `forwardPointsFeed.get(pair,
+tenor)` uses a separate RNG instance (SPOT = 0, monotonic by tenor). It sits
+behind a small interface so a real forward curve can replace it later.
+
+### 8.4 External endpoint update (FXSW-062)
+
+The provider rebranded from Polygon.io to Massive (2025-10); the legacy
+`api.polygon.io` host was retired. The adapter `BASE_URL` is now
+`https://api.massive.com/v2/aggs/ticker`; the `C:{PAIR}` ticker convention,
+previous-close path, and `apiKey` query param are unchanged. As the call is made
+from the browser it depends on the provider returning permissive CORS headers;
+static hosting has no proxy fallback.

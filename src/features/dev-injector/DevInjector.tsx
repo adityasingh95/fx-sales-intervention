@@ -1,16 +1,13 @@
 import clsx from 'clsx';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { getDevVersion } from '@/lib/devVersion';
+import { isV3 } from '@/lib/devVersion';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { dealFeed } from '@/services/feed/dealFeed';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import {
-  V1_SCENARIO_IDS,
-  V2_SCENARIO_IDS,
-  type ScenarioId,
-} from '@/types/scenario';
+import { TENORS, type Tenor } from '@/types/deal';
+import { SCENARIO_IDS, type ScenarioId } from '@/types/scenario';
 
 // Compact labels for the header chip-style buttons.
 const LABEL: Record<ScenarioId, string> = {
@@ -28,10 +25,15 @@ function injectButtonClasses(): string {
 }
 
 export default function DevInjector() {
-  const devVersion = getDevVersion();
   const isMobile = useIsMobile();
-  const visibleScenarios: readonly ScenarioId[] =
-    devVersion === 'v2' ? [...V1_SCENARIO_IDS, ...V2_SCENARIO_IDS] : V1_SCENARIO_IDS;
+  const visibleScenarios: readonly ScenarioId[] = SCENARIO_IDS;
+  // FXSW-059: v3 only — inject any scenario as a forward by overriding the
+  // tenor at inject time. SPOT (default) keeps the bare-URL behaviour.
+  const showForwardSelect = isV3();
+  const [tenor, setTenor] = useState<Tenor>('SPOT');
+  const injectScenario = (id: ScenarioId): void => {
+    dealFeed.inject(id, tenor === 'SPOT' ? undefined : { tenor });
+  };
 
   const resetSession = (): void => {
     dealFeed.reset();
@@ -39,14 +41,18 @@ export default function DevInjector() {
       entry.actor.stop();
     }
     useDealsStore.setState({ deals: new Map(), historic: [] });
-    useUiStore.setState({ openDealId: null });
+    useUiStore.setState({ openDealId: null, openHistoricId: null });
   };
 
   if (isMobile) {
     return (
       <MobileDevInjector
         visibleScenarios={visibleScenarios}
+        onInject={injectScenario}
         onReset={resetSession}
+        tenor={tenor}
+        onTenorChange={setTenor}
+        showForwardSelect={showForwardSelect}
       />
     );
   }
@@ -59,12 +65,15 @@ export default function DevInjector() {
       <span className="mr-1 shrink-0 text-[10px] font-medium uppercase tracking-tight text-text-mute">
         Dev
       </span>
+      {showForwardSelect && (
+        <TenorSelect tenor={tenor} onChange={setTenor} />
+      )}
       {visibleScenarios.map((id) => (
         <button
           key={id}
           type="button"
           data-testid={`inject-${id}`}
-          onClick={() => dealFeed.inject(id)}
+          onClick={() => injectScenario(id)}
           className={clsx(injectButtonClasses())}
         >
           {LABEL[id]}
@@ -82,12 +91,46 @@ export default function DevInjector() {
   );
 }
 
-interface MobileDevInjectorProps {
-  visibleScenarios: readonly ScenarioId[];
-  onReset: () => void;
+interface TenorSelectProps {
+  tenor: Tenor;
+  onChange: (t: Tenor) => void;
 }
 
-function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps) {
+function TenorSelect({ tenor, onChange }: TenorSelectProps) {
+  return (
+    <select
+      data-testid="forward-tenor-select"
+      aria-label="Injection tenor"
+      value={tenor}
+      onChange={(e) => onChange(e.target.value as Tenor)}
+      className="shrink-0 rounded-sm border border-border bg-bg-elevated px-1 py-1 text-xs font-medium text-text-dim hover:border-blue/60 hover:text-text"
+    >
+      {TENORS.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+interface MobileDevInjectorProps {
+  visibleScenarios: readonly ScenarioId[];
+  onInject: (id: ScenarioId) => void;
+  onReset: () => void;
+  tenor: Tenor;
+  onTenorChange: (t: Tenor) => void;
+  showForwardSelect: boolean;
+}
+
+function MobileDevInjector({
+  visibleScenarios,
+  onInject,
+  onReset,
+  tenor,
+  onTenorChange,
+  showForwardSelect,
+}: MobileDevInjectorProps) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -142,13 +185,16 @@ function MobileDevInjector({ visibleScenarios, onReset }: MobileDevInjectorProps
             style={{ top: menuPos.top, left: menuPos.left }}
             className="fixed z-40 flex w-44 flex-col gap-1 rounded-sm border border-border bg-bg-panel p-2 shadow-xl"
           >
+            {showForwardSelect && (
+              <TenorSelect tenor={tenor} onChange={onTenorChange} />
+            )}
             {visibleScenarios.map((id) => (
               <button
                 key={id}
                 type="button"
                 data-testid={`inject-${id}`}
                 onClick={() => {
-                  dealFeed.inject(id);
+                  onInject(id);
                   setOpen(false);
                 }}
                 className="w-full rounded-sm border border-border bg-bg-elevated px-2 py-1.5 text-left text-xs font-medium text-text-dim transition-colors hover:border-blue/60 hover:text-text"

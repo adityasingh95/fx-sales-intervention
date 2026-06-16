@@ -197,3 +197,10 @@ By the convention `quoteSideFor(SELL, QUOTE) = ASK`, the bank quotes the ASK sid
 ## 11. Brand-neutrality
 
 Scenarios must not include vendor names in client names, comments, URLs, UI strings, or test descriptions.
+
+## 12. v3 — forward injection
+
+Under `?dev=v3` the Dev Injector adds a tenor selector. `player.inject` /
+`buildDeal` accept an optional `{ tenor }` override applied over the chosen
+scenario's deal; defaults preserve SPOT. The seven scenarios are not duplicated.
+Brand-neutral client names are unchanged.

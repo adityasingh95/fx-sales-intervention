@@ -16,7 +16,7 @@ test('SIZE_LIMIT_MARGIN_TUNE — AI suggestion Apply + Send Stream end-to-end', 
     (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
   });
 
-  await page.goto('/?dev=1');
+  await page.goto('/');
   const activeBody = page.getByTestId('active-blotter-body');
   const historicBody = page.getByTestId('historic-blotter-body');
 
@@ -48,7 +48,7 @@ test('SIZE_LIMIT_MARGIN_TUNE — AI suggestion Apply + Send Stream end-to-end', 
   ).toHaveAttribute('data-si-state', 'PickedUp', { timeout: 1_000 });
 
   // Margin starts at the dealFeed default (3 pips).
-  await expect(page.getByTestId('margin-input')).toHaveValue('3');
+  await expect(page.getByTestId('margin-input-bid')).toHaveValue('3');
 
   // AI Suggestion Panel lands ready, high confidence, 4 pips.
   // (Computed after the first tick lands; allow up to 1s for the feed.)
@@ -65,7 +65,7 @@ test('SIZE_LIMIT_MARGIN_TUNE — AI suggestion Apply + Send Stream end-to-end', 
 
   // Apply → margin animates to 4; panel collapses to "Applied 4 pips · Undo".
   await page.getByTestId('suggestion-apply').click();
-  await expect(page.getByTestId('margin-input')).toHaveValue('4');
+  await expect(page.getByTestId('margin-input-bid')).toHaveValue('4');
   await expect(panel).toHaveAttribute('data-suggestion-state', 'applied');
   await expect(panel).toContainText(/Applied 4 pips/);
   await expect(page.getByTestId('suggestion-undo')).toBeVisible();

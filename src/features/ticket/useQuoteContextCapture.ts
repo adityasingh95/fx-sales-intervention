@@ -1,0 +1,44 @@
+import { useEffect, useRef } from 'react';
+import { useDealsStore, type DealEntry } from '@/state/stores/dealsStore';
+import { isForwardTenor, type MarginPair } from '@/types/deal';
+import type { MarkupMode } from './pricing/ForwardPointsPanel';
+
+// Captures the markup reason when the trader sends a price (FXSW-060). The SI
+// machine creates the PRICE_BACK lifecycle event on the QuoteSent transition;
+// this merges in the applied margin / AI-suggested / rationale. Resets when the
+// deal returns to PickedUp so a re-quote (after Withdraw) re-records. Extracted
+// from TicketPanel to keep that file under the 300-line limit.
+export function useQuoteContextCapture(
+  entry: DealEntry | undefined,
+  params: {
+    marginPair: MarginPair;
+    fwdMarginPair: MarginPair;
+    markupMode: MarkupMode;
+    aiApplied: boolean;
+    appliedRationale: string | null;
+  },
+): void {
+  const recorded = useRef(false);
+  const { marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale } = params;
+
+  useEffect(() => {
+    if (!entry) return;
+    const { deal, siState } = entry;
+    if (siState === 'PickedUp') {
+      recorded.current = false;
+      return;
+    }
+    if (siState === 'QuoteSent' && !recorded.current) {
+      recorded.current = true;
+      const fwd = markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
+      const appliedMargin = isForwardTenor(deal.tenor)
+        ? ({ kind: 'forward', spot: marginPair, fwd } as const)
+        : ({ kind: 'spot', margin: marginPair } as const);
+      useDealsStore.getState().recordQuoteContext(deal.dealId, {
+        appliedMargin,
+        aiSuggested: aiApplied,
+        rationale: appliedRationale ?? undefined,
+      });
+    }
+  }, [entry, marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale]);
+}

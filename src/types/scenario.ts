@@ -1,4 +1,10 @@
-import type { Deal, RejectionReason } from './deal';
+import type { Deal, RejectionReason, Tenor } from './deal';
+
+// Per-injection overrides (FXSW-059). The Dev Injector can inject any scenario
+// as a forward by overriding the tenor at inject time — no scenario duplication.
+export type ScenarioOverrides = {
+  tenor?: Tenor;
+};
 
 export type ScenarioId =
   | 'HAPPY_PATH_ESP'
@@ -9,25 +15,14 @@ export type ScenarioId =
   | 'BOTH_SIDED_INQUIRY'
   | 'QUOTE_DEALT_INQUIRY';
 
-// v1 set — surfaced by the dev injector at `?dev=1`.
-export const V1_SCENARIO_IDS = [
+export const SCENARIO_IDS = [
   'HAPPY_PATH_ESP',
   'OFF_HOURS_INTERVENTION',
   'CREDIT_BREACH',
   'SIZE_LIMIT_MARGIN_TUNE',
   'RELEASE_PATH',
-] as const satisfies readonly ScenarioId[];
-
-// v2 additions — gated on `?dev=v2`.
-export const V2_SCENARIO_IDS = [
   'BOTH_SIDED_INQUIRY',
   'QUOTE_DEALT_INQUIRY',
-] as const satisfies readonly ScenarioId[];
-
-// Full set — used internally by the scenario registry.
-export const SCENARIO_IDS = [
-  ...V1_SCENARIO_IDS,
-  ...V2_SCENARIO_IDS,
 ] as const satisfies readonly ScenarioId[];
 
 export type DealChannel = 'ESP' | 'SI';

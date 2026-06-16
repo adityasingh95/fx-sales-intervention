@@ -1,9 +1,10 @@
 import { dealtCcyCode, formatAmount } from '@/lib/format';
-import { addBusinessDays, formatSettlementDate } from '@/lib/time';
-import type { Deal } from '@/types/deal';
+import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
+import { isForwardTenor, type Deal } from '@/types/deal';
 
 // Per docs/02 §4.6: read-only deal details. Direction, notional,
-// account, trade date, settlement date (T+2 weekdays).
+// account, trade date, settlement (value) date. FXSW-057: value date is
+// tenor-aware and forwards add a Tenor field.
 
 export interface DealSummaryPanelProps {
   deal: Deal;
@@ -11,8 +12,9 @@ export interface DealSummaryPanelProps {
 
 export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
   const tradeDate = new Date(deal.createdAt);
-  const settlementDate = addBusinessDays(tradeDate, 2);
+  const settlementDate = valueDateForTenor(tradeDate, deal.tenor);
   const dealtCode = dealtCcyCode(deal.pair, deal.dealtCcy);
+  const isForward = isForwardTenor(deal.tenor);
 
   return (
     <section
@@ -46,10 +48,16 @@ export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
         </div>
         <div data-field="settlement-date">
           <dt className="text-xs uppercase tracking-tight text-text-mute">
-            Settlement date
+            {isForward ? 'Value date' : 'Settlement date'}
           </dt>
           <dd className="font-mono text-text">{formatSettlementDate(settlementDate)}</dd>
         </div>
+        {isForward && (
+          <div data-field="tenor">
+            <dt className="text-xs uppercase tracking-tight text-text-mute">Tenor</dt>
+            <dd className="font-mono text-text">{deal.tenor}</dd>
+          </div>
+        )}
       </dl>
     </section>
   );

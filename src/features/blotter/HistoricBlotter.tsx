@@ -1,22 +1,34 @@
 import clsx from 'clsx';
-import { getDevVersion } from '@/lib/devVersion';
 import { dealtCcyCode, formatTime } from '@/lib/format';
+import { isV3 } from '@/lib/devVersion';
+import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
+import { useUiStore } from '@/state/stores/uiStore';
 
 // Cap per docs/02 §3 Capacity — keep the rendered slice bounded.
 const HISTORIC_CAP = 100;
 
+// FXSW-066: Request ID / Trade ID / Value date columns are v3-only; GA layout
+// is unchanged.
+const v3Cols = isV3();
+
 const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'time', label: 'Time', width: 'w-[80px]' },
+  ...(v3Cols ? [{ key: 'requestId', label: 'Request ID', width: 'w-[120px]' }] : []),
+  ...(v3Cols ? [{ key: 'tradeId', label: 'Trade ID', width: 'w-[120px]' }] : []),
   { key: 'client', label: 'Client', width: 'w-[160px]' },
   { key: 'account', label: 'Account', width: 'w-[100px]' },
   { key: 'pair', label: 'CCY Pair', width: 'w-[80px]' },
   { key: 'side', label: 'Side', width: 'w-[60px]' },
   { key: 'amount', label: 'Amount', width: 'w-[120px]' },
   { key: 'tenor', label: 'Tenor', width: 'w-[60px]' },
+  ...(v3Cols ? [{ key: 'valueDate', label: 'Value Date', width: 'w-[100px]' }] : []),
   { key: 'outcome', label: 'Outcome', width: 'flex-1 min-w-[160px]' },
 ];
+
+const valueDateFor = (entry: HistoricEntry): string =>
+  formatSettlementDate(valueDateForTenor(new Date(entry.deal.createdAt), entry.deal.tenor));
 
 const OUTCOME_COLOR: Record<HistoricOutcome, string> = {
   Executed: 'text-green',
@@ -26,14 +38,26 @@ const OUTCOME_COLOR: Record<HistoricOutcome, string> = {
   Cancelled: 'text-text-dim',
 };
 
-function Row({ entry }: { entry: HistoricEntry }) {
+function Row({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div
+    <Tag
+      type={onOpen ? 'button' : undefined}
       data-deal-id={entry.deal.dealId}
       data-outcome={entry.outcome}
-      className="flex items-center border-b border-border bg-bg-app px-4 py-2 text-sm text-text-dim"
+      onClick={onOpen}
+      className={clsx(
+        'flex w-full items-center border-b border-border bg-bg-app px-4 py-2 text-left text-sm text-text-dim',
+        onOpen && 'transition-colors hover:bg-bg-row-hover',
+      )}
     >
       <div className="w-[80px] font-mono text-xs tabular-nums">{formatTime(entry.archivedAt)}</div>
+      {v3Cols && (
+        <div className="w-[120px] font-mono text-xs uppercase">{entry.requestId}</div>
+      )}
+      {v3Cols && (
+        <div className="w-[120px] font-mono text-xs uppercase">{entry.tradeId ?? '—'}</div>
+      )}
       <div className="w-[160px]">{entry.deal.clientName}</div>
       <div className="w-[100px] font-mono text-xs uppercase">{entry.deal.accountCode}</div>
       <div className="w-[80px] font-mono uppercase">{entry.deal.pair}</div>
@@ -52,22 +76,31 @@ function Row({ entry }: { entry: HistoricEntry }) {
         <span className="text-text-mute">{dealtCcyCode(entry.deal.pair, entry.deal.dealtCcy)}</span>
       </div>
       <div className="w-[60px] pl-2 font-mono text-xs uppercase">{entry.deal.tenor}</div>
+      {v3Cols && (
+        <div className="w-[100px] font-mono text-xs tabular-nums">{valueDateFor(entry)}</div>
+      )}
       <div className={clsx('flex flex-1 min-w-[160px] items-center', OUTCOME_COLOR[entry.outcome])}>
         {entry.outcome}
       </div>
-    </div>
+    </Tag>
   );
 }
 
 // FXSW-042 — mobile card-stack row. Two-line layout:
 //   Row 1: [time] [amount + ccy] [pair]
 //   Row 2: [client] · [outcome]
-function HistoricCard({ entry }: { entry: HistoricEntry }) {
+function HistoricCard({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div
+    <Tag
+      type={onOpen ? 'button' : undefined}
       data-deal-id={entry.deal.dealId}
       data-outcome={entry.outcome}
-      className="flex w-full flex-col gap-1.5 rounded-md border border-border bg-bg-panel px-3 py-2 text-sm text-text-dim"
+      onClick={onOpen}
+      className={clsx(
+        'flex w-full flex-col gap-1.5 rounded-md border border-border bg-bg-panel px-3 py-2 text-left text-sm text-text-dim',
+        onOpen && 'transition-colors hover:bg-bg-row-hover',
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-xs tabular-nums">{formatTime(entry.archivedAt)}</span>
@@ -81,16 +114,27 @@ function HistoricCard({ entry }: { entry: HistoricEntry }) {
         <span className="truncate">{entry.deal.clientName}</span>
         <span className={clsx('ml-auto', OUTCOME_COLOR[entry.outcome])}>{entry.outcome}</span>
       </div>
-    </div>
+      {v3Cols && (
+        <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase text-text-mute">
+          <span>{entry.tradeId ?? entry.requestId}</span>
+          <span>Val {valueDateFor(entry)}</span>
+        </div>
+      )}
+    </Tag>
   );
 }
 
 export function HistoricBlotter() {
   const all = useHistoricDeals();
   const visible = all.slice(0, HISTORIC_CAP);
-  const isV2 = getDevVersion() === 'v2';
   const isMobile = useIsMobile();
-  const useCards = isV2 && isMobile;
+  const useCards = isMobile;
+  // FXSW-060: under v3, rows open the read-only detail overlay. On the bare
+  // GA URL they stay non-interactive <div>s.
+  const clickable = isV3();
+  const openHistoric = useUiStore((s) => s.openHistoric);
+  const onOpenFor = (id: string): (() => void) | undefined =>
+    clickable ? () => openHistoric(id) : undefined;
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
@@ -107,11 +151,17 @@ export function HistoricBlotter() {
                 No historic deals yet.
               </div>
             ) : (
-              visible.map((entry) => <HistoricCard key={entry.deal.dealId} entry={entry} />)
+              visible.map((entry) => (
+                <HistoricCard
+                  key={entry.deal.dealId}
+                  entry={entry}
+                  onOpen={onOpenFor(entry.deal.dealId)}
+                />
+              ))
             )}
           </div>
         ) : (
-          <div className="min-w-[920px]">
+          <div className={v3Cols ? 'min-w-[1260px]' : 'min-w-[920px]'}>
             <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
               {columns.map((col) => (
                 <div key={col.key} className={col.width}>
@@ -125,7 +175,9 @@ export function HistoricBlotter() {
                   No historic deals yet.
                 </div>
               ) : (
-                visible.map((entry) => <Row key={entry.deal.dealId} entry={entry} />)
+                visible.map((entry) => (
+                  <Row key={entry.deal.dealId} entry={entry} onOpen={onOpenFor(entry.deal.dealId)} />
+                ))
               )}
             </div>
           </div>

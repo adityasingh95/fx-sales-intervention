@@ -27,6 +27,26 @@ describe('createScenarioPlayer', () => {
     });
   });
 
+  it('applies a tenor override, injecting a scenario as a forward (FXSW-059)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_fwd',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { tenor: '3M' });
+    expect(emitted[0]).toMatchObject({ type: 'NEW_SI_DEAL', deal: { tenor: '3M' } });
+  });
+
+  it('defaults to the scenario tenor (SPOT) when no override is given', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_spot',
+    });
+    player.inject('OFF_HOURS_INTERVENTION');
+    expect(emitted[0]).toMatchObject({ type: 'NEW_SI_DEAL', deal: { tenor: 'SPOT' } });
+  });
+
   it('notifyDealState ignores non-matching dealId and non-matching state', () => {
     const emitted: DealEvent[] = [];
     const player = createScenarioPlayer({

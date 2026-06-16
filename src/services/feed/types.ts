@@ -1,5 +1,5 @@
 import type { Deal, RejectionReason } from '@/types/deal';
-import type { ScenarioId } from '@/types/scenario';
+import type { ScenarioId, ScenarioOverrides } from '@/types/scenario';
 
 export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR';
 
@@ -18,6 +18,13 @@ export interface PricingFeed {
   getLatest(pair: Pair): PriceTick | null;
   start(): void;
   stop(): void;
+  // Optional external-anchor seam (FXSW-050). An opt-in market-data adapter
+  // (see src/services/feed/external/) calls setReferences to move the
+  // mean-reversion target; the randomizer keeps ticking between updates.
+  // clearReferences reverts to the build-time baked mids. Never called on the
+  // default (simulated) path, so the seeded golden sequence is unaffected.
+  setReferences(mids: Partial<Record<Pair, number>>): void;
+  clearReferences(): void;
 }
 
 export type DealEvent =
@@ -30,7 +37,7 @@ export type DealEvent =
 
 export interface DealFeed {
   subscribe(cb: (event: DealEvent) => void): () => void;
-  inject(scenarioId: ScenarioId): void;
+  inject(scenarioId: ScenarioId, overrides?: ScenarioOverrides): void;
   reset(): void;
   // Bridge: the deals store calls this when an SI machine state changes,
   // so scenario follow-ups gated on an SI state (e.g. "fire CLIENT_ACCEPT

@@ -16,7 +16,7 @@ test('CREDIT_BREACH — credit-decline suggestion + trader Reject end-to-end', a
     (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
   });
 
-  await page.goto('/?dev=1');
+  await page.goto('/');
   const activeBody = page.getByTestId('active-blotter-body');
   const historicBody = page.getByTestId('historic-blotter-body');
 

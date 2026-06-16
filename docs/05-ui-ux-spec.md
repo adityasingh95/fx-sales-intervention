@@ -571,3 +571,55 @@ export const themePreviewEnabled: ThemePreviewFlag = /* true if ?theme=preview i
 Components that render the toggle (`Header`) import this constant. The theme store itself is unconditional — but when `themePreviewEnabled === false`, the store is force-initialised to `'dark'` and never written. Tests assert that with no query string or with `?theme=light` (any value other than `preview`), the theme stays dark.
 
 - Vendor names in any user-visible string (see CLAUDE.md critical rule §1).
+
+## 15. v3 versioning gate — `?dev=v3`
+
+`src/lib/devVersion.ts` is reinstated (it was removed in FXSW-047) following the
+pattern in §12. It exports `devVersion: 'v1' | 'v3'` parsed once from `?dev=v3`,
+plus `isV3()`. Components and services import and branch; no version prop is
+threaded through the tree. With no flag the GA tree renders byte-for-byte; tests
+assert bare-URL parity.
+
+## 16. v3 enhancements (behind `?dev=v3`)
+
+Visual treatment for:
+
+- **External-feed settings panel** (header gear, v3 only) + status pill using
+  existing Pill colours; labels are generic (no vendor name).
+- **ForwardPointsPanel** — forward points, all-in outright bid/mid/ask, and an
+  all-in ↔ per-component markup toggle (reuses the existing `MarginRow` with a
+  `fwd-` id prefix).
+- **LegTabs** — one tab per leg; hidden for a single (NEAR) leg (swap seam).
+- **HistoricDetailPanel** — read-only overlay reusing the ticket shell; no
+  footer. Outcome pill + markup-reason block + timeline.
+- **TimelinePanel** — vertical timestamped phase list with the Clock icon.
+
+`PricingPanel` is now a folder of sub-components (`src/features/ticket/pricing/`);
+every existing `data-testid` is preserved on its original element.
+
+## 17. v3 feedback refinements (FXSW-062…067)
+
+- **Markup-mode toggle** — the All-in / Per-component buttons are a stable
+  module-level component (no longer remounted each tick), removing hover flicker.
+- **Forward All-in bid/ask** — show the marked-up client outright (spot + points
+  + both margin components per side); the mid stays the un-marked reference. The
+  forward-points component row has its own Balance/Zero
+  (`margin-balance-fwd` / `margin-zero-fwd`).
+- **Timeline** — adds a "Quote withdrawn" row (`data-phase="WITHDRAWN"`).
+- **Blotter columns (v3 only)** — Active: Request ID + Value Date; Historic:
+  Request ID + Trade ID + Value Date. GA layout is unchanged; the detail overlay
+  shows Request ID + Trade ID (`detail-request-id` / `detail-trade-id`).
+
+### 17.1 Second-round refinements (FXSW-068…071)
+
+- **One-sided markup lock** — for a one-sided request the non-quotable side's
+  margin stepper is `disabled` and the Balance/Zero shortcuts are hidden, in both
+  the spot and forward markup blocks (`restrictMarginSides`, driven by
+  `quoteSide`). Two-sided requests are unaffected.
+- **Read-only auto-priced ticket** — opening an `AUTO` (ESP) deal renders a
+  read-only ticket (`data-readonly="true"`, `auto-priced-note`) with the deal
+  terms + streamed client price, no pricing panel or footer; PickUp is not fired.
+- **Timeline / markup reason** — ESP deals show an "Auto-priced"
+  (`data-phase="AUTO_PRICE"`) row and a "streamed within tolerance" markup note.
+- **Forward points** — the figure is suffixed `pips` (the `fwd-points` testid
+  still wraps the value only).

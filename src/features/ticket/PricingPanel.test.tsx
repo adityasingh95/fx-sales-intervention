@@ -467,6 +467,31 @@ describe('<PricingPanel />', () => {
         });
         expect(seen.at(-1)).toEqual({ bid: 4, ask: 6 });
       });
+
+      it('restrictMarginSides locks the non-quotable side + hides Balance/Zero (FXSW-068)', () => {
+        // SELL/base → quoteSide BID: the ask markup cannot be priced.
+        render(
+          <PricingPanel
+            pair="EURUSD"
+            liveTick={{ pair: 'EURUSD', bid: 1.08, mid: 1.0801, ask: 1.0802, timestamp: 0 }}
+            frozenTick={null}
+            pricingMode="streaming"
+            fixedSide={null}
+            margin={3}
+            onMarginChange={() => {}}
+            onEnterFixed={() => {}}
+            onRefresh={() => {}}
+            quoteSide="BID"
+            marginPair={{ bid: 3, ask: 3 }}
+            onMarginPairChange={() => {}}
+            restrictMarginSides
+          />,
+        );
+        expect(screen.getByTestId('margin-input-bid')).not.toBeDisabled();
+        expect(screen.getByTestId('margin-input-ask')).toBeDisabled();
+        expect(screen.queryByTestId('margin-balance')).toBeNull();
+        expect(screen.queryByTestId('margin-zero')).toBeNull();
+      });
     });
 
     it('programmatic margin update (FXSW-025 Apply simulation) animates data-margin-glow for 600ms', () => {

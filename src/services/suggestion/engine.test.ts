@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RejectionReason } from '@/types/deal';
+import type { RejectionReason, Tenor } from '@/types/deal';
 import { suggestMargin } from './engine';
 import type {
   ClientBehaviorFlag,
@@ -28,6 +28,7 @@ function makeInput(overrides: {
   acceptanceRate?: number;
   currentBid?: number;
   currentAsk?: number;
+  tenor?: Tenor;
 } = {}): SuggestionInput {
   return {
     deal: {
@@ -36,6 +37,7 @@ function makeInput(overrides: {
       notional: overrides.notional ?? 1_000_000,
       defaultMarginPips: 3,
       rejectionReasons: overrides.rejectionReasons ?? [],
+      tenor: overrides.tenor,
     },
     client: {
       clientId: 'test',
@@ -298,6 +300,37 @@ describe('suggestMargin', () => {
       );
       expectReady(s);
       expect(s.suggestedPips).toBe(4);
+    });
+  });
+
+  describe('forward per-component suggestion (v3)', () => {
+    it('spot deals carry no forward-points component', () => {
+      const s = suggestMargin(makeInput({ tenor: 'SPOT' }));
+      expectReady(s);
+      expect(s.fwdPointsPips).toBeUndefined();
+    });
+
+    it('default (no tenor) behaves as spot', () => {
+      const s = suggestMargin(makeInput());
+      expectReady(s);
+      expect(s.fwdPointsPips).toBeUndefined();
+    });
+
+    it('forward deals add a forward-points margin that widens with tenor', () => {
+      const m1 = suggestMargin(makeInput({ tenor: '1M' }));
+      const y1 = suggestMargin(makeInput({ tenor: '1Y' }));
+      expectReady(m1);
+      expectReady(y1);
+      expect(m1.fwdPointsPips).toBeGreaterThanOrEqual(1);
+      expect(y1.fwdPointsPips).toBeGreaterThan(m1.fwdPointsPips as number);
+    });
+
+    it('the spot component is unaffected by tenor', () => {
+      const spot = suggestMargin(makeInput({ tenor: 'SPOT' }));
+      const fwd = suggestMargin(makeInput({ tenor: '3M' }));
+      expectReady(spot);
+      expectReady(fwd);
+      expect(fwd.suggestedPips).toBe(spot.suggestedPips);
     });
   });
 });

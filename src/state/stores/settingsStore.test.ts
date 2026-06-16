@@ -4,7 +4,11 @@ import { useSettingsStore } from './settingsStore';
 describe('useSettingsStore', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
-    useSettingsStore.setState({ muted: false });
+    useSettingsStore.setState({
+      muted: false,
+      externalFeedKey: null,
+      externalFeedEnabled: false,
+    });
   });
 
   afterEach(() => {
@@ -65,5 +69,35 @@ describe('useSettingsStore', () => {
     window.sessionStorage.setItem('si.blotterSplit', 'not-a-number');
     const fresh = await import('./settingsStore?reload=' + Date.now());
     expect(fresh.useSettingsStore.getState().blotterSplit).toBe(55);
+  });
+
+  // FXSW-052: external market-data feed (v3)
+  it('external feed defaults to disabled with no key', () => {
+    const s = useSettingsStore.getState();
+    expect(s.externalFeedEnabled).toBe(false);
+    expect(s.externalFeedKey).toBeNull();
+  });
+
+  it('setExternalFeedKey persists; empty string clears it', () => {
+    useSettingsStore.getState().setExternalFeedKey('abc123');
+    expect(useSettingsStore.getState().externalFeedKey).toBe('abc123');
+    expect(window.sessionStorage.getItem('si.externalFeedKey')).toBe('abc123');
+    useSettingsStore.getState().setExternalFeedKey('');
+    expect(useSettingsStore.getState().externalFeedKey).toBeNull();
+    expect(window.sessionStorage.getItem('si.externalFeedKey')).toBeNull();
+  });
+
+  it('setExternalFeedEnabled persists the toggle', () => {
+    useSettingsStore.getState().setExternalFeedEnabled(true);
+    expect(useSettingsStore.getState().externalFeedEnabled).toBe(true);
+    expect(window.sessionStorage.getItem('si.externalFeedEnabled')).toBe('true');
+  });
+
+  it('restores external feed key/enabled from sessionStorage on reload', async () => {
+    window.sessionStorage.setItem('si.externalFeedKey', 'persisted-key');
+    window.sessionStorage.setItem('si.externalFeedEnabled', 'true');
+    const fresh = await import('./settingsStore?reload=' + Date.now());
+    expect(fresh.useSettingsStore.getState().externalFeedKey).toBe('persisted-key');
+    expect(fresh.useSettingsStore.getState().externalFeedEnabled).toBe(true);
   });
 });

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { getThemePreviewEnabled } from '@/lib/themeMode';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -37,7 +36,6 @@ function applyDomTheme(mode: ThemeMode): void {
 }
 
 function resolveInitialMode(): ThemeMode {
-  if (!getThemePreviewEnabled()) return 'dark';
   const stored = readStoredMode();
   if (stored !== null) return stored;
   return prefersLight() ? 'light' : 'dark';
@@ -55,13 +53,13 @@ applyDomTheme(initialMode);
 export const useThemeStore = create<ThemeState>((set, get) => ({
   mode: initialMode,
   setMode: (mode) => {
-    if (getThemePreviewEnabled()) writeStoredMode(mode);
+    writeStoredMode(mode);
     applyDomTheme(mode);
     set({ mode });
   },
   toggle: () => {
     const next: ThemeMode = get().mode === 'dark' ? 'light' : 'dark';
-    if (getThemePreviewEnabled()) writeStoredMode(next);
+    writeStoredMode(next);
     applyDomTheme(next);
     set({ mode: next });
   },

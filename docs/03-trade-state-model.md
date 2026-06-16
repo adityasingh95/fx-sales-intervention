@@ -113,3 +113,29 @@ State names, event names, and derived display statuses are compatibility contrac
 - wiki summaries.
 
 Do not rename them without updating all dependent tests and documentation.
+
+## 9. v3 note — lifecycle event log
+
+v3 (FXSW-049) adds a per-deal lifecycle event log by *observing* the existing
+SI/RFS transitions; it introduces **no new canonical states or events**.
+Observed transitions map to five display-only phases — REQUEST, PICKUP, RELEASE,
+PRICE_BACK, RESPONSE — used solely for the Historical Trade Detail timeline. A
+single phase source is chosen per deal (RFS for ESP auto-priced deals, SI
+otherwise) so the shared PRICE_BACK/RESPONSE transitions the parent fans into
+both children are not double-logged. State names and `data-*` test attributes
+remain the compatibility contract.
+
+### v3 note — withdrawn-quote phase (FXSW-065)
+
+The observed-phase set adds `WITHDRAWN`: the SI `WithdrawSent` ack state (entered
+on Quoted → Withdraw, before bouncing back to PickedUp) maps to it, so a trader
+take-back appears on the timeline. This is still an *observation* of existing
+transitions — no new canonical state or event is introduced.
+
+### v3 note — auto-priced phase (FXSW-070)
+
+ESP deals are auto-priced: the RFS machine moves straight to `Executable` with no
+trader involvement (SI stays `Initial`). That transition now maps to a distinct
+`AUTO_PRICE` phase ("Auto-priced") rather than `PRICE_BACK`, so the timeline does
+not imply a manual price-back for a deal no trader touched. The full observed set
+is REQUEST, PICKUP, RELEASE, PRICE_BACK, AUTO_PRICE, WITHDRAWN, RESPONSE.
