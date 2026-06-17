@@ -1283,6 +1283,28 @@ breakdown underneath. A one-sided request now dims the whole non-quotable tile
   per-component — flagged for a Wiki Agent update (agent-owned, not edited here).
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (540) · `test:e2e` ✓ (15/15).
 
+## Swap panel: two-layer markup — per-component + all-in (2026-06-17)
+
+The side-first panel was missing per-component leg markup. Added two explicit
+layers:
+
+**Layer 1 — per-component (`SwapLegsSection`, new file):** A two-column legs
+section (near | far) showing each leg's raw bid/ask forward points plus
+independent bid/ask margin steppers (stacked vertically to prevent overflow).
+Replaces the former compact "Net swap points" row; the component-adjusted net
+(after per-leg margins) appears prominently at the bottom of the section
+(`swap-net-bid` / `swap-net-ask`). Balance/Zero per leg.
+
+**Layer 2 — all-in net (side tiles):** Each tile retains its single net-points
+markup stepper ("All-in adj."). Client net = component net ± all-in margin.
+Both layers always visible (no mode toggle). Side gating (one-sided lock) applies
+to both layers: non-quotable side's steppers disabled across both legs and the
+all-in tile.
+
+- Updated `docs/05 §18.4`, `SwapPanel.test.tsx` (9 tests, covering two-layer
+  math and locking), and `tests/e2e/v4-swap.spec.ts`.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (540) · `test:e2e` ✓ (15/15).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

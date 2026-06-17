@@ -664,32 +664,35 @@ panel.
 
 ### 18.4 Swap ticket
 
-A swap ticket (`data-instrument="SWAP"`) shows a **side-first pricing panel**:
-two tiles, **Bid** and **Ask** (`swap-side-bid` / `swap-side-ask`) — the two prices
-the desk can show — sit side by side. Pricing is organised by dealing side rather
-than by leg, so a one-sided request dims a whole tile instead of scattering
-disabled steppers. Layout:
+A swap ticket (`data-instrument="SWAP"`) uses a **two-layer side-first pricing
+panel** (`swap-panel`). Layout, top to bottom:
 
-- **Net swap points** — a reference row shows the raw net differential bid/ask
-  (`swap-net-bid` / `swap-net-ask`, far − near per side); both client prices widen
-  from it.
-- **Each side tile** carries, top to bottom: a dealing-direction label
-  (`swap-side-{bid,ask}-direction`, e.g. `Buy/Sell EUR` on the side that matches
-  the request, `Sell/Buy EUR` on the inverse; `Two-way` for a two-sided request);
-  the marked-up **client net** (`client-net-bid` / `client-net-ask`) and estimated
-  P/L (`swap-pnl-bid` / `swap-pnl-ask`); a single **net-points markup** stepper
-  for that side (`margin-input-net-bid` / `margin-input-net-ask`); and a read-only
-  **per-leg points breakdown** (`leg-near-points-{bid,ask}` /
-  `leg-far-points-{bid,ask}`) showing the near/far components behind the net.
-  Per-leg value dates show once in the header (`leg-near-value-date` /
-  `leg-far-value-date`).
-- **Markup is net-only.** There is no per-component / all-in toggle and no per-leg
-  markup; the near/far points are informational. Balance/Zero act on the net pair
-  (`margin-balance-net` / `margin-zero-net`).
-- **Side gating** — a one-sided swap locks the non-quotable side's net stepper
-  (`disabled`), marks its tile `data-quotable="false"` (dimmed), suppresses its
-  client net + P/L (dash, not the raw net), and hides Balance/Zero, reusing
-  `restrictMarginSides` / `quoteSide` (§17.1). Two-sided swaps show both tiles live.
+**Layer 1 — per-component markup (`swap-legs-section`):** A two-column section
+(near leg left, far leg right, separated by a divider). Each leg column shows its
+tenor + value date (`leg-{near,far}-value-date`), the raw bid and ask forward
+points (`leg-{near,far}-points-{bid,ask}`), and independent bid/ask margin steppers
+(`margin-input-{near,far}-{bid,ask}`) stacked vertically to prevent overflow.
+Balance/Zero per leg (`margin-balance-{near,far}` / `margin-zero-{near,far}`).
+The component-adjusted net (raw net after per-leg margins) appears prominently at
+the bottom of the section (`swap-net-bid` / `swap-net-ask`).
+
+**Layer 2 — all-in net markup (side tiles):** Two tiles, **Bid** (`swap-side-bid`,
+red) and **Ask** (`swap-side-ask`, blue), represent the two possible swap
+directions: Bid = `Buy/Sell {CCY}` (buy near, sell far); Ask = `Sell/Buy {CCY}`
+(sell near, buy far) — labels are fixed regardless of deal.side
+(`swap-side-{bid,ask}-direction`). Each tile carries the final **client net**
+(`client-net-{bid,ask}`) and estimated P/L (`swap-pnl-{bid,ask}`) after applying
+both layers, and a single **all-in net markup** stepper per side
+(`margin-input-net-{bid,ask}`, labelled "All-in adj."). Balance/Zero for the
+all-in pair (`margin-balance-net` / `margin-zero-net`) sit below the tiles.
+The all-in adjustment is applied on top of the component-adjusted net; client net
+= component net ± all-in margin.
+
+**Side gating** — a one-sided swap (`restrictMarginSides` / `quoteSide`, §17.1)
+locks the non-quotable side's steppers on **both** layers, marks the non-quotable
+tile `data-quotable="false"` (dimmed at `opacity-40`), suppresses its client net +
+P/L (dash, not the raw net; FXSW-091 F-2), and hides Balance/Zero on both layers.
+Two-sided swaps show both tiles and all steppers live.
 
 ### 18.5 Blotters and detail overlay
 
