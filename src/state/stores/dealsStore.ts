@@ -6,6 +6,7 @@ import type { Deal, RejectionReason } from '@/types/deal';
 import type { DealChannel } from '@/types/scenario';
 import type { DealLifecycleEvent, QuoteContext } from '@/types/lifecycle';
 import { makeRequestId, makeTradeId } from '@/lib/ids';
+import { quoteSideFor } from '@/lib/quoteSide';
 import { lifecyclePhaseFor } from './lifecyclePhase';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
@@ -121,7 +122,11 @@ export const useDealsStore = create<DealsState>((set, get) => ({
     }
 
     const requestId = makeRequestId();
-    const actor = createActor(dealMachine, { input: { dealId: deal.dealId } });
+    // FXSW-088 F-1: carry the request's quotable side into the machine so the
+    // one-sided lock can be enforced by the parent's `canQuote` guard.
+    const actor = createActor(dealMachine, {
+      input: { dealId: deal.dealId, quoteSide: quoteSideFor(deal.side, deal.dealtCcy) },
+    });
     actor.start();
     const ctx = actor.getSnapshot().context;
     const initialSi = String(ctx.si.getSnapshot().value);

@@ -22,6 +22,17 @@ export interface RfsInput {
 // arrive from the dealMachine parent as a result of trader actions on
 // the SI side or simulated client/timeout events. The `Submitted`
 // state is collapsed into `Queued` for v1 per docs/03 §1.
+//
+// FXSW-088 F-2 — `*Sent` acknowledgement asymmetry, documented (not mirrored):
+// the SI machine models the simulated backend ack with explicit `*Sent` states,
+// but RFS does NOT — `Executable` means "auto-/re-priced and dealable", it is NOT
+// the client-facing "price sent" signal. The single source of truth for "a price
+// was sent to the client" is the SI side (`QuoteSent` → `Quoted`); see
+// `statusFromMachines` (STREAMING requires SI `Quoted`) and the quote-context
+// capture (records at SI `QuoteSent`). No consumer may read RFS `Executable` as
+// the sent signal. Adding `*Sent` states to RFS would change canonical state
+// names + the ESP `Queued → Executable` auto-price path, so the asymmetry is
+// documented and constrained here rather than made symmetric.
 export const rfsMachine = setup({
   types: {
     context: {} as RfsContext,

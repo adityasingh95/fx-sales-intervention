@@ -684,9 +684,12 @@ state-machine ACs were deferred to Phase 11 (Swaps rework those machines).
 - ✅ **T-4 (CSP)** restrictive CSP `<meta>` injected at build only (active in
   `preview`/prod, not dev) via a Vite plugin; `connect-src 'self'`. ⏳ **SRI**
   deferred (Low; needs a build-time hash plugin).
-- ⏳ **F-1 / F-2 / F-3** (state-layer side-lock guard, RFS `*Sent` symmetry,
-  parent terminal reconciliation) — **deferred to Phase 11**, where the RFS/parent
-  machines are extended for Swaps; doing it there avoids a double rework + review.
+- ✅ **F-1 / F-2 / F-3 — DONE (2026-06-17).** Contract-preserving (canonical
+  state names, `*Sent`, 5s timing unchanged): F-1 side-lock enforced by the deal
+  machine's `canQuote` guard (`quoteSide` in context); F-2 RFS `*Sent` asymmetry
+  documented (RFS `Executable` ≠ client-sent signal); F-3 explicit terminal
+  protection (`terminal` flag guards all forwards) + `ClientReject` routed to both
+  legs (RFS `ClientClose`). 536 unit + 15 E2E green.
 - ⏳ **T-6** vendor literals in non-adapter test files — deferred (cosmetic).
 
 **AC (full spec; see Status above for done vs deferred):**

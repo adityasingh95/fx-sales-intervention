@@ -1179,6 +1179,32 @@ Resolves the GA-core cold-audit work-item (`security/audit-core-pre-phase9-revie
   error + original preserved). Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (532) ·
   build ✓ · `test:e2e` ✓ (15/15). Goldens byte-stable.
 
+## FXSW-088 (F-1/F-2/F-3) · State-layer hardening (deferred → done)
+
+The XState-layer items from `security/FXSW-077-review.md`, contract-preserving
+(canonical SI/RFS state names, the `*Sent` contract, and 5s removal timing all
+unchanged; changes are additive + guarded):
+- **F-1** — the one-sided side-lock is now enforced by a guard in the **deal
+  machine**, not only the UI `disabled` prop. `DealContext.quoteSide` is carried
+  from the deal (`dealsStore` passes `quoteSideFor(side, dealtCcy)` as input); a
+  `canQuote` guard rejects a `Quote` naming the non-quotable side (or a two-sided
+  quote on a one-sided request). A bare `Quote` and two-sided deals are unchanged.
+- **F-2** — documented the RFS `*Sent` asymmetry in `rfsMachine`: RFS `Executable`
+  is "dealable/auto-priced", NOT the client-facing "sent" signal; SI
+  `QuoteSent → Quoted` is the single source of truth (per `statusFromMachines` +
+  the capture hook). Not mirrored, because adding RFS `*Sent` states would change
+  canonical names + the ESP `Queued → Executable` path.
+- **F-3** — explicit terminal protection + route terminal to both legs:
+  `DealContext.terminal` is set on any terminal event (Reject / ClientReject /
+  TradeConfirmed) and every parent forward is guarded `notTerminal`, so a
+  late/duplicate trader event can never re-animate a finished deal (explicit, not
+  merely topological). `ClientReject` now also routes RFS `ClientClose` so both
+  legs reach a terminal state; the archived outcome is unchanged (SI `ClientRejected`
+  is checked first in `outcomeFromFinalStates`).
+- Tests: dealMachine (locked-side quote rejected; bare/two-sided unaffected;
+  ClientReject closes both legs; post-terminal forward refused). Gates: typecheck ✓
+  · lint ✓ · `test:run` ✓ (536) · build ✓ · `test:e2e` ✓ (15/15). Goldens stable.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
