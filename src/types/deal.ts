@@ -46,6 +46,19 @@ export const defaultInstrumentForTenor = (tenor: Tenor): InstrumentType =>
 export type LegKind = 'NEAR' | 'FAR';
 export type DealLeg = { kind: LegKind; tenor: Tenor };
 
+// The opposite trade direction. A two-sided (BOTH) request has no single
+// opposite, so it stays BOTH.
+export const oppositeSide = (side: Side): Side =>
+  side === 'BUY' ? 'SELL' : side === 'SELL' ? 'BUY' : 'BOTH';
+
+// A forward-forward swap trades opposite directions on its two legs: the near
+// leg takes the deal's stated side, the far leg the opposite (so a BUY deal is
+// "near buy / far sell" and a SELL deal is "near sell / far buy"). A two-sided
+// (BOTH) request stays two-sided on each leg. Derived in the UI rather than
+// stored, so the single `Deal.side` remains the source of truth.
+export const swapLegSide = (dealSide: Side, kind: LegKind): Side =>
+  kind === 'NEAR' ? dealSide : oppositeSide(dealSide);
+
 // Ordinal position of a tenor in the canonical ladder (SPOT=0 … 1Y=last).
 // Used to order swap legs; -1 is impossible since every Tenor is in TENORS.
 export const tenorRank = (tenor: Tenor): number => TENORS.indexOf(tenor);

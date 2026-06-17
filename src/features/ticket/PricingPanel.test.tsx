@@ -430,14 +430,14 @@ describe('<PricingPanel />', () => {
         expect(seen.at(-1)).toEqual({ bid: 5, ask: 5 });
       });
 
-      it('Balance: odd-sum rounds to the nearest integer', () => {
+      it('Balance: odd-sum splits to the half-pip midpoint (1 decimal place)', () => {
         const seen: Array<{ bid: number; ask: number }> = [];
-        render(<DualHarness initialPair={{ bid: 3, ask: 6 }} onChange={(p) => seen.push(p)} />);
+        render(<DualHarness initialPair={{ bid: 3, ask: 0 }} onChange={(p) => seen.push(p)} />);
         act(() => {
           fireEvent.click(screen.getByTestId('margin-balance'));
         });
-        // (3 + 6) / 2 = 4.5 → Math.round → 5
-        expect(seen.at(-1)).toEqual({ bid: 5, ask: 5 });
+        // (3 + 0) / 2 = 1.5 → kept to 1 decimal place, both sides 1.5
+        expect(seen.at(-1)).toEqual({ bid: 1.5, ask: 1.5 });
       });
 
       it('Zero: sets both sides to 0', () => {

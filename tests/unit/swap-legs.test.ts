@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSwapLegs, resolveSwapLegs, tenorRank } from '@/types/deal';
+import { buildSwapLegs, oppositeSide, resolveSwapLegs, swapLegSide, tenorRank } from '@/types/deal';
 
 // FXSW-082 — forward-forward swap legs: NEAR + FAR with FAR strictly later.
 describe('buildSwapLegs', () => {
@@ -75,5 +75,30 @@ describe('resolveSwapLegs', () => {
     const r = resolveSwapLegs('1Y', '1Y');
     expect(r.adjusted).toBe(true);
     expect(r.legs[0].tenor).toBe('9M');
+  });
+});
+
+// A swap trades opposite directions per leg — near takes the deal side, far the
+// opposite (near buy / far sell, and vice versa). BOTH stays two-sided per leg.
+describe('swapLegSide', () => {
+  it('inverts BUY/SELL', () => {
+    expect(oppositeSide('BUY')).toBe('SELL');
+    expect(oppositeSide('SELL')).toBe('BUY');
+    expect(oppositeSide('BOTH')).toBe('BOTH');
+  });
+
+  it('near buy / far sell for a BUY deal', () => {
+    expect(swapLegSide('BUY', 'NEAR')).toBe('BUY');
+    expect(swapLegSide('BUY', 'FAR')).toBe('SELL');
+  });
+
+  it('near sell / far buy for a SELL deal', () => {
+    expect(swapLegSide('SELL', 'NEAR')).toBe('SELL');
+    expect(swapLegSide('SELL', 'FAR')).toBe('BUY');
+  });
+
+  it('a two-sided request stays two-sided on both legs', () => {
+    expect(swapLegSide('BOTH', 'NEAR')).toBe('BOTH');
+    expect(swapLegSide('BOTH', 'FAR')).toBe('BOTH');
   });
 });
