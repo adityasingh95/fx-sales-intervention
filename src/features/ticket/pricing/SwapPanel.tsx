@@ -5,24 +5,30 @@ import {
   clientSwapNetPoints,
   estimatedProfitUsd,
   gateMarginToSide,
+  sumMargins,
   type SwapMarkupMode,
 } from '@/lib/pips';
 import type { QuoteSide } from '@/lib/quoteSide';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
 import type { MarginSuggestion } from '@/services/suggestion/types';
-import { type Deal, type MarginPair, type Tenor } from '@/types/deal';
+import { type Deal, type MarginPair } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
+import SwapLegsSection from './SwapLegsSection';
 import SuggestionPanel from '../SuggestionPanel';
 import SwapAdjustNote from './SwapAdjustNote';
 
-// Swap pricing panel (FXSW-085 → redesigned). Organised by *dealing side* (the two
-// prices the desk can show), not by leg: a Bid tile and an Ask tile sit side by
-// side, each carrying one net-points markup, the marked-up client net + estimated
-// P/L, and the per-leg (near/far) points underneath as read-only context. A
-// one-sided request dims the whole non-quotable tile, so the lock reads as "this
-// side isn't quotable" rather than a scatter of disabled steppers. Markup is
-// net-only (docs/05 §18.4); the AI suggestion applies a single net margin.
+// Swap pricing panel — two-layer markup (docs/05 §18.4).
+//
+// Layer 1 — per-component (SwapLegsSection): independent bid/ask margin on each
+// leg (near + far). Produces a component-adjusted net shown prominently.
+//
+// Layer 2 — all-in (SideTile): a single bid/ask net-points margin per side tile
+// applied on top of the component net. Client net = component net ± all-in margin.
+//
+// Side-first layout: Bid tile ("Buy/Sell {CCY}") and Ask tile ("Sell/Buy {CCY}")
+// represent the two possible swap directions. A one-sided request dims the whole
+// non-quotable tile. AI suggestion targets the all-in layer only.
 
 const ZERO: MarginPair = { bid: 0, ask: 0 };
 const fmtPoints = (n: number): string => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
@@ -43,10 +49,6 @@ interface SideTileProps {
   onMarginChange: (next: number) => void;
   clientNet: number;
   pnl: number;
-  nearTenor: Tenor;
-  farTenor: Tenor;
-  nearPoint: number;
-  farPoint: number;
 }
 
 function SideTile({
@@ -59,10 +61,6 @@ function SideTile({
   onMarginChange,
   clientNet,
   pnl,
-  nearTenor,
-  farTenor,
-  nearPoint,
-  farPoint,
 }: SideTileProps) {
   return (
     <section
@@ -89,8 +87,7 @@ function SideTile({
         <span className="text-[10px] uppercase tracking-tight text-text-mute">Client {scope}</span>
       </div>
 
-      {/* Headline marked-up net + estimated P/L. A non-quotable side shows a dash,
-          never the raw un-marked net (FXSW-091 F-2). */}
+      {/* Final client net (after component + all-in markup). Non-quotable → dash. */}
       <div className="text-center">
         <div
           data-testid={`client-net-${scope}`}
@@ -106,10 +103,10 @@ function SideTile({
         </div>
       </div>
 
-      {/* Single net-points markup for this side. */}
+      {/* All-in net markup: applied on top of the component-adjusted net. */}
       {!readOnly && (
         <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] uppercase tracking-tight text-text-mute">Net markup</span>
+          <span className="text-[10px] uppercase tracking-tight text-text-mute">All-in adj.</span>
           <MarginRow
             testIdSuffix={scope}
             idPrefix="net-"
@@ -121,28 +118,6 @@ function SideTile({
           />
         </div>
       )}
-
-      {/* Read-only per-leg points breakdown — the components behind the net. */}
-      <div className="mt-1 flex justify-between border-t border-border pt-2 text-[10px] text-text-mute">
-        <span>
-          <span className="uppercase tracking-tight">Near {nearTenor}</span>{' '}
-          <span
-            data-testid={`leg-near-points-${scope}`}
-            className="font-mono tabular-nums text-text-dim"
-          >
-            {fmtPoints(nearPoint)}
-          </span>
-        </span>
-        <span>
-          <span className="uppercase tracking-tight">Far {farTenor}</span>{' '}
-          <span
-            data-testid={`leg-far-points-${scope}`}
-            className="font-mono tabular-nums text-text-dim"
-          >
-            {fmtPoints(farPoint)}
-          </span>
-        </span>
-      </div>
     </section>
   );
 }
@@ -153,14 +128,9 @@ export interface SwapPanelProps {
   quoteSide?: QuoteSide;
   restrictMarginSides?: boolean;
   readOnly?: boolean;
-  // FXSW-086: report the effective net-points margin + mode upward so the quote-
-  // context capture can record what was actually applied at QuoteSent. Markup is
-  // net-only now, so the mode is always TOTAL (the field is kept for the captured
-  // AppliedMargin shape + historic deals priced under the old per-component UI).
+  // FXSW-086: total effective net-points margin (component + all-in, gated) and mode
+  // reported upward for quote-context capture at QuoteSent.
   onPricingChange?: (pricing: { mode: SwapMarkupMode; net: MarginPair }) => void;
-  // AI Margin Suggestion for the swap net-points markup. Applying it writes the
-  // suggested pips to both sides of the net margin; the panel reports the
-  // AI-applied flag upward for the quote-context capture.
   suggestion?: MarginSuggestion | null;
   onRecompute?: () => void;
   onReject?: () => void;
@@ -181,12 +151,16 @@ export default function SwapPanel({
   currentVolatility,
   onAiAppliedChange,
 }: SwapPanelProps) {
+  // Layer 1: per-component margins (per leg, per side)
+  const [nearMargin, setNearMargin] = useState<MarginPair>(ZERO);
+  const [farMargin, setFarMargin] = useState<MarginPair>(ZERO);
+  // Layer 2: all-in net margin (per side, applied on top of component net)
   const [totalMargin, setTotalMargin] = useState<MarginPair>(ZERO);
-  // Saved net margin captured before an AI Apply, restored losslessly on Undo.
   const [savedTotalForUndo, setSavedTotalForUndo] = useState<MarginPair | null>(null);
 
-  // Reset markup state whenever a different deal opens.
   useEffect(() => {
+    setNearMargin(ZERO);
+    setFarMargin(ZERO);
     setTotalMargin(ZERO);
     setSavedTotalForUndo(null);
   }, [deal.dealId]);
@@ -200,33 +174,32 @@ export default function SwapPanel({
   const nearDate = formatSettlementDate(valueDateForTenor(tradeDate, nearTenor));
   const farDate = formatSettlementDate(valueDateForTenor(tradeDate, farTenor));
 
-  // Which sides the request can actually be quoted on (one-sided lock, §17.1).
-  // `quotable` drives display suppression (FXSW-091 F-2); `locked` additionally
-  // folds in readOnly to disable the steppers without blanking an auto-priced quote.
   const bidQuotable = !(restrictMarginSides && quoteSide === 'ASK');
   const askQuotable = !(restrictMarginSides && quoteSide === 'BID');
   const bidLocked = readOnly || !bidQuotable;
   const askLocked = readOnly || !askQuotable;
   const showBalanceZero = !readOnly && !(restrictMarginSides && quoteSide !== 'BOTH');
 
-  const effMargin = gateMarginToSide(totalMargin, quoteSide);
-  const clientNet = clientSwapNetPoints(swap.net, effMargin);
+  // Layer 1: sum near + far component margins, gate to quotable side.
+  const componentMarginGated = gateMarginToSide(sumMargins(nearMargin, farMargin), quoteSide);
+  // Intermediate: raw net after component markup. Shown prominently in SwapLegsSection.
+  const componentNet = clientSwapNetPoints(swap.net, componentMarginGated);
+  // Layer 2: all-in gate.
+  const allInGated = gateMarginToSide(totalMargin, quoteSide);
+  // Final client net = component net ± all-in adjustment.
+  const clientNet = clientSwapNetPoints(componentNet, allInGated);
+  // Total effective margin (component + all-in) for P/L and quote-context capture.
+  const totalEffGated = gateMarginToSide(sumMargins(sumMargins(nearMargin, farMargin), totalMargin), quoteSide);
 
-  // Report the effective (gated) net margin upward for quote-context capture.
   useEffect(() => {
-    onPricingChange?.({ mode: 'TOTAL', net: effMargin });
-    // effMargin is a fresh object each render; depend on its primitive parts.
+    onPricingChange?.({ mode: 'TOTAL', net: totalEffGated });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effMargin.bid, effMargin.ask, onPricingChange]);
+  }, [totalEffGated.bid, totalEffGated.ask, onPricingChange]);
 
   const midRate = tick?.mid ?? 0;
-  const plBid = estimatedProfitUsd(effMargin.bid, deal.notional, deal.pair, midRate);
-  const plAsk = estimatedProfitUsd(effMargin.ask, deal.notional, deal.pair, midRate);
+  const plBid = estimatedProfitUsd(totalEffGated.bid, deal.notional, deal.pair, midRate);
+  const plAsk = estimatedProfitUsd(totalEffGated.ask, deal.notional, deal.pair, midRate);
 
-  // The two tiles represent the two possible swap directions — always fixed regardless
-  // of deal.side or quoteSide. The bid (left, red) tile = "Buy/Sell {CCY}" (buy near,
-  // sell far); the ask (right, blue) tile = "Sell/Buy {CCY}" (sell near, buy far).
-  // Which tile is quotable/active is handled separately by bidQuotable/askQuotable.
   const base = deal.pair.slice(0, 3);
   const directionLabel = (scope: 'bid' | 'ask'): string =>
     scope === 'bid' ? `Buy/Sell ${base}` : `Sell/Buy ${base}`;
@@ -260,31 +233,30 @@ export default function SwapPanel({
         />
       )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
-          Swap · {nearTenor} → {farTenor}
-        </h2>
-        <span className="flex gap-3 font-mono text-[10px] uppercase tracking-tight text-text-mute">
-          <span>
-            Near <span data-testid="leg-near-value-date">{nearDate}</span>
-          </span>
-          <span>
-            Far <span data-testid="leg-far-value-date">{farDate}</span>
-          </span>
-        </span>
-      </div>
+      <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
+        Swap · {nearTenor} → {farTenor}
+      </h2>
 
-      {/* Raw (un-marked) net differential — the reference both client prices widen from. */}
-      <div className="flex items-center justify-between rounded-sm border border-border bg-bg-elevated/40 px-2 py-1">
-        <span className="text-[10px] uppercase tracking-tight text-text-mute">Net swap points</span>
-        <span className="font-mono text-xs tabular-nums text-text">
-          <span data-testid="swap-net-bid">{fmtPoints(swap.net.bid)}</span>
-          {' / '}
-          <span data-testid="swap-net-ask">{fmtPoints(swap.net.ask)}</span>
-        </span>
-      </div>
+      {/* Layer 1: per-component leg markup + prominent component-adjusted net. */}
+      <SwapLegsSection
+        nearTenor={nearTenor}
+        farTenor={farTenor}
+        nearDate={nearDate}
+        farDate={farDate}
+        nearPoints={swap.near}
+        farPoints={swap.far}
+        componentNet={componentNet}
+        nearMargin={nearMargin}
+        farMargin={farMargin}
+        onNearMarginChange={setNearMargin}
+        onFarMarginChange={setFarMargin}
+        bidLocked={bidLocked}
+        askLocked={askLocked}
+        showBalanceZero={showBalanceZero}
+        readOnly={readOnly}
+      />
 
-      {/* Side-first tiles: Bid + Ask, each with its net markup and per-leg breakdown. */}
+      {/* Layer 2: side-first tiles with all-in net markup → final client price. */}
       <div className="flex flex-col gap-2 sm:flex-row">
         <SideTile
           scope="bid"
@@ -296,10 +268,6 @@ export default function SwapPanel({
           onMarginChange={(n) => setTotalMargin({ bid: n, ask: totalMargin.ask })}
           clientNet={clientNet.bid}
           pnl={plBid}
-          nearTenor={nearTenor}
-          farTenor={farTenor}
-          nearPoint={swap.near.bid}
-          farPoint={swap.far.bid}
         />
         <SideTile
           scope="ask"
@@ -311,10 +279,6 @@ export default function SwapPanel({
           onMarginChange={(n) => setTotalMargin({ bid: totalMargin.bid, ask: n })}
           clientNet={clientNet.ask}
           pnl={plAsk}
-          nearTenor={nearTenor}
-          farTenor={farTenor}
-          nearPoint={swap.near.ask}
-          farPoint={swap.far.ask}
         />
       </div>
 
