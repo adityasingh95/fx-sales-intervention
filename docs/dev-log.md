@@ -1258,6 +1258,31 @@ of the FAR leg. Fixed by stacking bid and ask rows vertically (`flex flex-col
 gap-2`) inside each leg block so each `MarginRow` spans the full leg width.
 - Gates: typecheck ✓ · lint ✓.
 
+## Swap pricing panel — side-first redesign (2026-06-17)
+
+GUI feedback: the per-component swap layout exposed **four** markup steppers (two
+legs × bid/ask) with two greyed out, and it wasn't clear why. Reworked the panel
+to be **side-first** (matching a real swap dealing pod): two tiles, **Bid** and
+**Ask** (`swap-side-bid` / `swap-side-ask`) — the two prices the desk can show —
+sit side by side. Each tile carries a dealing-direction label (`Buy/Sell EUR` /
+`Sell/Buy EUR` / `Two-way`), the marked-up client net + estimated P/L, a single
+net-points markup stepper for that side, and a **read-only** near/far points
+breakdown underneath. A one-sided request now dims the whole non-quotable tile
+(`data-quotable="false"`) instead of scattering disabled steppers.
+
+- **Markup is net-only now.** The per-component markup mode + All-in/Per-component
+  toggle were removed from the UI; near/far points are informational. The
+  `SwapMarkupMode` / `effectiveSwapMargin` data model is kept (still unit-tested)
+  and the captured `AppliedMargin.swap.mode` stays in the type so historic deals
+  priced under the old per-component UI still render; new captures record `TOTAL`.
+- Deleted `SwapLegBlock.tsx` (no longer used). `SwapPanel` now renders an internal
+  `SideTile`. AI suggestion (net markup), legs-adjusted note, one-sided lock, and
+  Balance/Zero (net) are preserved.
+- Updated `docs/05 §18.4`, `SwapPanel.test.tsx` (9 tests), and `tests/e2e/v4-swap`
+  to the side-first structure. `wiki/features/swaps.md` + `ADR-0014` still describe
+  per-component — flagged for a Wiki Agent update (agent-owned, not edited here).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (540) · `test:e2e` ✓ (15/15).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

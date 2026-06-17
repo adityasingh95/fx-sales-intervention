@@ -664,22 +664,32 @@ panel.
 
 ### 18.4 Swap ticket
 
-A swap ticket (`data-instrument="SWAP"`) shows a **two-leg pricing panel**: a NEAR
-block and a FAR block, each labelled with its tenor and value date
-(`leg-near` / `leg-far`). Layout:
+A swap ticket (`data-instrument="SWAP"`) shows a **side-first pricing panel**:
+two tiles, **Bid** and **Ask** (`swap-side-bid` / `swap-side-ask`) — the two prices
+the desk can show — sit side by side. Pricing is organised by dealing side rather
+than by leg, so a one-sided request dims a whole tile instead of scattering
+disabled steppers. Layout:
 
-- **Per-leg points** — each leg shows its bid/ask forward points (§18.1).
-- **Net swap points** — a prominent row shows the net differential bid/ask
-  (`swap-net-bid` / `swap-net-ask`, far − near per side), which is what drives the
-  client quote and estimated P/L.
-- **Markup mode** — the All-in / Per-component toggle is reused
-  (`swap-markup-mode`): *Per-component* exposes an independent bid/ask points
-  margin on each leg (up to four steppers); *Total* exposes a single bid/ask
-  margin applied to the net points. Balance/Zero act within the active scope
-  (`margin-balance-near/far/net`, `margin-zero-near/far/net`).
-- **Side gating** — a one-sided swap locks the non-quotable side across both legs
-  and the net row (steppers `disabled`, Balance/Zero hidden), reusing
-  `restrictMarginSides` / `quoteSide` (§17.1). Two-sided swaps show both sides.
+- **Net swap points** — a reference row shows the raw net differential bid/ask
+  (`swap-net-bid` / `swap-net-ask`, far − near per side); both client prices widen
+  from it.
+- **Each side tile** carries, top to bottom: a dealing-direction label
+  (`swap-side-{bid,ask}-direction`, e.g. `Buy/Sell EUR` on the side that matches
+  the request, `Sell/Buy EUR` on the inverse; `Two-way` for a two-sided request);
+  the marked-up **client net** (`client-net-bid` / `client-net-ask`) and estimated
+  P/L (`swap-pnl-bid` / `swap-pnl-ask`); a single **net-points markup** stepper
+  for that side (`margin-input-net-bid` / `margin-input-net-ask`); and a read-only
+  **per-leg points breakdown** (`leg-near-points-{bid,ask}` /
+  `leg-far-points-{bid,ask}`) showing the near/far components behind the net.
+  Per-leg value dates show once in the header (`leg-near-value-date` /
+  `leg-far-value-date`).
+- **Markup is net-only.** There is no per-component / all-in toggle and no per-leg
+  markup; the near/far points are informational. Balance/Zero act on the net pair
+  (`margin-balance-net` / `margin-zero-net`).
+- **Side gating** — a one-sided swap locks the non-quotable side's net stepper
+  (`disabled`), marks its tile `data-quotable="false"` (dimmed), suppresses its
+  client net + P/L (dash, not the raw net), and hides Balance/Zero, reusing
+  `restrictMarginSides` / `quoteSide` (§17.1). Two-sided swaps show both tiles live.
 
 ### 18.5 Blotters and detail overlay
 
