@@ -5,6 +5,7 @@ import { suggestMargin } from '@/services/suggestion/engine';
 import { getMarketContext } from '@/services/suggestion/marketContext';
 import type { MarginSuggestion } from '@/services/suggestion/types';
 import type { DealEntry } from '@/state/stores/dealsStore';
+import { instrumentOf } from '@/types/deal';
 
 // AI suggestion lifecycle (extracted from TicketPanel in FXSW-057 to keep that
 // file under the 300-line limit). Computes once per PickedUp visit, snapshotting
@@ -22,6 +23,11 @@ export function useSuggestionState(
     if (!entry || !liveTick) return;
     const profile = getClientProfile(entry.deal.clientName);
     const marketStatic = getMarketContext(entry.deal.pair);
+    // Forward outright + NDF carry a tenor so the engine adds a forward-points
+    // margin component (otherwise the AI suggestion has nothing to apply to the
+    // points row — the NDF bug). A SWAP is priced on the net differential, not a
+    // per-leg outright, so it omits the tenor and gets a single net-points margin.
+    const tenor = instrumentOf(entry.deal) === 'SWAP' ? undefined : entry.deal.tenor;
     setSuggestion(
       suggestMargin({
         deal: {
@@ -30,6 +36,7 @@ export function useSuggestionState(
           notional: entry.deal.notional,
           defaultMarginPips: entry.deal.defaultMarginPips,
           rejectionReasons: entry.rejectionReasons,
+          tenor,
         },
         client: profile,
         market: {

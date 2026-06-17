@@ -1,7 +1,7 @@
 import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { clientSwapNetPoints } from '@/lib/pips';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
-import type { Deal, MarginPair } from '@/types/deal';
+import { swapLegSide, type Deal, type MarginPair, type Side } from '@/types/deal';
 import SwapAdjustNote from './SwapAdjustNote';
 
 // Read-only swap leg detail for the historic overlay (FXSW-086). Lists each leg's
@@ -26,10 +26,19 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
   const trade = new Date(deal.createdAt);
   const execNet = executedNetMargin ? clientSwapNetPoints(swap.net, executedNetMargin) : null;
 
-  const rows: Array<{ id: 'near' | 'far'; tenor: string; date: string; bid: number; ask: number }> = [
+  const sideLabel = (s: Side): string => (s === 'BOTH' ? '2-way' : s);
+  const rows: Array<{
+    id: 'near' | 'far';
+    tenor: string;
+    side: string;
+    date: string;
+    bid: number;
+    ask: number;
+  }> = [
     {
       id: 'near',
       tenor: nearTenor,
+      side: sideLabel(swapLegSide(deal.side, 'NEAR')),
       date: formatSettlementDate(valueDateForTenor(trade, nearTenor)),
       bid: swap.near.bid,
       ask: swap.near.ask,
@@ -37,6 +46,7 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
     {
       id: 'far',
       tenor: farTenor,
+      side: sideLabel(swapLegSide(deal.side, 'FAR')),
       date: formatSettlementDate(valueDateForTenor(trade, farTenor)),
       bid: swap.far.bid,
       ask: swap.far.ask,
@@ -57,7 +67,9 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
           data-testid={`swap-detail-${row.id}`}
           className="flex items-center justify-between text-xs"
         >
-          <span className="font-mono uppercase text-text-dim">{row.id} · {row.tenor}</span>
+          <span className="font-mono uppercase text-text-dim">
+            {row.id} · {row.tenor} · {row.side}
+          </span>
           <span className="font-mono tabular-nums text-text-mute">
             {fmtPoints(row.bid)} / {fmtPoints(row.ask)} pips
           </span>

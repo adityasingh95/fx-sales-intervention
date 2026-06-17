@@ -164,7 +164,9 @@ export function BalanceZeroRow({
   minMargin = MIN_MARGIN,
 }: BalanceZeroRowProps) {
   const handleBalance = (): void => {
-    const avg = Math.round((marginPair.bid + marginPair.ask) / 2);
+    // Balance to one decimal place so an odd split lands on the true midpoint
+    // (e.g. 3 / 0 → 1.5 / 1.5) rather than rounding away half a pip.
+    const avg = Math.round(((marginPair.bid + marginPair.ask) / 2) * 10) / 10;
     const clamped = Math.max(minMargin, avg);
     onMarginPairChange({ bid: clamped, ask: clamped });
   };

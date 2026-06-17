@@ -1217,6 +1217,37 @@ unchanged; changes are additive + guarded):
   enforce the rule, so they are retained by design and now comment-marked.
 - Closes the last open FXSW-088 sub-item. Gates: typecheck ✓ · lint ✓ · tests ✓.
 
+## Swap + NDF feedback round (5 fixes)
+
+GUI-review feedback on the v4 instruments, addressed as a batch:
+
+1. **AI suggestion for swaps.** `SwapPanel` now renders the `SuggestionPanel`. The
+   suggestion is computed by the existing `useSuggestionState` hook (which now
+   omits the tenor for SWAP, so the engine returns a single net-points margin
+   rather than a spot+forward split). Apply switches to Total mode and writes the
+   suggested pips to both sides of the net margin; Undo restores losslessly; the
+   AI-applied flag + rationale flow up to `TicketPanel` for the quote-context
+   capture (markup reason).
+2. **Per-leg settlement dates.** A swap has two legs settling separately, so
+   `SummaryPanel` and `DealSummaryPanel` now show both value dates (near → far via
+   `valueDateLabel`) instead of a single settlement date, and the summary sentence
+   reads as a two-leg swap.
+3. **Opposite-direction legs.** A forward-forward swap is near-buy/far-sell (or
+   the reverse), never both-buy/both-sell. New `oppositeSide` + `swapLegSide`
+   helpers (`types/deal.ts`) derive the per-leg side from the single `Deal.side`
+   (BOTH stays two-sided). Surfaced in `SwapLegBlock` (side badge + `data-side`),
+   `SwapLegDetail`, and the deal-summary Direction field.
+4. **NDF AI markup now applies to the forward points.** Root cause:
+   `useSuggestionState` never passed `tenor` to the engine, so forwards/NDFs got
+   no `fwdPointsPips` to apply. Now passes the tenor for non-swap instruments, so
+   the suggested points margin lands on the forward-points row (spot stays
+   structurally inert for NDF).
+5. **Balance to 1 decimal place.** `BalanceZeroRow` averages to the true
+   half-pip midpoint (3 / 0 → 1.5 / 1.5) instead of rounding to the nearest
+   integer. Updated the one PricingPanel test that asserted the old rounding.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (536 + 4 new swap-side cases) ·
+  `test:e2e` ✓ (15/15).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
