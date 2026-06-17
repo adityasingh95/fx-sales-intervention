@@ -662,37 +662,47 @@ and estimated P/L derive from the outright + forward-points margin alone. A smal
 "NDF · cash-settled, points-only markup" note (`ndf-note`) explains the reduced
 panel.
 
+An NDF can only be struck on a **non-deliverable pair** (docs/02 §12.2; `NDF_PAIRS`
+in `services/feed/types.ts` — currently `USDINR`). When a scenario is injected as
+an NDF on a deliverable pair (EURUSD/GBPUSD/USDJPY), the player coerces the pair to
+a non-deliverable one so the ticket never quotes an NDF on a deliverable currency.
+
 ### 18.4 Swap ticket
 
-A swap ticket (`data-instrument="SWAP"`) uses a **two-layer side-first pricing
-panel** (`swap-panel`). Layout, top to bottom:
+A swap ticket (`data-instrument="SWAP"`) uses a **side-first pricing panel**
+(`swap-panel`) with a **markup-mode toggle** (`swap-markup-mode`) switching between
+*Per-component* (`swap-markup-mode-per-component`, default) and *All-in*
+(`swap-markup-mode-total`). Layout, top to bottom:
 
-**Layer 1 — per-component markup (`swap-legs-section`):** A two-column section
-(near leg left, far leg right, separated by a divider). Each leg column shows its
-tenor + value date (`leg-{near,far}-value-date`), the raw bid and ask forward
-points (`leg-{near,far}-points-{bid,ask}`), and independent bid/ask margin steppers
-(`margin-input-{near,far}-{bid,ask}`) stacked vertically to prevent overflow.
-Balance/Zero per leg (`margin-balance-{near,far}` / `margin-zero-{near,far}`).
-The component-adjusted net (raw net after per-leg margins) appears prominently at
-the bottom of the section (`swap-net-bid` / `swap-net-ask`).
+**Legs section (`swap-legs-section`):** A two-column section (near leg left, far
+leg right, separated by a divider). Each leg column shows its tenor + value date
+(`leg-{near,far}-value-date`) and the raw bid/ask forward points
+(`leg-{near,far}-points-{bid,ask}`). In **Per-component** mode each column also
+shows independent bid/ask margin steppers (`margin-input-{near,far}-{bid,ask}`,
+stacked vertically) with per-leg Balance/Zero (`margin-balance-{near,far}` /
+`margin-zero-{near,far}`); in **All-in** mode those steppers are hidden. The net
+swap points appear prominently at the bottom (`swap-net-bid` / `swap-net-ask`) —
+marked-up by the per-leg margins in Per-component mode, raw in All-in mode.
 
-**Layer 2 — all-in net markup (side tiles):** Two tiles, **Bid** (`swap-side-bid`,
-red) and **Ask** (`swap-side-ask`, blue), represent the two possible swap
-directions: Bid = `Buy/Sell {CCY}` (buy near, sell far); Ask = `Sell/Buy {CCY}`
-(sell near, buy far) — labels are fixed regardless of deal.side
-(`swap-side-{bid,ask}-direction`). Each tile carries the final **client net**
-(`client-net-{bid,ask}`) and estimated P/L (`swap-pnl-{bid,ask}`) after applying
-both layers, and a single **all-in net markup** stepper per side
-(`margin-input-net-{bid,ask}`, labelled "All-in adj."). Balance/Zero for the
-all-in pair (`margin-balance-net` / `margin-zero-net`) sit below the tiles.
-The all-in adjustment is applied on top of the component-adjusted net; client net
-= component net ± all-in margin.
+**Side tiles:** Two tiles, **Bid** (`swap-side-bid`, red) and **Ask**
+(`swap-side-ask`, blue), represent the two possible swap directions: Bid =
+`Buy/Sell {CCY}` (buy near, sell far); Ask = `Sell/Buy {CCY}` (sell near, buy far)
+— labels fixed regardless of deal.side (`swap-side-{bid,ask}-direction`). Each tile
+shows the final **client net** (`client-net-{bid,ask}`) and estimated P/L
+(`swap-pnl-{bid,ask}`). In **All-in** mode each tile also shows a single net-points
+markup stepper (`margin-input-net-{bid,ask}`); Balance/Zero for the all-in pair
+(`margin-balance-net` / `margin-zero-net`) sit below the tiles.
+
+**Markup modes** — *Per-component* exposes an independent bid/ask margin on each
+leg (the sum widens the net); *All-in* exposes one bid/ask margin applied to the
+net. The two are mutually exclusive (effective margin per `effectiveSwapMargin`).
+Applying the AI suggestion switches to All-in.
 
 **Side gating** — a one-sided swap (`restrictMarginSides` / `quoteSide`, §17.1)
-locks the non-quotable side's steppers on **both** layers, marks the non-quotable
+locks the non-quotable side's steppers in the active mode, marks the non-quotable
 tile `data-quotable="false"` (dimmed at `opacity-40`), suppresses its client net +
-P/L (dash, not the raw net; FXSW-091 F-2), and hides Balance/Zero on both layers.
-Two-sided swaps show both tiles and all steppers live.
+P/L (dash, not the raw net; FXSW-091 F-2), and hides Balance/Zero. Two-sided swaps
+show both tiles and all steppers live.
 
 ### 18.5 Blotters and detail overlay
 

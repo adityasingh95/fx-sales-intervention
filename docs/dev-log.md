@@ -1305,6 +1305,28 @@ all-in tile.
   math and locking), and `tests/e2e/v4-swap.spec.ts`.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (540) · `test:e2e` ✓ (15/15).
 
+## Swap markup-mode toggle restored + NDF pair coercion (2026-06-17)
+
+Two GUI feedback items:
+
+1. **All-in vs Per-component toggle restored** (`swap-markup-mode`). The two-layer
+   "both always on" design is replaced by a mutually-exclusive toggle (default
+   Per-component): *Per-component* shows the per-leg bid/ask steppers in the legs
+   section (sum widens the net); *All-in* hides them and shows a single net-points
+   stepper per side tile. Effective margin resolves via `effectiveSwapMargin`; the
+   net row reflects per-leg markup in Per-component mode and raw net in All-in mode.
+   AI Apply switches to All-in. Mode + effective net flow to quote-context capture.
+
+2. **NDF pair coercion.** NDFs can only be struck on non-deliverable pairs. Added
+   `NDF_PAIRS` / `isNdfPair` (`services/feed/types.ts`, currently `USDINR`). The
+   scenario player now coerces an NDF injection's pair to a non-deliverable one
+   when the scenario's pair is deliverable (EURUSD/GBPUSD/USDJPY) — previously an
+   NDF inherited e.g. USDJPY, quoting an NDF on a deliverable currency.
+
+- Updated `docs/05 §18.3` (NDF pair rule) + §18.4 (toggle), `SwapPanel.test.tsx`
+  (10 tests), `player.test.ts` (+2), `tests/e2e/v4-swap`.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (543) · `test:e2e` ✓ (15/15).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
