@@ -65,6 +65,25 @@ export const buildSwapLegs = (near: Tenor, far?: Tenor): [DealLeg, DealLeg] => {
   ];
 };
 
+// Resolve swap legs AND report whether the request had to be coerced (FXSW-091
+// F-1). `adjusted` is true when the far was missing, far ≤ near, or near was the
+// last tenor (so it stepped back) — i.e. the applied legs differ from a naive
+// (near, far) request. The original request is returned so the ticket can surface
+// a visible "legs adjusted" note rather than silently pricing a different pair.
+// A valid request yields `adjusted: false` and the identical legs `buildSwapLegs`
+// already produced (swap goldens unchanged).
+export type SwapLegResolution = {
+  legs: [DealLeg, DealLeg];
+  adjusted: boolean;
+  requested: { near: Tenor; far?: Tenor };
+};
+
+export const resolveSwapLegs = (near: Tenor, far?: Tenor): SwapLegResolution => {
+  const legs = buildSwapLegs(near, far);
+  const adjusted = far === undefined || legs[0].tenor !== near || legs[1].tenor !== far;
+  return { legs, adjusted, requested: { near, far } };
+};
+
 export type RejectionReason = 'OFF_HOURS' | 'SIZE_LIMIT' | 'CREDIT_LIMIT';
 
 export type Deal = {
@@ -81,6 +100,10 @@ export type Deal = {
   // Optional multi-leg description (swap seam). Absent for v3 spot + outright
   // forwards, which are fully described by `tenor`.
   legs?: DealLeg[];
+  // FXSW-091 (F-1): set only when a SWAP injection's legs were coerced (far
+  // missing / far ≤ near / last-tenor near stepped back). Carries the originally
+  // requested near/far so the ticket can show a visible "legs adjusted" note.
+  swapRequested?: { near: Tenor; far?: Tenor };
   // Instrument discriminator (v4, FXSW-078). Optional: legacy/spot/outright
   // deals omit it and derive a default from `tenor` via `instrumentOf()`;
   // `buildDeal` always sets it on injected deals. NDF/SWAP are only ever explicit.

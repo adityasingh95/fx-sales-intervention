@@ -51,6 +51,50 @@ test('v4 swap injection — two-leg ticket: per-leg points, net row, markup-mode
   await expect(page.getByTestId('margin-input-near-bid')).toHaveCount(0);
 });
 
+test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injections (FXSW-091 F-1/F-3)', async ({
+  page,
+}) => {
+  test.setTimeout(20_000);
+
+  await page.addInitScript(() => {
+    (window as Window & { __seedFeed?: number }).__seedFeed = 42;
+    (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
+  });
+
+  await page.goto('/?dev=v4');
+  const activeBody = page.getByTestId('active-blotter-body');
+
+  // Deal A — an out-of-order request (near 6M, far 1M) is coerced and flagged.
+  await page.getByTestId('inject-instrument').selectOption('SWAP');
+  await page.getByTestId('forward-tenor-select').selectOption('6M');
+  await page.getByTestId('inject-far-tenor').selectOption('1M');
+  await page.getByTestId('inject-OFF_HOURS_INTERVENTION').click();
+
+  const rowA = activeBody.locator('[data-deal-id]').first();
+  await expect(rowA).toBeVisible({ timeout: 1_000 });
+  const aId = await rowA.getAttribute('data-deal-id');
+  await rowA.click();
+  await expect(page.getByTestId('swap-adjust-note')).toBeVisible();
+
+  // Mark up a leg on A, then close the ticket.
+  await page.getByTestId('margin-plus-near-bid').click();
+  await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('1');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('ticket-panel')).toHaveCount(0);
+
+  // Deal B — a valid forward-forward (near 1M, far 6M).
+  await page.getByTestId('forward-tenor-select').selectOption('1M');
+  await page.getByTestId('inject-far-tenor').selectOption('6M');
+  await page.getByTestId('inject-OFF_HOURS_INTERVENTION').click();
+
+  const rowB = activeBody.locator(`[data-deal-id]:not([data-deal-id="${aId}"])`).first();
+  await expect(rowB).toBeVisible({ timeout: 1_000 });
+  await rowB.click();
+  // B opens with no adjust note and zero leg margins — A's markup did not leak.
+  await expect(page.getByTestId('swap-adjust-note')).toHaveCount(0);
+  await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('0');
+});
+
 test('v4 swap lifecycle — archives to Historic; detail overlay lists per-leg + net (FXSW-086)', async ({
   page,
 }) => {

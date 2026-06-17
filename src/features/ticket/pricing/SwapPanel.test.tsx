@@ -88,6 +88,37 @@ describe('SwapPanel', () => {
     expect(screen.queryByTestId('margin-balance-near')).toBeNull();
   });
 
+  it('one-sided lock suppresses the off-side client net + P/L (shows a dash, not raw net) (FXSW-091 F-2)', () => {
+    renderPanel({ restrictMarginSides: true, quoteSide: 'BID' });
+    // BID quotable → real client net; ASK locked → dash, never the raw un-marked net.
+    expect(screen.getByTestId('client-net-bid').textContent).not.toBe('—');
+    expect(screen.getByTestId('client-net-ask').textContent).toBe('—');
+    expect(screen.getByTestId('swap-pnl-ask').textContent).toBe('—');
+  });
+
+  it('shows a legs-adjusted note when the swap was coerced, and none for a valid request (FXSW-091 F-1)', () => {
+    const { rerender } = renderPanel();
+    expect(screen.queryByTestId('swap-adjust-note')).toBeNull();
+    rerender(
+      <SwapPanel
+        deal={{
+          ...deal,
+          dealId: 'd_adj',
+          tenor: '3M',
+          legs: [
+            { kind: 'NEAR', tenor: '3M' },
+            { kind: 'FAR', tenor: '6M' },
+          ],
+          swapRequested: { near: '3M', far: '1M' },
+        }}
+        tick={tick}
+      />,
+    );
+    const note = screen.getByTestId('swap-adjust-note');
+    expect(note.textContent).toContain('3M');
+    expect(note.textContent).toContain('1M');
+  });
+
   it('two-sided request keeps both sides editable with Balance/Zero', () => {
     renderPanel({ restrictMarginSides: true, quoteSide: 'BOTH' });
     expect((screen.getByTestId('margin-input-near-ask') as HTMLInputElement).disabled).toBe(false);

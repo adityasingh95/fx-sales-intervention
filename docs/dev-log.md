@@ -1129,6 +1129,32 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
 - Remaining FXSW-091 items (F-1 leg coercion, F-2 off-side display, T-2 CSP/feed
   reconciliation, T-3/SRI) are unaffected and still open.
 
+## FXSW-091 (F-1/F-2/F-3/T-2/T-3) · Phase 11 security remediation — completed
+
+Resolves the remaining FXSW-087-review items (T-1 toolchain was done separately):
+- **F-1** (Medium) — `resolveSwapLegs` reports whether a swap request was coerced
+  (far missing / far ≤ near / last-tenor near); `buildDeal` records the original
+  request on `Deal.swapRequested`, and a shared `SwapAdjustNote` surfaces a visible
+  "legs adjusted" note in `SwapPanel` + the historic `SwapLegDetail`. Valid
+  requests are unflagged (legs/goldens unchanged).
+- **F-2** (Low) — a one-sided swap now dashes the non-quotable side's client net +
+  P/L (`bidQuotable`/`askQuotable`) instead of showing the raw un-marked net;
+  `readOnly` still shows both sides for a two-sided auto-priced quote.
+- **F-3** (guard) — `v4-swap` E2E injects two swaps in sequence and asserts the
+  second opens with zero leg margins (no markup leak), plus the F-1 note path.
+- **T-2** (Medium) — the live reference-mid poller + its API-key entry are confined
+  to the dev server (`import.meta.env.DEV`): `main.tsx` only wires it in dev, and
+  `ExternalFeedPanel` shows a simulation-only message instead of the key input in
+  the prod build. The harmless status indicator stays in all builds. This reconciles
+  the shipped `connect-src 'self'` CSP (which would block the poll) with the feature
+  — the secret is never collected in the artefact that enforces the policy.
+- **T-3** (Info) — a build-only Vite plugin adds SHA-384 `integrity` (+ `crossorigin`)
+  to the emitted same-origin `<script>`/`<link>` tags; verified present in `dist`
+  and enforced by the E2E preview run. Added `src/vite-env.d.ts` for `import.meta.env`.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (522) · build ✓ · `test:e2e` ✓ (15/15).
+  `pnpm audit` 0. `dist/` ships CSP + SRI, no source maps, brand-neutral (only the
+  documented feed-adapter host).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

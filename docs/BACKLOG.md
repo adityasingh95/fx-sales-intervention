@@ -822,6 +822,13 @@ because FXSW-090 was already taken by the GA-core determinism item above.
 
 **Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-086 · **Source:** `security/FXSW-087-review.md`
 
+**Status (2026-06-17): DONE.** All findings resolved — ✅ F-1 (legs-adjusted note
++ recorded `swapRequested`), ✅ F-2 (off-side client-net/P/L dashed), ✅ F-3 guard
+(sequential-injection E2E), ✅ T-1 (vite→7.3.5 + esbuild override, `pnpm audit`
+**0**), ✅ T-2 (live feed + key-entry confined to dev; prod is simulation-only under
+`connect-src 'self'`), ✅ T-3 (build-time SRI on emitted assets). `pnpm audit` 0;
+522 unit + 15 E2E green; `dist/` ships CSP + SRI, no source maps, brand-neutral.
+
 **AC:**
 - `buildSwapLegs` no longer silently invents a valid far for a missing/out-of-order
   (far ≤ near) request: the invalid case is either refused at the injection

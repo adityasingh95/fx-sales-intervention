@@ -2,6 +2,7 @@ import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { clientSwapNetPoints } from '@/lib/pips';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { Deal, MarginPair } from '@/types/deal';
+import SwapAdjustNote from './SwapAdjustNote';
 
 // Read-only swap leg detail for the historic overlay (FXSW-086). Lists each leg's
 // tenor, two-sided points and value date, the raw net differential, and — when
@@ -49,6 +50,7 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
       className="flex flex-col gap-2 rounded-sm border border-border bg-bg-elevated/40 p-3"
     >
       <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">Swap legs</h2>
+      <SwapAdjustNote deal={deal} />
       {rows.map((row) => (
         <div
           key={row.id}

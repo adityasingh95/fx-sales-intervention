@@ -12,6 +12,7 @@ import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
 import type { Deal, MarginPair } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
+import SwapAdjustNote from './SwapAdjustNote';
 import SwapLegBlock from './SwapLegBlock';
 
 // Swap pricing panel (FXSW-085, docs/05 §18.4). Two-leg layout (NEAR + FAR) with
@@ -97,9 +98,13 @@ export default function SwapPanel({
   const nearDate = formatSettlementDate(valueDateForTenor(tradeDate, nearTenor));
   const farDate = formatSettlementDate(valueDateForTenor(tradeDate, farTenor));
 
-  // One-sided lock (§17.1), applied across both legs + the net row.
-  const bidLocked = readOnly || (restrictMarginSides && quoteSide === 'ASK');
-  const askLocked = readOnly || (restrictMarginSides && quoteSide === 'BID');
+  // Which sides the request can actually be quoted on (one-sided lock, §17.1).
+  // `quotable` drives display suppression (FXSW-091 F-2); `locked` additionally
+  // folds in readOnly to disable the steppers without blanking an auto-priced quote.
+  const bidQuotable = !(restrictMarginSides && quoteSide === 'ASK');
+  const askQuotable = !(restrictMarginSides && quoteSide === 'BID');
+  const bidLocked = readOnly || !bidQuotable;
+  const askLocked = readOnly || !askQuotable;
   const showBalanceZero = !readOnly && !(restrictMarginSides && quoteSide !== 'BOTH');
 
   const effMargin = effectiveSwapMargin(
@@ -126,6 +131,7 @@ export default function SwapPanel({
       aria-label="Swap pricing"
       className="flex flex-col gap-3 rounded-sm border border-border bg-bg-elevated/40 p-3"
     >
+      <SwapAdjustNote deal={deal} />
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
           Swap · {nearTenor} → {farTenor}
@@ -237,23 +243,24 @@ export default function SwapPanel({
         </div>
       )}
 
-      {/* Client net (marked-up) + estimated P/L per quotable side. */}
+      {/* Client net (marked-up) + estimated P/L per quotable side. A non-quotable
+          side on a one-sided swap shows a dash, not the raw un-marked net (F-2). */}
       <div className="grid grid-cols-2 gap-x-4 text-center">
-        <div className={clsx(bidLocked && 'opacity-40')}>
+        <div className={clsx(!bidQuotable && 'opacity-40')}>
           <div data-testid="client-net-bid" className="font-mono tabular-nums text-text">
-            {fmtPoints(clientNet.bid)}
+            {bidQuotable ? fmtPoints(clientNet.bid) : '—'}
           </div>
           <div data-testid="swap-pnl-bid" className="text-[10px] uppercase tracking-tight text-text-mute">
-            {PROFIT_FMT.format(plBid)}
+            {bidQuotable ? PROFIT_FMT.format(plBid) : '—'}
           </div>
           <div className="text-[10px] uppercase tracking-tight text-text-mute">Client bid</div>
         </div>
-        <div className={clsx(askLocked && 'opacity-40')}>
+        <div className={clsx(!askQuotable && 'opacity-40')}>
           <div data-testid="client-net-ask" className="font-mono tabular-nums text-text">
-            {fmtPoints(clientNet.ask)}
+            {askQuotable ? fmtPoints(clientNet.ask) : '—'}
           </div>
           <div data-testid="swap-pnl-ask" className="text-[10px] uppercase tracking-tight text-text-mute">
-            {PROFIT_FMT.format(plAsk)}
+            {askQuotable ? PROFIT_FMT.format(plAsk) : '—'}
           </div>
           <div className="text-[10px] uppercase tracking-tight text-text-mute">Client ask</div>
         </div>

@@ -116,6 +116,23 @@ describe('createScenarioPlayer', () => {
     });
   });
 
+  it('records swapRequested when a SWAP far is coerced, and omits it for a valid request (FXSW-091 F-1)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_swap3',
+    });
+    // Out-of-order → adjustment recorded with the original request.
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'SWAP', tenor: '3M', farTenor: '1M' });
+    expect((emitted[0] as { deal: { swapRequested?: unknown } }).deal.swapRequested).toEqual({
+      near: '3M',
+      far: '1M',
+    });
+    // Valid forward-forward → no adjustment field.
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'SWAP', tenor: '1M', farTenor: '6M' });
+    expect((emitted[1] as { deal: { swapRequested?: unknown } }).deal.swapRequested).toBeUndefined();
+  });
+
   it('leaves single-leg deals without a legs array (FXSW-082 — swaps only)', () => {
     const emitted: DealEvent[] = [];
     const player = createScenarioPlayer({

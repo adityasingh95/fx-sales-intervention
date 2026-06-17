@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSwapLegs, tenorRank } from '@/types/deal';
+import { buildSwapLegs, resolveSwapLegs, tenorRank } from '@/types/deal';
 
 // FXSW-082 — forward-forward swap legs: NEAR + FAR with FAR strictly later.
 describe('buildSwapLegs', () => {
@@ -43,5 +43,37 @@ describe('buildSwapLegs', () => {
     expect(tenorRank(far.tenor)).toBeGreaterThan(tenorRank(near.tenor));
     expect(near.tenor).toBe('9M');
     expect(far.tenor).toBe('1Y');
+  });
+});
+
+// FXSW-091 F-1 — resolveSwapLegs flags whether the request had to be coerced.
+describe('resolveSwapLegs', () => {
+  it('a valid forward-forward request is NOT flagged as adjusted', () => {
+    const r = resolveSwapLegs('1M', '6M');
+    expect(r.adjusted).toBe(false);
+    expect(r.legs).toEqual([
+      { kind: 'NEAR', tenor: '1M' },
+      { kind: 'FAR', tenor: '6M' },
+    ]);
+    expect(r.requested).toEqual({ near: '1M', far: '6M' });
+  });
+
+  it('flags a missing far as adjusted (an invented far)', () => {
+    const r = resolveSwapLegs('1M');
+    expect(r.adjusted).toBe(true);
+    expect(r.requested).toEqual({ near: '1M', far: undefined });
+  });
+
+  it('flags an out-of-order (far ≤ near) request as adjusted', () => {
+    const r = resolveSwapLegs('6M', '1M');
+    expect(r.adjusted).toBe(true);
+    expect(r.legs[1].tenor).toBe('9M');
+    expect(r.requested).toEqual({ near: '6M', far: '1M' });
+  });
+
+  it('flags a last-tenor near (stepped back) as adjusted', () => {
+    const r = resolveSwapLegs('1Y', '1Y');
+    expect(r.adjusted).toBe(true);
+    expect(r.legs[0].tenor).toBe('9M');
   });
 });

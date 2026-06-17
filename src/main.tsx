@@ -28,9 +28,13 @@ wireDealFeedToStore();
 wireNotifications();
 pricingFeed.start();
 
-// v3 only: bridge the GUI-entered external feed key to the pricing anchor.
-// Off by default, so on the bare GA URL this never touches the simulated feed.
-if (isV3()) {
+// v3 only, dev build only: bridge the GUI-entered external feed key to the
+// pricing anchor. Off by default. The production build ships a restrictive CSP
+// (`connect-src 'self'`, FXSW-088) that would block the cross-origin poll, so the
+// live poller + its API-key entry are confined to the dev server, where no CSP is
+// injected — reconciling the policy with the feature (FXSW-091 T-2). The shipped
+// build is therefore simulation-only and never collects the key.
+if (isV3() && import.meta.env.DEV) {
   wireExternalFeed();
 }
 

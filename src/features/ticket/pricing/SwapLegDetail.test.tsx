@@ -49,4 +49,14 @@ describe('SwapLegDetail (FXSW-086)', () => {
     expect(screen.getByTestId('swap-detail-exec-bid').textContent).toBe(fmtPoints(exec.bid));
     expect(screen.getByTestId('swap-detail-exec-ask').textContent).toBe(fmtPoints(exec.ask));
   });
+
+  it('surfaces the legs-adjusted note in the historic detail when the swap was coerced (FXSW-091 F-1)', () => {
+    render(<SwapLegDetail deal={{ ...deal, swapRequested: { near: '1M', far: undefined } }} />);
+    expect(screen.getByTestId('swap-adjust-note')).toBeTruthy();
+  });
+
+  it('omits the legs-adjusted note for a valid (un-coerced) swap', () => {
+    render(<SwapLegDetail deal={deal} />);
+    expect(screen.queryByTestId('swap-adjust-note')).toBeNull();
+  });
 });

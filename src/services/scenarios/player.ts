@@ -1,6 +1,6 @@
 import type { DealEvent } from '@/services/feed/types';
 import type { Deal } from '@/types/deal';
-import { FORWARD_TENORS, buildSwapLegs, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
+import { FORWARD_TENORS, resolveSwapLegs, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
 import type {
   FollowUpEvent,
   Scenario,
@@ -93,7 +93,7 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
     // override's farTenor is FAR (coerced strictly later). Deal.tenor mirrors the
     // NEAR leg so single-leg consumers stay coherent.
     if (instrumentType === 'SWAP') {
-      const legs = buildSwapLegs(requestedTenor, overrides?.farTenor);
+      const { legs, adjusted, requested } = resolveSwapLegs(requestedTenor, overrides?.farTenor);
       return {
         dealId,
         createdAt: now(),
@@ -101,6 +101,7 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
         instrumentType,
         tenor: legs[0].tenor,
         legs,
+        ...(adjusted ? { swapRequested: requested } : {}),
       };
     }
 
