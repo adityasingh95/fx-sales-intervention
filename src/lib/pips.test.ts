@@ -6,7 +6,10 @@ import {
   clientBidFromForward,
   clientBidFromTrader,
   clientForwardPair,
+  clientSwapNetPoints,
+  effectiveSwapMargin,
   estimatedProfitUsd,
+  gateMarginToSide,
   outrightPair,
   sumMargins,
   pipSizeFor,
@@ -122,5 +125,72 @@ describe('side-specific forward points (v3+, FXSW-074)', () => {
     const p = clientForwardPair(spot, points, { bid: 2, ask: 4 }, { bid: 1, ask: 3 }, 'EURUSD');
     expect(p.bid).toBe(clientBidFromForward(1.1715, -27, 2, 1, 'EURUSD'));
     expect(p.ask).toBe(clientAskFromForward(1.1717, -23, 4, 3, 'EURUSD'));
+  });
+});
+
+describe('swap pricing (FXSW-084)', () => {
+  const net = { bid: 130, ask: 140 };
+
+  it('effectiveSwapMargin TOTAL uses the entered net margin directly', () => {
+    const m = effectiveSwapMargin(
+      'TOTAL',
+      { total: { bid: 3, ask: 5 }, near: { bid: 1, ask: 1 }, far: { bid: 2, ask: 2 } },
+      'BOTH',
+    );
+    expect(m).toEqual({ bid: 3, ask: 5 });
+  });
+
+  it('effectiveSwapMargin PER_COMPONENT sums the two legs per side', () => {
+    const m = effectiveSwapMargin(
+      'PER_COMPONENT',
+      { total: { bid: 99, ask: 99 }, near: { bid: 1, ask: 2 }, far: { bid: 4, ask: 6 } },
+      'BOTH',
+    );
+    expect(m).toEqual({ bid: 5, ask: 8 });
+  });
+
+  it('clientSwapNetPoints widens the net (bid down, ask up) by the margin', () => {
+    expect(clientSwapNetPoints(net, { bid: 3, ask: 5 })).toEqual({ bid: 127, ask: 145 });
+  });
+
+  it('total vs per-component reach the same net client points when totals match', () => {
+    const total = effectiveSwapMargin(
+      'TOTAL',
+      { total: { bid: 5, ask: 8 }, near: { bid: 0, ask: 0 }, far: { bid: 0, ask: 0 } },
+      'BOTH',
+    );
+    const perComp = effectiveSwapMargin(
+      'PER_COMPONENT',
+      { total: { bid: 0, ask: 0 }, near: { bid: 1, ask: 2 }, far: { bid: 4, ask: 6 } },
+      'BOTH',
+    );
+    expect(clientSwapNetPoints(net, total)).toEqual(clientSwapNetPoints(net, perComp));
+  });
+
+  it('one-sided gating: a BID request zeroes the ask margin (off-side not priced)', () => {
+    expect(gateMarginToSide({ bid: 3, ask: 5 }, 'BID')).toEqual({ bid: 3, ask: 0 });
+    const m = effectiveSwapMargin(
+      'PER_COMPONENT',
+      { total: { bid: 0, ask: 0 }, near: { bid: 1, ask: 2 }, far: { bid: 4, ask: 6 } },
+      'BID',
+    );
+    expect(m).toEqual({ bid: 5, ask: 0 });
+    // The locked ask side reverts to the raw net (no markup).
+    expect(clientSwapNetPoints(net, m)).toEqual({ bid: 125, ask: 140 });
+  });
+
+  it('one-sided gating: an ASK request zeroes the bid margin', () => {
+    expect(gateMarginToSide({ bid: 3, ask: 5 }, 'ASK')).toEqual({ bid: 0, ask: 5 });
+  });
+
+  it('swap P/L reuses estimatedProfitUsd on the effective margin per side', () => {
+    const m = effectiveSwapMargin(
+      'TOTAL',
+      { total: { bid: 4, ask: 4 }, near: { bid: 0, ask: 0 }, far: { bid: 0, ask: 0 } },
+      'BID',
+    );
+    // BID quotable, ask gated to 0 → only the bid side earns.
+    expect(estimatedProfitUsd(m.bid, 1_000_000, 'EURUSD', 1.17)).toBeGreaterThan(0);
+    expect(estimatedProfitUsd(m.ask, 1_000_000, 'EURUSD', 1.17)).toBe(0);
   });
 });

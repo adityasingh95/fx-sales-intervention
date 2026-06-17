@@ -1033,6 +1033,20 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
 - Not yet wired into the app (FXSW-084 consumes it) — bundle hash unchanged.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (493) · build ✓ · `test:e2e` ✓ (12/12).
 
+## FXSW-084 · Swap pricing math (Phase 11)
+
+- `lib/pips.ts` swap section: `SwapMarkupMode` (`PER_COMPONENT|TOTAL`),
+  `gateMarginToSide(margin, quoteSide)` (one-sided lock — zeroes the off-side,
+  mirrors FXSW-068), `effectiveSwapMargin(mode, {total,near,far}, quoteSide)`
+  (TOTAL = entered net margin; PER_COMPONENT = sum of leg margins, mirroring the
+  forward spot+fwd sum), and `clientSwapNetPoints(net, margin)` (bid down / ask up
+  by the effective net margin; pips applied directly — net is already a pip
+  differential, no pipSize scaling). P/L reuses `estimatedProfitUsd`.
+- Strict TDD in `pips.test.ts`: both markup modes, total↔per-component equivalence
+  when totals match, one-sided gating (BID/ASK), and P/L only on the quotable side.
+- Math only — wired into the ticket in FXSW-085 (bundle hash unchanged).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ · build ✓ · `test:e2e` ✓ (12/12).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
