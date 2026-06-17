@@ -1,9 +1,10 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-16
 sources:
   - docs/02-functional-spec.md
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
+  - docs/phase-summaries/phase-08-v3-summary.md
 status: stable
 ticket: FXSW-012
 ---
@@ -29,6 +30,17 @@ The primary work area. Live view of every deal in progress: auto-priced (ESP), a
 | Trader | Picked-up-by | 100px | Empty until a trader picks up. |
 
 Default sort: Status (intervention states first), then Time descending. Column headers clickable to re-sort. No filter UI in v1.
+
+### v3 columns (`?dev=v3`)
+
+Under v3, two extra columns are inserted, gated by `isV3()` (the column list is built with `...(isV3() ? [col] : [])` spreads, so the GA layout is byte-for-byte unchanged when the flag is absent):
+
+| Column | Source | Notes |
+|---|---|---|
+| Request ID | `makeRequestId()` → `REQ-XXXXXX` | Synthetic display id minted at deal creation (`src/lib/ids.ts`). |
+| Value Date | `valueDateForTenor(deal, tenor)` | Tenor-aware settlement date; `SPOT` resolves to the standard spot value date. See [forward-pricing.md](forward-pricing.md). |
+
+The mobile card-stack (narrow viewports) gains a matching line carrying the Request ID + value date for v3 deals (FXSW-066). Historic adds a Trade ID on top of these — see [historic-blotter.md](historic-blotter.md).
 
 ## Row treatment per display status
 

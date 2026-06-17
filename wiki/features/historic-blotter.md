@@ -1,7 +1,9 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-16
 sources:
   - docs/02-functional-spec.md
+  - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/dev-log.md
 status: stable
 ticket: FXSW-012
 ---
@@ -23,6 +25,18 @@ Same as the Active Blotter, except:
   - `Rejected by Client` — SI reached `ClientRejected`.
   - `Expired` — RFS reached `Expired`.
   - `Cancelled` — RFS reached `ClientClosed`.
+
+### v3 columns + clickable rows (`?dev=v3`)
+
+Under v3 (gated by `isV3()`, inserted via `...(isV3() ? [col] : [])` spreads so the GA layout is unchanged):
+
+| Column | Source | Notes |
+|---|---|---|
+| Request ID | `REQ-XXXXXX` | Minted at deal creation (`src/lib/ids.ts`). |
+| Trade ID | `TRD-XXXXXX` | Minted at archive closure — present for executed deals. |
+| Value Date | `valueDateForTenor` | Tenor-aware settlement date. |
+
+Each Historic **row becomes clickable** under v3 (FXSW-060): clicking sets `uiStore.openHistoricId` and opens the read-only [historical trade detail](historical-detail.md) overlay (deal terms + markup reason + lifecycle timeline). Without the flag, Historic rows are static as before.
 
 ## Sorting & capacity
 
