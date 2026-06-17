@@ -1155,6 +1155,30 @@ Resolves the remaining FXSW-087-review items (T-1 toolchain was done separately)
   `pnpm audit` 0. `dist/` ships CSP + SRI, no source maps, brand-neutral (only the
   documented feed-adapter host).
 
+## FXSW-090 · GA-core determinism + scenario-player lifecycle hardening
+
+Resolves the GA-core cold-audit work-item (`security/audit-core-pre-phase9-review.md`):
+- **F-1** (Medium) — the `CLIENT_ACCEPT_OR_REJECT` follow-up (CREDIT_BREACH) is now
+  resolved by a per-deal **seeded PRNG** (`makeRng(hashSeed(dealId) ^ PLAYER_SEED)`,
+  reusing `services/feed/rng`) instead of `Math.random`, so a deal's accept/reject
+  outcome is reproducible; an injectable `acceptOrReject` option pins it in tests.
+- **F-2** (Low) — the player tracks timers by owning `dealId` (`Map<handle,dealId>`)
+  and exposes `forgetDeal(dealId)` that clears that deal's pending timers + gates.
+  `dealFeed` forwards it; `dealsStore` calls it on archival and `removeDeal`, so no
+  stale follow-up fires and the `gates` set cannot grow unbounded over a session.
+- **F-3** (Low) — `lib/ids` (`makeRequestId`/`makeTradeId`) takes an injectable
+  random source (default `Math.random`) so a seeded rng pins ids in tests
+  (REQ-/TRD- format unchanged); `addDeal` now logs a `console.error` on a duplicate
+  `dealId` (generator collision) and preserves the original instead of silently
+  no-oping. `player.makeDealId` was already injectable via `generateDealId`.
+- **T-1** (Low) — `pricingFeed` gains a documented `?seed=N` URL-param fallback for
+  manual reproduction, **below** `window.__seedFeed` in precedence so the seed-42
+  golden / test path is byte-unchanged.
+- Tests: player (seeded reproducibility, override, `forgetDeal` cancels timer +
+  drops gate), `lib/ids` (seeded determinism + format), store (duplicate-dealId
+  error + original preserved). Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (532) ·
+  build ✓ · `test:e2e` ✓ (15/15). Goldens byte-stable.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

@@ -156,4 +156,50 @@ describe('createScenarioPlayer', () => {
     vi.advanceTimersByTime(3000);
     expect(emitted).toHaveLength(1);
   });
+
+  // FXSW-090 F-1 — the CLIENT_ACCEPT_OR_REJECT coin-flip (CREDIT_BREACH) is seeded.
+  const runCreditBreach = (acceptOrReject?: (id: string) => boolean): string => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_cb',
+      acceptOrReject,
+    });
+    player.inject('CREDIT_BREACH');
+    player.notifyDealState('d_cb', 'Quoted');
+    vi.advanceTimersByTime(1500);
+    return emitted[emitted.length - 1].type;
+  };
+
+  it('CLIENT_ACCEPT_OR_REJECT is seeded by dealId — reproducible across runs (FXSW-090 F-1)', () => {
+    const first = runCreditBreach();
+    const second = runCreditBreach();
+    expect(first).toBe(second);
+    expect(['CLIENT_ACCEPT', 'CLIENT_REJECT']).toContain(first);
+  });
+
+  it('acceptOrReject is overridable for deterministic tests (FXSW-090 F-1)', () => {
+    expect(runCreditBreach(() => true)).toBe('CLIENT_ACCEPT');
+    expect(runCreditBreach(() => false)).toBe('CLIENT_REJECT');
+  });
+
+  it('forgetDeal cancels a deal’s pending follow-up timer (FXSW-090 F-2)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({ emit: (e) => emitted.push(e), generateDealId: () => 'd_fg' });
+    player.inject('CREDIT_BREACH');
+    player.notifyDealState('d_fg', 'Quoted'); // schedules the 1500ms coin-flip
+    player.forgetDeal('d_fg');
+    vi.advanceTimersByTime(5000);
+    expect(emitted.some((e) => e.type === 'CLIENT_ACCEPT' || e.type === 'CLIENT_REJECT')).toBe(false);
+  });
+
+  it('forgetDeal drops an unfired after-si-state gate so it never schedules (FXSW-090 F-2)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({ emit: (e) => emitted.push(e), generateDealId: () => 'd_gate' });
+    player.inject('CREDIT_BREACH'); // arms the Quoted gate
+    player.forgetDeal('d_gate');
+    player.notifyDealState('d_gate', 'Quoted'); // gate already dropped → nothing fires
+    vi.advanceTimersByTime(5000);
+    expect(emitted.some((e) => e.type === 'CLIENT_ACCEPT' || e.type === 'CLIENT_REJECT')).toBe(false);
+  });
 });

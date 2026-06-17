@@ -45,4 +45,7 @@ export interface DealFeed {
   // at 04 §4.4; added to keep dealFeed's coupling to the deals store
   // explicit. See dev-log FXSW-008 for rationale.
   notifyDealState(dealId: string, siState: string): void;
+  // FXSW-090 F-2: the deals store calls this when a deal is archived or removed,
+  // so the player drops that deal's pending timers + gates (no stale follow-up).
+  forgetDeal(dealId: string): void;
 }

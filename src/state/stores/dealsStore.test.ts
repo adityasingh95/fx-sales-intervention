@@ -45,6 +45,18 @@ describe('dealsStore', () => {
     expect(entry?.dealable).toBe(true);
   });
 
+  it('addDeal signals a duplicate dealId (error, not a silent overwrite) and keeps the original (FXSW-090 F-3)', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const first = makeDeal({ clientName: 'First' });
+    useDealsStore.getState().addDeal(first);
+    // A second deal with the same id must not clobber the live one.
+    useDealsStore.getState().addDeal(makeDeal({ clientName: 'Second' }));
+    expect(errorSpy).toHaveBeenCalled();
+    expect(useDealsStore.getState().deals.get('d_test')?.deal.clientName).toBe('First');
+    expect(useDealsStore.getState().deals.size).toBe(1);
+    errorSpy.mockRestore();
+  });
+
   it('removeDeal stops the actor; subsequent forwardEvent is a no-op (no errors)', () => {
     useDealsStore.getState().addDeal(makeDeal());
     useDealsStore.getState().removeDeal('d_test');

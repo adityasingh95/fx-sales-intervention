@@ -786,6 +786,13 @@ immutability, build hygiene). Findings: 0 Critical, 0 High, 1 Medium, 3 Low, 2 I
 
 **Effort:** S–M · **TDD:** Alongside · **Depends on:** — · **Source:** `security/audit-core-pre-phase9-review.md`
 
+**Status (2026-06-17): DONE.** ✅ F-1 (seeded per-deal `CLIENT_ACCEPT_OR_REJECT` +
+injectable `acceptOrReject`), ✅ F-2 (`player.forgetDeal` clears a deal's timers +
+gates; called from store archival + `removeDeal`), ✅ F-3 (injectable seeded
+`lib/ids`; `addDeal` errors on duplicate dealId instead of silent no-op), ✅ T-1
+(`?seed=N` URL fallback below `window.__seedFeed`). 532 unit + 15 E2E green;
+goldens byte-stable.
+
 **AC:**
 - The `CLIENT_ACCEPT_OR_REJECT` scenario follow-up resolves via a seeded PRNG
   (reuse `services/feed/rng.ts`), keyed off the deal ID or an injectable seed and

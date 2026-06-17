@@ -4,13 +4,18 @@
 
 const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
-const randomSuffix = (len: number): string => {
+// FXSW-090 F-3: the random source is injectable (defaulting to Math.random) so a
+// test can pin the suffix with a seeded generator (e.g. services/feed/rng) and
+// assert stable ids. The REQ-/TRD- prefixes + 6-char format are unchanged.
+const randomSuffix = (len: number, rand: () => number): string => {
   let s = '';
   for (let i = 0; i < len; i += 1) {
-    s += ID_ALPHABET.charAt(Math.floor(Math.random() * ID_ALPHABET.length));
+    s += ID_ALPHABET.charAt(Math.floor(rand() * ID_ALPHABET.length));
   }
   return s;
 };
 
-export const makeRequestId = (): string => `REQ-${randomSuffix(6)}`;
-export const makeTradeId = (): string => `TRD-${randomSuffix(6)}`;
+export const makeRequestId = (rand: () => number = Math.random): string =>
+  `REQ-${randomSuffix(6, rand)}`;
+export const makeTradeId = (rand: () => number = Math.random): string =>
+  `TRD-${randomSuffix(6, rand)}`;
