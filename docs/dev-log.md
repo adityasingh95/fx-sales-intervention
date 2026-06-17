@@ -1109,6 +1109,26 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
   `caplin`/`polygon`/`frankfurter`/other vendor leaks.
 - Gates green: `test:run` 513 · `test:e2e` 14/14 · build brand-neutral.
 
+## FXSW-091 (T-1) · Resolve the remaining High advisory — toolchain to vite 7
+
+- `vite` 5.4.21 → **7.3.5** (major) + `pnpm.overrides` `esbuild@<0.28.1 → >=0.28.1`.
+  Sequence/rationale: `vite` 6.4.3 cleared the `server.fs.deny` high but its
+  `esbuild ^0.25` + a forced `0.28.1` broke the build (esbuild can't lower
+  destructuring for vite 6's target); `vite` 7 (`esbuild ^0.27`, newer default
+  target) is compatible with the `0.28.1` override and builds cleanly.
+- **`pnpm audit`: 5 → 0** — both High advisories (vite `server.fs.deny`, esbuild
+  binary-integrity) and the 3 moderates cleared. (24 → 0 across the whole
+  remediation arc.) Resolves FXSW-087-review **T-1 (High)** and clears the
+  FXSW-088/089 vite-6 toolchain residual.
+- `@vitejs/plugin-react` 4.7.0 and `vitest` 3.2.6 both declare vite 7 support;
+  Node 22.22 satisfies vite 7's engine floor. No config changes needed (the
+  build-only CSP `transformIndexHtml` plugin still injects under vite 7).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (513) · build ✓ · `test:e2e` ✓
+  (14/14). CSP present in `dist`; no source maps; `dist` brand-neutral (only the
+  documented feed-adapter host). Seed-42 / GA / v3 / v4 goldens byte-stable.
+- Remaining FXSW-091 items (F-1 leg coercion, F-2 off-side display, T-2 CSP/feed
+  reconciliation, T-3/SRI) are unaffected and still open.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

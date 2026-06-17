@@ -679,7 +679,8 @@ state-machine ACs were deferred to Phase 11 (Swaps rework those machines).
   `postcss`→8.5.15, plus `pnpm.overrides` (form-data/@babel/core/js-yaml).
   `pnpm audit` 24→5 advisories, **0 critical / 0 of the old highs**. *Residual: 2
   high + 3 moderate, all requiring a `vite` 5→6 major bump (Windows-dev-server /
-  Deno-only, no shipped-bundle impact) — deferred, see below.*
+  Deno-only, no shipped-bundle impact) — **resolved 2026-06-17 via FXSW-091 T-1**:
+  vite→7.3.5 + esbuild override, `pnpm audit` now 0.*
 - ✅ **T-4 (CSP)** restrictive CSP `<meta>` injected at build only (active in
   `preview`/prod, not dev) via a Vite plugin; `connect-src 'self'`. ⏳ **SRI**
   deferred (Low; needs a build-time hash plugin).
@@ -739,7 +740,8 @@ surface + toolchain — do them together.
 **Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-080 · **Source:** `security/FXSW-081-review.md`
 
 **Status (2026-06-17): mostly done** (shared with FXSW-088 — same work cleared
-both). ✅ T-1 toolchain (criticals cleared; 2 high/3 moderate vite-6 residual),
+both). ✅ T-1 toolchain (criticals cleared; vite-6 residual **fully resolved
+2026-06-17 via FXSW-091 T-1** — `pnpm audit` now 0),
 ✅ T-2 key-in-header, ✅ T-3 build-fetch opt-in + validation, ✅ T-4 CSP (SRI
 deferred). ⏳ **F-2** (structural NDF inertness below the render layer) — deferred
 (Theme D); F-1/F-3/F-4 were already fixed in FXSW-080, so the shipped NDF price is
@@ -833,9 +835,11 @@ because FXSW-090 was already taken by the GA-core determinism item above.
   first deal's leg/net margin into the second's captured execution margin, and the
   second opens `PER_COMPONENT` with zero margins; (b) the historic "Net used for
   execution" reconciles with the marked-up net actually sent. (F-3, F-4 guard)
-- Toolchain: `vite` moved to a patched line (`>=6.4.3`) or `esbuild` pinned
-  `>=0.28.1` via `pnpm.overrides`; `pnpm audit` reports zero high+ advisories;
-  goldens/E2E byte-stable. (T-1, High — supersedes the FXSW-088/089 vite-6 residual)
+- ✅ **DONE (2026-06-17)** Toolchain: `vite` 5.4.21 → **7.3.5** + `pnpm.overrides`
+  `esbuild >=0.28.1`; `pnpm audit` **5 → 0** (both highs + 3 moderates cleared);
+  goldens/E2E byte-stable. (T-1, High — also clears the FXSW-088/089 vite-6
+  residual.) *vite 6.4.3 cleared the vite high but its esbuild ^0.25 + a forced
+  0.28.1 broke the build; vite 7's ^0.27 is override-compatible.*
 - The shipped CSP and the opt-in live feed are reconciled: either the runtime
   poller + API-key entry are removed/disabled in the built artefact (simulation
   only; secret never collected), OR `connect-src` lists exactly the single provider
