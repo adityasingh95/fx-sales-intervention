@@ -10,13 +10,14 @@ import { TENORS, type Tenor } from '@/types/deal';
 import { SCENARIO_IDS, type ScenarioId, type ScenarioOverrides } from '@/types/scenario';
 
 // Injectable instruments (v4). `AUTO` derives SPOT/OUTRIGHT from the tenor (the
-// v3 behaviour); `NDF` is the Phase 10 instrument and forces a forward tenor.
-// SWAP is added when Phase 11 lands its pricing UI.
-type InjectInstrument = 'AUTO' | 'NDF';
-const INJECT_INSTRUMENTS: readonly InjectInstrument[] = ['AUTO', 'NDF'];
+// v3 behaviour); `NDF` (Phase 10) forces a forward tenor; `SWAP` (Phase 11) adds
+// a FAR-leg tenor selector — the tenor select becomes the NEAR leg.
+type InjectInstrument = 'AUTO' | 'NDF' | 'SWAP';
+const INJECT_INSTRUMENTS: readonly InjectInstrument[] = ['AUTO', 'NDF', 'SWAP'];
 const INSTRUMENT_LABEL: Record<InjectInstrument, string> = {
   AUTO: 'Auto',
   NDF: 'NDF',
+  SWAP: 'Swap',
 };
 
 // Compact labels for the header chip-style buttons.
@@ -44,11 +45,15 @@ export default function DevInjector() {
   const showInstrumentSelect = isV4();
   const [tenor, setTenor] = useState<Tenor>('SPOT');
   const [instrument, setInstrument] = useState<InjectInstrument>('AUTO');
+  // FXSW-082: FAR-leg tenor for a SWAP injection (the `tenor` select is NEAR).
+  const [farTenor, setFarTenor] = useState<Tenor>('3M');
   const injectScenario = (id: ScenarioId): void => {
     const overrides: ScenarioOverrides = {};
     if (tenor !== 'SPOT') overrides.tenor = tenor;
     if (instrument !== 'AUTO') overrides.instrumentType = instrument;
-    const hasOverride = overrides.tenor !== undefined || overrides.instrumentType !== undefined;
+    if (instrument === 'SWAP') overrides.farTenor = farTenor;
+    const hasOverride =
+      overrides.tenor !== undefined || overrides.instrumentType !== undefined;
     dealFeed.inject(id, hasOverride ? overrides : undefined);
   };
 
@@ -73,6 +78,9 @@ export default function DevInjector() {
         instrument={instrument}
         onInstrumentChange={setInstrument}
         showInstrumentSelect={showInstrumentSelect}
+        farTenor={farTenor}
+        onFarTenorChange={setFarTenor}
+        showFarSelect={showInstrumentSelect && instrument === 'SWAP'}
       />
     );
   }
@@ -90,6 +98,9 @@ export default function DevInjector() {
       )}
       {showInstrumentSelect && (
         <InstrumentSelect instrument={instrument} onChange={setInstrument} />
+      )}
+      {showInstrumentSelect && instrument === 'SWAP' && (
+        <FarTenorSelect tenor={farTenor} onChange={setFarTenor} />
       )}
       {visibleScenarios.map((id) => (
         <button
@@ -137,6 +148,31 @@ function TenorSelect({ tenor, onChange }: TenorSelectProps) {
   );
 }
 
+interface FarTenorSelectProps {
+  tenor: Tenor;
+  onChange: (t: Tenor) => void;
+}
+
+// FXSW-082: FAR-leg tenor for a SWAP. Offers the full ladder; an out-of-order
+// (far ≤ near) choice is coerced to the shortest valid far in buildSwapLegs.
+function FarTenorSelect({ tenor, onChange }: FarTenorSelectProps) {
+  return (
+    <select
+      data-testid="inject-far-tenor"
+      aria-label="Swap far-leg tenor"
+      value={tenor}
+      onChange={(e) => onChange(e.target.value as Tenor)}
+      className="shrink-0 rounded-sm border border-border bg-bg-elevated px-1 py-1 text-xs font-medium text-text-dim hover:border-blue/60 hover:text-text"
+    >
+      {TENORS.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 interface InstrumentSelectProps {
   instrument: InjectInstrument;
   onChange: (i: InjectInstrument) => void;
@@ -170,6 +206,9 @@ interface MobileDevInjectorProps {
   instrument: InjectInstrument;
   onInstrumentChange: (i: InjectInstrument) => void;
   showInstrumentSelect: boolean;
+  farTenor: Tenor;
+  onFarTenorChange: (t: Tenor) => void;
+  showFarSelect: boolean;
 }
 
 function MobileDevInjector({
@@ -182,6 +221,9 @@ function MobileDevInjector({
   instrument,
   onInstrumentChange,
   showInstrumentSelect,
+  farTenor,
+  onFarTenorChange,
+  showFarSelect,
 }: MobileDevInjectorProps) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -242,6 +284,9 @@ function MobileDevInjector({
             )}
             {showInstrumentSelect && (
               <InstrumentSelect instrument={instrument} onChange={onInstrumentChange} />
+            )}
+            {showFarSelect && (
+              <FarTenorSelect tenor={farTenor} onChange={onFarTenorChange} />
             )}
             {visibleScenarios.map((id) => (
               <button

@@ -46,6 +46,25 @@ export const defaultInstrumentForTenor = (tenor: Tenor): InstrumentType =>
 export type LegKind = 'NEAR' | 'FAR';
 export type DealLeg = { kind: LegKind; tenor: Tenor };
 
+// Ordinal position of a tenor in the canonical ladder (SPOT=0 … 1Y=last).
+// Used to order swap legs; -1 is impossible since every Tenor is in TENORS.
+export const tenorRank = (tenor: Tenor): number => TENORS.indexOf(tenor);
+
+// Build validated swap legs (FXSW-082). A forward-forward swap needs a NEAR and a
+// FAR leg with FAR strictly later than NEAR. A missing or out-of-order (far ≤ near)
+// far is coerced to the shortest valid far — the tenor immediately after near; if
+// near is the last tenor, near is stepped back one so a later far exists.
+export const buildSwapLegs = (near: Tenor, far?: Tenor): [DealLeg, DealLeg] => {
+  let nearRank = tenorRank(near);
+  if (nearRank >= TENORS.length - 1) nearRank = TENORS.length - 2;
+  const requestedFarRank = far !== undefined ? tenorRank(far) : -1;
+  const farRank = requestedFarRank > nearRank ? requestedFarRank : nearRank + 1;
+  return [
+    { kind: 'NEAR', tenor: TENORS[nearRank] },
+    { kind: 'FAR', tenor: TENORS[farRank] },
+  ];
+};
+
 export type RejectionReason = 'OFF_HOURS' | 'SIZE_LIMIT' | 'CREDIT_LIMIT';
 
 export type Deal = {

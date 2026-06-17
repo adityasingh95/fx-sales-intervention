@@ -1001,6 +1001,25 @@ Deno-only, no shipped-bundle impact) — deferred. Fixed `vi.fn<A,B>()`→`vi.fn
 Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (479) · build ✓ · `test:e2e` ✓ (12/12,
 under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
 
+## FXSW-082 · Swap data model + injection (Phase 11)
+
+- `types/deal.ts`: `tenorRank(tenor)` + `buildSwapLegs(near, far?)` — returns a
+  validated `[NEAR, FAR]` pair with FAR strictly later than NEAR; a missing/
+  out-of-order far is coerced to the tenor after near, and a last-tenor near is
+  stepped back so a later far exists.
+- `ScenarioOverrides.farTenor`; `buildDeal` SWAP branch populates `Deal.legs`
+  (NEAR=requested tenor, FAR=farTenor) and mirrors `Deal.tenor` to the near leg.
+  Single-leg deals are untouched (no `legs`).
+- `DevInjector`: instrument selector gains `Swap`; a v4-only `inject-far-tenor`
+  select appears when Swap is chosen (the tenor select becomes the NEAR leg),
+  threaded through desktop + mobile.
+- Per docs/03 §10, swaps add no new states/machines — pure data widening.
+- Tests: `tests/unit/swap-legs.test.ts` (ordering/coercion/edge cases);
+  `player.test.ts` (SWAP legs + far≤near coercion + single-leg unaffected);
+  injector far-select hidden on bare URL.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (489) · build ✓ · `test:e2e` ✓
+  (12/12). GA/v3/single-leg unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

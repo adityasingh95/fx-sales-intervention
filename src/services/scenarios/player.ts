@@ -1,6 +1,6 @@
 import type { DealEvent } from '@/services/feed/types';
 import type { Deal } from '@/types/deal';
-import { FORWARD_TENORS, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
+import { FORWARD_TENORS, buildSwapLegs, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
 import type {
   FollowUpEvent,
   Scenario,
@@ -88,6 +88,22 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
       overrides?.instrumentType ??
       scenario.deal.instrumentType ??
       defaultInstrumentForTenor(requestedTenor);
+
+    // A SWAP is two legs (docs/02 §12.3): the requested tenor is NEAR, the
+    // override's farTenor is FAR (coerced strictly later). Deal.tenor mirrors the
+    // NEAR leg so single-leg consumers stay coherent.
+    if (instrumentType === 'SWAP') {
+      const legs = buildSwapLegs(requestedTenor, overrides?.farTenor);
+      return {
+        dealId,
+        createdAt: now(),
+        ...scenario.deal,
+        instrumentType,
+        tenor: legs[0].tenor,
+        legs,
+      };
+    }
+
     // An NDF must carry a forward tenor (docs/02 §12.2); a SPOT request is
     // coerced to the shortest forward tenor rather than rejected outright.
     const tenor =

@@ -23,4 +23,9 @@ describe('DevInjector', () => {
     render(<DevInjector />);
     expect(screen.queryByTestId('inject-instrument')).toBeNull();
   });
+
+  it('hides the swap far-tenor selector on the bare URL (FXSW-082)', () => {
+    render(<DevInjector />);
+    expect(screen.queryByTestId('inject-far-tenor')).toBeNull();
+  });
 });

@@ -84,6 +84,49 @@ describe('createScenarioPlayer', () => {
     expect(emitted[0]).toMatchObject({ deal: { instrumentType: 'NDF', tenor: '6M' } });
   });
 
+  it('injects a SWAP with NEAR + FAR legs; Deal.tenor mirrors the near leg (FXSW-082)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_swap',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'SWAP', tenor: '1M', farTenor: '6M' });
+    expect(emitted[0]).toMatchObject({
+      type: 'NEW_SI_DEAL',
+      deal: {
+        instrumentType: 'SWAP',
+        tenor: '1M',
+        legs: [
+          { kind: 'NEAR', tenor: '1M' },
+          { kind: 'FAR', tenor: '6M' },
+        ],
+      },
+    });
+  });
+
+  it('coerces an out-of-order SWAP far (far ≤ near) to the next tenor after near (FXSW-082)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_swap2',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'SWAP', tenor: '3M', farTenor: '1M' });
+    expect(emitted[0]).toMatchObject({
+      deal: { legs: [{ kind: 'NEAR', tenor: '3M' }, { kind: 'FAR', tenor: '6M' }] },
+    });
+  });
+
+  it('leaves single-leg deals without a legs array (FXSW-082 — swaps only)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_single',
+    });
+    player.inject('OFF_HOURS_INTERVENTION', { tenor: '3M' });
+    const deal = (emitted[0] as { deal: { legs?: unknown } }).deal;
+    expect(deal.legs).toBeUndefined();
+  });
+
   it('notifyDealState ignores non-matching dealId and non-matching state', () => {
     const emitted: DealEvent[] = [];
     const player = createScenarioPlayer({

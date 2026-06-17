@@ -6,6 +6,9 @@ import type { Deal, InstrumentType, RejectionReason, Tenor } from './deal';
 export type ScenarioOverrides = {
   tenor?: Tenor;
   instrumentType?: InstrumentType;
+  // FXSW-082: the FAR-leg tenor for a SWAP injection. The `tenor` field is the
+  // NEAR leg; far must be strictly later (coerced in buildDeal/buildSwapLegs).
+  farTenor?: Tenor;
 };
 
 export type ScenarioId =
