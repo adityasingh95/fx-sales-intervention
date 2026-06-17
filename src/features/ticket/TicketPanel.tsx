@@ -52,6 +52,12 @@ export default function TicketPanel() {
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
   const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
+  // FXSW-086: SWAP effective net-points margin + mode, reported up by SwapPanel
+  // so the quote-context capture records what was applied at QuoteSent.
+  const [swapPricing, setSwapPricing] = useState<{
+    mode: 'PER_COMPONENT' | 'TOTAL';
+    net: MarginPair;
+  } | null>(null);
   // FXSW-069 (v3): a "happy" auto-priced (ESP) deal needs no manual
   // intervention, so opening it shows a read-only view and does NOT fire
   // PickUp. Latched once per open so it stays stable after the deal
@@ -91,6 +97,7 @@ export default function TicketPanel() {
       setFwdMarginPair({ bid: 0, ask: 0 });
       setSavedFwdForUndo(null);
       setMarkupMode('component');
+      setSwapPricing(null);
       setAiApplied(false);
       setAppliedRationale(null);
       setPricingMode('streaming');
@@ -142,6 +149,10 @@ export default function TicketPanel() {
     markupMode: effectiveMarkupMode,
     aiApplied,
     appliedRationale,
+    swap:
+      instrument === 'SWAP'
+        ? (swapPricing ?? { mode: 'PER_COMPONENT', net: { bid: 0, ask: 0 } })
+        : undefined,
   });
 
   // Two-pass mount so the slide-in animates from `translate-x-full` to
@@ -240,6 +251,7 @@ export default function TicketPanel() {
                 quoteSide={quoteSide}
                 restrictMarginSides={restrictMarginSides}
                 readOnly={autoView}
+                onPricingChange={setSwapPricing}
               />
               <DealSummaryPanel deal={deal} />
             </>

@@ -1070,6 +1070,26 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
   detail are FXSW-086; AI-suggestion-in-Total is a follow-up.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (507) · build ✓ · `test:e2e` ✓ (13/13).
 
+## FXSW-086 · Swap blotter + historic detail (Phase 11)
+
+- Blotter dual value dates: `lib/time.ts` gains `valueDateLabel(deal)` (swap →
+  `near → far`, else single); both blotters' `valueDateFor` delegate to it. The
+  instrument cell already shows `SWAP` via `instrumentOf`.
+- Swap execution capture: `AppliedMargin` gains a `{ kind:'swap'; mode; net }`
+  variant. `SwapPanel` reports its effective (gated) net margin + mode up via a
+  new `onPricingChange`; `TicketPanel` holds it (`swapPricing`, reset per deal)
+  and passes it to `useQuoteContextCapture`, which records the swap variant at
+  QuoteSent (takes precedence over spot/forward).
+- Historic detail: new read-only `pricing/SwapLegDetail.tsx` lists per-leg
+  tenor/points/value-date, the raw net differential, and — when a price was sent
+  — the net used for execution (raw net marked up by the captured net margin).
+  `HistoricDetailPanel` renders it for swaps and `formatMargin` summarises the
+  swap markup reason (`Net b/a pips · Mode`).
+- Tests: `valueDateLabel` unit (dual vs single), `SwapLegDetail.test.tsx` (legs/
+  net/exec), a `HistoricDetailPanel` swap case, and an extended `v4-swap` E2E
+  driving a swap through to the historic detail overlay.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (513) · build ✓ · `test:e2e` ✓ (14/14).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

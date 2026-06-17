@@ -30,7 +30,7 @@ export const addBusinessDays = (date: Date, days: number): Date => {
 // Forward value-date calculation (v3, FXSW-054). The forward value date is the
 // spot date (T+2) shifted by the tenor period and rolled forward to the next
 // business day. A real holiday calendar could slot in at the rollForward seam.
-import type { Tenor } from '@/types/deal';
+import { instrumentOf, type Deal, type Tenor } from '@/types/deal';
 
 const rollForward = (d: Date): Date => {
   let result = new Date(d);
@@ -68,3 +68,16 @@ const SETTLEMENT_FMT = new Intl.DateTimeFormat('en-GB', {
 });
 
 export const formatSettlementDate = (date: Date): string => SETTLEMENT_FMT.format(date);
+
+// Blotter value-date label (FXSW-086). A swap shows both leg dates (near → far);
+// every other instrument shows the single settlement date for its tenor.
+export const valueDateLabel = (deal: Deal): string => {
+  const trade = new Date(deal.createdAt);
+  const legs = deal.legs;
+  if (instrumentOf(deal) === 'SWAP' && legs && legs.length >= 2) {
+    const near = formatSettlementDate(valueDateForTenor(trade, legs[0].tenor));
+    const far = formatSettlementDate(valueDateForTenor(trade, legs[1].tenor));
+    return `${near} → ${far}`;
+  }
+  return formatSettlementDate(valueDateForTenor(trade, deal.tenor));
+};

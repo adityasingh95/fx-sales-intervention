@@ -18,10 +18,12 @@ export type LifecyclePhase =
 
 // The margin actually applied when the trader priced the deal. Spot deals
 // carry a single bid/ask pair; forwards (FXSW-054+) carry independent spot and
-// forward-points components.
+// forward-points components; swaps (FXSW-086) carry the effective net-points
+// margin (bid/ask) plus the markup mode it was taken in.
 export type AppliedMargin =
   | { kind: 'spot'; margin: MarginPair }
-  | { kind: 'forward'; spot: MarginPair; fwd: MarginPair };
+  | { kind: 'forward'; spot: MarginPair; fwd: MarginPair }
+  | { kind: 'swap'; mode: 'PER_COMPONENT' | 'TOTAL'; net: MarginPair };
 
 // Context captured at quote time, merged into the PRICE_BACK event so the
 // detail view can explain *why* the price was what it was.

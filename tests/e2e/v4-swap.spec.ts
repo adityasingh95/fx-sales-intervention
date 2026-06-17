@@ -50,3 +50,58 @@ test('v4 swap injection — two-leg ticket: per-leg points, net row, markup-mode
   await expect(page.getByTestId('margin-input-net-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-near-bid')).toHaveCount(0);
 });
+
+test('v4 swap lifecycle — archives to Historic; detail overlay lists per-leg + net (FXSW-086)', async ({
+  page,
+}) => {
+  test.setTimeout(25_000);
+
+  await page.addInitScript(() => {
+    (window as Window & { __seedFeed?: number }).__seedFeed = 42;
+    (window as Window & { __zeroAckDelay?: boolean }).__zeroAckDelay = true;
+  });
+
+  await page.goto('/?dev=v4');
+  const activeBody = page.getByTestId('active-blotter-body');
+  const historicBody = page.getByTestId('historic-blotter-body');
+
+  await page.getByTestId('inject-instrument').selectOption('SWAP');
+  await page.getByTestId('forward-tenor-select').selectOption('1M');
+  await page.getByTestId('inject-far-tenor').selectOption('6M');
+  await page.getByTestId('inject-OFF_HOURS_INTERVENTION').click();
+
+  const row = activeBody.locator('[data-deal-id]').first();
+  await expect(row).toBeVisible({ timeout: 1_000 });
+  const dealId = await row.getAttribute('data-deal-id');
+  await row.click();
+
+  await expect(page.getByTestId('ticket-panel')).toHaveAttribute('data-instrument', 'SWAP');
+  await expect(activeBody.locator(`[data-deal-id="${dealId}"]`)).toHaveAttribute(
+    'data-si-state',
+    'PickedUp',
+    { timeout: 1_500 },
+  );
+
+  // Send the swap quote; the scripted CLIENT_ACCEPT confirms it, then it archives.
+  await page.getByTestId('btn-send-stream').click({ delay: 700 });
+  await expect(activeBody.locator(`[data-deal-id="${dealId}"]`)).toHaveAttribute(
+    'data-si-state',
+    'TradeConfirmed',
+    { timeout: 4_000 },
+  );
+  await expect(activeBody.locator(`[data-deal-id="${dealId}"]`)).toHaveCount(0, { timeout: 7_000 });
+
+  const historicRow = historicBody.locator(`[data-deal-id="${dealId}"]`);
+  await expect(historicRow).toHaveAttribute('data-outcome', 'Executed');
+  await historicRow.click();
+
+  // The detail overlay lists both legs, the net differential, and the net used
+  // for execution (captured swap margin).
+  const detail = page.getByTestId('historic-detail-panel');
+  await expect(detail).toBeVisible();
+  await expect(page.getByTestId('swap-detail')).toBeVisible();
+  await expect(page.getByTestId('swap-detail-near')).toContainText('1M');
+  await expect(page.getByTestId('swap-detail-far')).toContainText('6M');
+  await expect(page.getByTestId('swap-detail-net-bid')).not.toHaveText('');
+  await expect(page.getByTestId('swap-detail-exec-bid')).toBeVisible();
+});

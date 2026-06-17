@@ -1,7 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { addBusinessDays, formatSettlementDate, valueDateForTenor } from './time';
+import { addBusinessDays, formatSettlementDate, valueDateForTenor, valueDateLabel } from './time';
+import type { Deal } from '@/types/deal';
 
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day);
+
+const baseDeal: Deal = {
+  dealId: 'd',
+  clientName: 'C',
+  accountCode: 'A',
+  pair: 'EURUSD',
+  side: 'BUY',
+  dealtCcy: 'BASE',
+  notional: 1_000_000,
+  tenor: '1M',
+  defaultMarginPips: 3,
+  createdAt: new Date(2026, 4, 25).getTime(),
+};
+
+describe('valueDateLabel (FXSW-086)', () => {
+  it('single-leg deals show one settlement date', () => {
+    const label = valueDateLabel({ ...baseDeal, tenor: '1M' });
+    expect(label).toBe(formatSettlementDate(valueDateForTenor(new Date(baseDeal.createdAt), '1M')));
+    expect(label).not.toContain('→');
+  });
+
+  it('swaps show both leg dates as near → far', () => {
+    const swap: Deal = {
+      ...baseDeal,
+      tenor: '1M',
+      instrumentType: 'SWAP',
+      legs: [
+        { kind: 'NEAR', tenor: '1M' },
+        { kind: 'FAR', tenor: '6M' },
+      ],
+    };
+    const trade = new Date(baseDeal.createdAt);
+    const near = formatSettlementDate(valueDateForTenor(trade, '1M'));
+    const far = formatSettlementDate(valueDateForTenor(trade, '6M'));
+    expect(valueDateLabel(swap)).toBe(`${near} → ${far}`);
+  });
+});
 
 describe('addBusinessDays', () => {
   it('Monday + 2 → Wednesday', () => {

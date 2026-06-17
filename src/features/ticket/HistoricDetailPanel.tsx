@@ -11,6 +11,7 @@ import type { AppliedMargin } from '@/types/lifecycle';
 import DealSummaryPanel from './DealSummaryPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SummaryPanel from './SummaryPanel';
+import SwapLegDetail from './pricing/SwapLegDetail';
 import TimelinePanel from './TimelinePanel';
 
 // Read-only historic trade detail (FXSW-060). Reuses the TicketPanel overlay
@@ -27,6 +28,10 @@ const OUTCOME_PILL: Record<HistoricOutcome, 'green' | 'red' | 'grey'> = {
 
 const formatMargin = (m: AppliedMargin): string => {
   if (m.kind === 'spot') return `Bid ${m.margin.bid} / Ask ${m.margin.ask} pips`;
+  if (m.kind === 'swap') {
+    const mode = m.mode === 'TOTAL' ? 'Total' : 'Per-component';
+    return `Net ${m.net.bid}/${m.net.ask} pips · ${mode}`;
+  }
   return `Spot ${m.spot.bid}/${m.spot.ask} · Fwd ${m.fwd.bid}/${m.fwd.ask} pips`;
 };
 
@@ -57,6 +62,9 @@ export default function HistoricDetailPanel() {
 
   const { deal, rejectionReasons, outcome, archivedAt, events, requestId, tradeId } = entry;
   const priceBack = [...events].reverse().find((e) => e.phase === 'PRICE_BACK');
+  const swapNetMargin =
+    priceBack?.appliedMargin?.kind === 'swap' ? priceBack.appliedMargin.net : undefined;
+  const isSwap = instrumentOf(deal) === 'SWAP';
   // ESP deals are auto-priced — there's no trader markup to explain (FXSW-070).
   const autoPriced = events.some((e) => e.phase === 'AUTO_PRICE');
 
@@ -129,6 +137,7 @@ export default function HistoricDetailPanel() {
 
           <ReasonsPanel reasons={rejectionReasons} />
           <SummaryPanel deal={deal} />
+          {isSwap && <SwapLegDetail deal={deal} executedNetMargin={swapNetMargin} />}
 
           <section
             data-testid="markup-reason"

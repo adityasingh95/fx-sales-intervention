@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { isV3, isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
-import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
+import { valueDateLabel } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { instrumentOf } from '@/types/deal';
 import { isHistoric, useActiveDeals, type DealEntry } from '@/state/stores/dealsStore';
@@ -34,8 +34,7 @@ const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'reasons', label: 'Reasons', width: 'flex-1 min-w-[200px]' },
 ];
 
-const valueDateFor = (entry: DealEntry): string =>
-  formatSettlementDate(valueDateForTenor(new Date(entry.deal.createdAt), entry.deal.tenor));
+const valueDateFor = (entry: DealEntry): string => valueDateLabel(entry.deal);
 
 // Left-edge bar color per docs/02 §2 row treatment.
 const BAR_FOR: Record<DisplayStatus, string> = {

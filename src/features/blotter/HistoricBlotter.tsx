@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { dealtCcyCode, formatTime } from '@/lib/format';
 import { isV3, isV4 } from '@/lib/devVersion';
-import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
+import { valueDateLabel } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { instrumentOf } from '@/types/deal';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
@@ -31,8 +31,7 @@ const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'outcome', label: 'Outcome', width: 'flex-1 min-w-[160px]' },
 ];
 
-const valueDateFor = (entry: HistoricEntry): string =>
-  formatSettlementDate(valueDateForTenor(new Date(entry.deal.createdAt), entry.deal.tenor));
+const valueDateFor = (entry: HistoricEntry): string => valueDateLabel(entry.deal);
 
 const OUTCOME_COLOR: Record<HistoricOutcome, string> = {
   Executed: 'text-green',

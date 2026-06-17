@@ -62,6 +62,9 @@ export interface SwapPanelProps {
   quoteSide?: QuoteSide;
   restrictMarginSides?: boolean;
   readOnly?: boolean;
+  // FXSW-086: report the effective net-points margin + mode upward so the quote-
+  // context capture can record what was actually applied at QuoteSent.
+  onPricingChange?: (pricing: { mode: SwapMarkupMode; net: MarginPair }) => void;
 }
 
 export default function SwapPanel({
@@ -70,6 +73,7 @@ export default function SwapPanel({
   quoteSide = 'BOTH',
   restrictMarginSides = false,
   readOnly = false,
+  onPricingChange,
 }: SwapPanelProps) {
   const [mode, setMode] = useState<SwapMarkupMode>('PER_COMPONENT');
   const [nearMargin, setNearMargin] = useState<MarginPair>(ZERO);
@@ -104,6 +108,14 @@ export default function SwapPanel({
     quoteSide,
   );
   const clientNet = clientSwapNetPoints(swap.net, effMargin);
+
+  // Report the effective (gated) net margin upward for quote-context capture.
+  useEffect(() => {
+    onPricingChange?.({ mode, net: effMargin });
+    // effMargin is a fresh object each render; depend on its primitive parts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, effMargin.bid, effMargin.ask, onPricingChange]);
+
   const midRate = tick?.mid ?? 0;
   const plBid = estimatedProfitUsd(effMargin.bid, deal.notional, deal.pair, midRate);
   const plAsk = estimatedProfitUsd(effMargin.ask, deal.notional, deal.pair, midRate);
