@@ -11,6 +11,7 @@ import {
   estimatedProfitUsd,
   gateMarginToSide,
   outrightPair,
+  spotMarginFor,
   sumMargins,
   pipSizeFor,
 } from './pips';
@@ -125,6 +126,19 @@ describe('side-specific forward points (v3+, FXSW-074)', () => {
     const p = clientForwardPair(spot, points, { bid: 2, ask: 4 }, { bid: 1, ask: 3 }, 'EURUSD');
     expect(p.bid).toBe(clientBidFromForward(1.1715, -27, 2, 1, 'EURUSD'));
     expect(p.ask).toBe(clientAskFromForward(1.1717, -23, 4, 3, 'EURUSD'));
+  });
+});
+
+describe('spotMarginFor (FXSW-089 F-2 — NDF spot-margin inertness)', () => {
+  it('zeroes the spot margin for an NDF regardless of the raw marginPair', () => {
+    expect(spotMarginFor('NDF', { bid: 7, ask: 9 })).toEqual({ bid: 0, ask: 0 });
+  });
+
+  it('passes the margin through unchanged for SPOT / OUTRIGHT / SWAP', () => {
+    const m = { bid: 3, ask: 4 };
+    expect(spotMarginFor('SPOT', m)).toBe(m);
+    expect(spotMarginFor('OUTRIGHT', m)).toBe(m);
+    expect(spotMarginFor('SWAP', m)).toBe(m);
   });
 });
 

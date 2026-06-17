@@ -6,6 +6,7 @@ import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { isV3 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { quoteSideFor } from '@/lib/quoteSide';
+import { spotMarginFor } from '@/lib/pips';
 import type { PriceTick } from '@/services/feed/types';
 import { usePrice } from '@/services/feed/usePrice';
 import { getMarketContext } from '@/services/suggestion/marketContext';
@@ -131,13 +132,14 @@ export default function TicketPanel() {
     }
   }, [openDealId]);
 
-  // FXSW-079/080: NDF is points-only. The effective spot margin is zeroed for an
-  // NDF at this single boundary so EVERY consumer below — the manual ticket, the
-  // auto-priced view, and the quote-context capture — gets the inert value and no
-  // render path can reintroduce a spot markup (security F-1/F-2/F-3).
+  // FXSW-079/080/089: NDF is points-only. The effective spot margin is zeroed for
+  // an NDF via the shared `spotMarginFor` helper (keyed off the instrument), so
+  // EVERY consumer below — the manual ticket, the auto-priced view, and the
+  // quote-context capture — gets the structurally inert value and no render path
+  // (keyboard / AI-Apply) can reintroduce a spot markup (security F-1/F-2/F-3).
   const instrument = entry ? instrumentOf(entry.deal) : 'SPOT';
   const isNdf = instrument === 'NDF';
-  const effectiveSpotMargin: MarginPair = isNdf ? { bid: 0, ask: 0 } : marginPair;
+  const effectiveSpotMargin: MarginPair = spotMarginFor(instrument, marginPair);
   const effectiveMarkupMode: MarkupMode = isNdf ? 'component' : markupMode;
 
   // FXSW-060: capture the markup reason when the trader sends a price. The

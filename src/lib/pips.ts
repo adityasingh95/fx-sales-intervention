@@ -1,6 +1,6 @@
 import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { Pair } from '@/services/feed/types';
-import type { MarginPair } from '@/types/deal';
+import type { InstrumentType, MarginPair } from '@/types/deal';
 import type { QuoteSide } from '@/lib/quoteSide';
 
 // Pip math per docs/02 §2 + §4.4 + §4.5. CLAUDE.md mandates this module
@@ -15,6 +15,14 @@ const PIP_SIZE: Record<Pair, number> = {
 };
 
 export const pipSizeFor = (pair: Pair): number => PIP_SIZE[pair];
+
+// NDF is points-only (docs/02 §12.2): the spot-level margin is structurally inert.
+// Every consumer of a priced deal's spot margin must go through this single helper
+// (keyed off the instrument) so the raw `marginPair` state can never reintroduce a
+// spot markup via the keyboard or AI-Apply paths — defence-in-depth below the
+// render boundary (FXSW-089 F-2). Non-NDF instruments keep their margin unchanged.
+export const spotMarginFor = (instrument: InstrumentType, marginPair: MarginPair): MarginPair =>
+  instrument === 'NDF' ? { bid: 0, ask: 0 } : marginPair;
 
 // Round to the pair's display precision to avoid float-drift artifacts
 // (e.g. 1.0850 − 3*0.0001 = 1.0846999999999998).
