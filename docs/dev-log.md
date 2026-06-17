@@ -1047,6 +1047,29 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
 - Math only — wired into the ticket in FXSW-085 (bundle hash unchanged).
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ · build ✓ · `test:e2e` ✓ (12/12).
 
+## FXSW-085 · Swap pricing UI (Phase 11)
+
+- New pricing sub-components: `pricing/SwapLegBlock.tsx` (one leg — tenor +
+  value date + two-sided points + optional per-component margin) and
+  `pricing/SwapPanel.tsx` (orchestrator: NEAR/FAR blocks, prominent net row
+  `swap-net-bid`/`swap-net-ask` = far−near per side, markup-mode toggle
+  `swap-markup-mode` [Per-component ↔ Total], per-scope Balance/Zero, client
+  net + Est. P/L). Both <300 lines.
+- One-sided lock reuses `restrictMarginSides`/`quoteSide` across both legs + net
+  (off-side steppers disabled, Balance/Zero hidden); `readOnly` (auto-priced)
+  hides the toggle and disables steppers.
+- `TicketPanel` branches on `instrument === 'SWAP'` ahead of the autoView/manual
+  ternary, rendering one `SwapPanel` for both (readOnly = autoView). Panel keeps
+  `data-instrument="SWAP"`. TicketPanel stays the orchestrator shell (already
+  >300 pre-FXSW-085); the new pricing files carry the swap logic.
+- Markup state (mode, near/far/total margins) is local to SwapPanel, reset per
+  deal. P/L via `estimatedProfitUsd` on the effective net margin.
+- Tests: `SwapPanel.test.tsx` (7 — legs/points/dates, net row, both markup modes,
+  one-sided lock, two-sided, read-only) + `tests/e2e/v4-swap.spec.ts` (inject →
+  two-leg ticket → mode toggle). Note: swap quote-context capture + historic
+  detail are FXSW-086; AI-suggestion-in-Total is a follow-up.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (507) · build ✓ · `test:e2e` ✓ (13/13).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

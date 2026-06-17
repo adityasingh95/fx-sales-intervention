@@ -20,6 +20,7 @@ import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ForwardPointsPanel, { type MarkupMode } from './pricing/ForwardPointsPanel';
 import LegTabs from './pricing/LegTabs';
+import SwapPanel from './pricing/SwapPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SuggestionPanel from './SuggestionPanel';
 import SummaryPanel from './SummaryPanel';
@@ -219,7 +220,30 @@ export default function TicketPanel() {
             </span>
           </div>
 
-          {autoView ? (
+          {instrument === 'SWAP' ? (
+            <>
+              {autoView ? (
+                <p
+                  data-testid="auto-priced-note"
+                  className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-sm text-text-dim"
+                >
+                  This deal is auto-priced and streaming to the client within tolerance. No
+                  manual intervention is required.
+                </p>
+              ) : (
+                <ReasonsPanel reasons={rejectionReasons} />
+              )}
+              <SummaryPanel deal={deal} />
+              <SwapPanel
+                deal={deal}
+                tick={displayTick}
+                quoteSide={quoteSide}
+                restrictMarginSides={restrictMarginSides}
+                readOnly={autoView}
+              />
+              <DealSummaryPanel deal={deal} />
+            </>
+          ) : autoView ? (
             <>
               <p
                 data-testid="auto-priced-note"
