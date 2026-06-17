@@ -1,10 +1,11 @@
 import { dealtCcyCode, formatAmount } from '@/lib/format';
-import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
-import { isForwardTenor, type Deal } from '@/types/deal';
+import { formatSettlementDate, valueDateForTenor, valueDateLabel } from '@/lib/time';
+import { instrumentOf, isForwardTenor, swapLegSide, type Deal } from '@/types/deal';
 
 // Per docs/02 §4.6: read-only deal details. Direction, notional,
 // account, trade date, settlement (value) date. FXSW-057: value date is
-// tenor-aware and forwards add a Tenor field.
+// tenor-aware and forwards add a Tenor field. A swap (FXSW-082) shows its two
+// opposite-direction legs and both value dates.
 
 export interface DealSummaryPanelProps {
   deal: Deal;
@@ -15,6 +16,10 @@ export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
   const settlementDate = valueDateForTenor(tradeDate, deal.tenor);
   const dealtCode = dealtCcyCode(deal.pair, deal.dealtCcy);
   const isForward = isForwardTenor(deal.tenor);
+  const isSwap = instrumentOf(deal) === 'SWAP';
+  const legs = deal.legs ?? [];
+  const nearTenor = legs[0]?.tenor ?? deal.tenor;
+  const farTenor = legs[1]?.tenor ?? deal.tenor;
 
   return (
     <section
@@ -29,7 +34,9 @@ export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
         <div data-field="direction">
           <dt className="text-xs uppercase tracking-tight text-text-mute">Direction</dt>
           <dd className="font-mono font-medium text-text">
-            {deal.side} {dealtCode}
+            {isSwap && deal.side !== 'BOTH'
+              ? `${swapLegSide(deal.side, 'NEAR')} / ${swapLegSide(deal.side, 'FAR')} ${dealtCode}`
+              : `${deal.side} ${dealtCode}`}
           </dd>
         </div>
         <div data-field="notional">
@@ -48,14 +55,16 @@ export default function DealSummaryPanel({ deal }: DealSummaryPanelProps) {
         </div>
         <div data-field="settlement-date">
           <dt className="text-xs uppercase tracking-tight text-text-mute">
-            {isForward ? 'Value date' : 'Settlement date'}
+            {isSwap ? 'Value dates (near → far)' : isForward ? 'Value date' : 'Settlement date'}
           </dt>
-          <dd className="font-mono text-text">{formatSettlementDate(settlementDate)}</dd>
+          <dd className="font-mono text-text">
+            {isSwap ? valueDateLabel(deal) : formatSettlementDate(settlementDate)}
+          </dd>
         </div>
         {isForward && (
           <div data-field="tenor">
             <dt className="text-xs uppercase tracking-tight text-text-mute">Tenor</dt>
-            <dd className="font-mono text-text">{deal.tenor}</dd>
+            <dd className="font-mono text-text">{isSwap ? `${nearTenor} ⇄ ${farTenor}` : deal.tenor}</dd>
           </div>
         )}
       </dl>

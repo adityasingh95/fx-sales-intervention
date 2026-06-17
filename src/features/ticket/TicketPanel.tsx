@@ -254,6 +254,16 @@ export default function TicketPanel() {
                 restrictMarginSides={restrictMarginSides}
                 readOnly={autoView}
                 onPricingChange={setSwapPricing}
+                suggestion={suggestion}
+                onRecompute={computeAndSetSuggestion}
+                onReject={() =>
+                  useDealsStore.getState().forwardEvent(deal.dealId, { type: 'Reject' })
+                }
+                currentVolatility={getMarketContext(deal.pair).pairVolatility}
+                onAiAppliedChange={(applied, rationale) => {
+                  setAiApplied(applied);
+                  setAppliedRationale(rationale);
+                }}
               />
               <DealSummaryPanel deal={deal} />
             </>

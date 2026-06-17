@@ -10,8 +10,10 @@ import {
 import type { QuoteSide } from '@/lib/quoteSide';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
-import type { Deal, MarginPair } from '@/types/deal';
+import type { MarginSuggestion } from '@/services/suggestion/types';
+import { swapLegSide, type Deal, type MarginPair } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
+import SuggestionPanel from '../SuggestionPanel';
 import SwapAdjustNote from './SwapAdjustNote';
 import SwapLegBlock from './SwapLegBlock';
 
@@ -66,6 +68,14 @@ export interface SwapPanelProps {
   // FXSW-086: report the effective net-points margin + mode upward so the quote-
   // context capture can record what was actually applied at QuoteSent.
   onPricingChange?: (pricing: { mode: SwapMarkupMode; net: MarginPair }) => void;
+  // AI Margin Suggestion for the swap net-points markup. Applying it switches to
+  // Total mode and writes the suggested pips to both sides of the net margin; the
+  // panel reports the AI-applied flag upward for the quote-context capture.
+  suggestion?: MarginSuggestion | null;
+  onRecompute?: () => void;
+  onReject?: () => void;
+  currentVolatility?: number;
+  onAiAppliedChange?: (applied: boolean, rationale: string | null) => void;
 }
 
 export default function SwapPanel({
@@ -75,11 +85,18 @@ export default function SwapPanel({
   restrictMarginSides = false,
   readOnly = false,
   onPricingChange,
+  suggestion = null,
+  onRecompute,
+  onReject,
+  currentVolatility,
+  onAiAppliedChange,
 }: SwapPanelProps) {
   const [mode, setMode] = useState<SwapMarkupMode>('PER_COMPONENT');
   const [nearMargin, setNearMargin] = useState<MarginPair>(ZERO);
   const [farMargin, setFarMargin] = useState<MarginPair>(ZERO);
   const [totalMargin, setTotalMargin] = useState<MarginPair>(ZERO);
+  // Saved net margin captured before an AI Apply, restored losslessly on Undo.
+  const [savedTotalForUndo, setSavedTotalForUndo] = useState<MarginPair | null>(null);
 
   // Reset markup state whenever a different deal opens.
   useEffect(() => {
@@ -87,6 +104,7 @@ export default function SwapPanel({
     setNearMargin(ZERO);
     setFarMargin(ZERO);
     setTotalMargin(ZERO);
+    setSavedTotalForUndo(null);
   }, [deal.dealId]);
 
   const legs = deal.legs ?? [];
@@ -132,6 +150,31 @@ export default function SwapPanel({
       className="flex flex-col gap-3 rounded-sm border border-border bg-bg-elevated/40 p-3"
     >
       <SwapAdjustNote deal={deal} />
+      {!readOnly && (
+        <SuggestionPanel
+          suggestion={suggestion}
+          currentMargin={totalMargin.bid}
+          onApply={(pips) => {
+            setSavedTotalForUndo(totalMargin);
+            setMode('TOTAL');
+            setTotalMargin({ bid: pips, ask: pips });
+            onAiAppliedChange?.(
+              true,
+              suggestion?.kind === 'ready' ? suggestion.rationale : null,
+            );
+          }}
+          onUndo={() => {
+            if (savedTotalForUndo) {
+              setTotalMargin(savedTotalForUndo);
+              setSavedTotalForUndo(null);
+            }
+            onAiAppliedChange?.(false, null);
+          }}
+          onRecompute={onRecompute}
+          onReject={onReject}
+          currentVolatility={currentVolatility}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
           Swap · {nearTenor} → {farTenor}
@@ -154,6 +197,7 @@ export default function SwapPanel({
           <SwapLegBlock
             kind="NEAR"
             tenor={nearTenor}
+            side={swapLegSide(deal.side, 'NEAR')}
             valueDate={nearDate}
             points={swap.near}
             showMargin={mode === 'PER_COMPONENT'}
@@ -168,6 +212,7 @@ export default function SwapPanel({
           <SwapLegBlock
             kind="FAR"
             tenor={farTenor}
+            side={swapLegSide(deal.side, 'FAR')}
             valueDate={farDate}
             points={swap.far}
             showMargin={mode === 'PER_COMPONENT'}
