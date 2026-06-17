@@ -11,14 +11,7 @@ import type { QuoteSide } from '@/lib/quoteSide';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
 import type { MarginSuggestion } from '@/services/suggestion/types';
-import {
-  oppositeSide,
-  swapLegSide,
-  type Deal,
-  type MarginPair,
-  type Side,
-  type Tenor,
-} from '@/types/deal';
+import { type Deal, type MarginPair, type Tenor } from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
 import SuggestionPanel from '../SuggestionPanel';
 import SwapAdjustNote from './SwapAdjustNote';
@@ -230,18 +223,13 @@ export default function SwapPanel({
   const plBid = estimatedProfitUsd(effMargin.bid, deal.notional, deal.pair, midRate);
   const plAsk = estimatedProfitUsd(effMargin.ask, deal.notional, deal.pair, midRate);
 
-  // The client-facing dealing direction for each tile. A directional request quotes
-  // on a single side (quoteSide): that side carries the deal's own near/far
-  // direction; the opposite tile inverts it. A two-sided request has no single
-  // direction, so both tiles read "Two-way".
+  // The two tiles represent the two possible swap directions — always fixed regardless
+  // of deal.side or quoteSide. The bid (left, red) tile = "Buy/Sell {CCY}" (buy near,
+  // sell far); the ask (right, blue) tile = "Sell/Buy {CCY}" (sell near, buy far).
+  // Which tile is quotable/active is handled separately by bidQuotable/askQuotable.
   const base = deal.pair.slice(0, 3);
-  const word = (s: Side): string => (s === 'BUY' ? 'Buy' : s === 'SELL' ? 'Sell' : 'Two-way');
-  const directionLabel = (scope: 'bid' | 'ask'): string => {
-    if (deal.side === 'BOTH' || quoteSide === 'BOTH') return 'Two-way';
-    const isPrimary = scope.toUpperCase() === quoteSide;
-    const baseSide = isPrimary ? deal.side : oppositeSide(deal.side);
-    return `${word(swapLegSide(baseSide, 'NEAR'))}/${word(swapLegSide(baseSide, 'FAR'))} ${base}`;
-  };
+  const directionLabel = (scope: 'bid' | 'ask'): string =>
+    scope === 'bid' ? `Buy/Sell ${base}` : `Sell/Buy ${base}`;
 
   return (
     <section

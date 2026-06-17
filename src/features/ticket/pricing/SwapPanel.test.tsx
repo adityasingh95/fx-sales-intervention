@@ -88,16 +88,22 @@ describe('SwapPanel', () => {
     expect(screen.getByTestId('swap-pnl-ask').textContent).toBe('—');
   });
 
-  it('labels each tile with its dealing direction for a one-sided request', () => {
-    // A BUY/base request quotes on ASK: that tile carries the deal direction
-    // (near buy / far sell); the bid tile inverts it (near sell / far buy).
+  it('labels tiles as fixed swap directions: bid=Buy/Sell, ask=Sell/Buy, regardless of deal.side', () => {
+    // Bid (left, red) tile = "Buy/Sell {CCY}" (buy near, sell far).
+    // Ask (right, blue) tile = "Sell/Buy {CCY}" (sell near, buy far).
+    // Which tile is quotable is handled by dimming, not by swapping the labels.
     renderPanel({
       restrictMarginSides: true,
       quoteSide: 'ASK',
       deal: { ...deal, pair: 'EURUSD', side: 'BUY', legs: deal.legs },
     } as Partial<React.ComponentProps<typeof SwapPanel>>);
-    expect(screen.getByTestId('swap-side-ask-direction').textContent).toBe('Buy/Sell EUR');
-    expect(screen.getByTestId('swap-side-bid-direction').textContent).toBe('Sell/Buy EUR');
+    expect(screen.getByTestId('swap-side-bid-direction').textContent).toBe('Buy/Sell EUR');
+    expect(screen.getByTestId('swap-side-ask-direction').textContent).toBe('Sell/Buy EUR');
+    // Also verify for a two-sided deal — same fixed labels, both tiles active.
+    cleanup();
+    renderPanel({ deal: { ...deal, pair: 'EURUSD', side: 'BOTH', legs: deal.legs } });
+    expect(screen.getByTestId('swap-side-bid-direction').textContent).toBe('Buy/Sell EUR');
+    expect(screen.getByTestId('swap-side-ask-direction').textContent).toBe('Sell/Buy EUR');
   });
 
   it('shows a legs-adjusted note when the swap was coerced, and none for a valid request (FXSW-091 F-1)', () => {
