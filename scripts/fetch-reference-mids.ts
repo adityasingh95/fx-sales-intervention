@@ -33,15 +33,35 @@ interface FrankfurterResponse {
   rates: Record<string, number>;
 }
 
+// Plausible ranges for each computed mid. A live response is only trusted if
+// every field is finite and inside its band — a poisoned-but-HTTP-200 payload
+// (or a missing/zero rate that would produce NaN/Infinity on inversion) is
+// rejected and the build falls back to the pinned mids. (FXSW-088)
+const RANGES: Record<keyof ReferenceMids, readonly [number, number]> = {
+  EURUSD: [0.5, 2.0],
+  GBPUSD: [0.5, 2.5],
+  USDJPY: [50, 300],
+  USDINR: [40, 200],
+};
+
+const validateMids = (mids: ReferenceMids): void => {
+  for (const key of Object.keys(RANGES) as Array<keyof ReferenceMids>) {
+    const value = mids[key];
+    const [lo, hi] = RANGES[key];
+    if (!Number.isFinite(value) || value < lo || value > hi) {
+      throw new Error(`reference mid ${key}=${value} outside plausible range [${lo}, ${hi}]`);
+    }
+  }
+};
+
 export async function fetchReferenceMids(): Promise<ReferenceMidsPayload> {
-  // Pinned-fallback escape hatch for CI. The seed-42 golden sequence in
-  // pricingFeed.test.ts was recorded against the FALLBACK mids (EURUSD
-  // 1.1715); when Frankfurter responds with today's live rate the
-  // sequence shifts and the test fails. CI sets USE_FALLBACK_MIDS=true
-  // so the unit suite stays deterministic regardless of network state.
-  // Production builds (predev / prebuild + the deploy workflow) leave
-  // this unset so the live demo gets fresh mids.
-  if (process.env.USE_FALLBACK_MIDS === 'true') {
+  // FXSW-088 (security): the live third-party fetch is now OPT-IN. By default —
+  // and in CI — the build uses the pinned FALLBACK mids, so a normal
+  // build/predev/prebuild makes no unauthenticated call to a third party and the
+  // seed-42 golden sequence (recorded against EURUSD 1.1715) stays deterministic.
+  // Set FETCH_LIVE_MIDS=true to refresh from the provider (e.g. a live-demo
+  // deploy); USE_FALLBACK_MIDS=true still forces the fallback as a hard override.
+  if (process.env.FETCH_LIVE_MIDS !== 'true' || process.env.USE_FALLBACK_MIDS === 'true') {
     return FALLBACK;
   }
 
@@ -57,10 +77,11 @@ export async function fetchReferenceMids(): Promise<ReferenceMidsPayload> {
       USDJPY: round(data.rates.JPY, 2),
       USDINR: round(data.rates.INR, 2),
     };
+    validateMids(mids);
     return { date: data.date, source: 'frankfurter.dev', mids };
   } catch (err) {
     console.warn(
-      `Frankfurter fetch failed (${(err as Error).message}); using fallback.`,
+      `Live reference-mids fetch failed or rejected (${(err as Error).message}); using pinned fallback.`,
     );
     return FALLBACK;
   }

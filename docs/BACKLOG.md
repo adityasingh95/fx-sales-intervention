@@ -651,7 +651,29 @@ fixed are recorded as accepted risk in the report.
 
 **Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-077 · **Source:** `security/FXSW-077-review.md`
 
-**AC:**
+**Status (2026-06-17): partially done.** Per a "highest-severity only" scoping
+decision, the technical/external-surface ACs were implemented; the functional
+state-machine ACs were deferred to Phase 11 (Swaps rework those machines).
+- ✅ **T-1** API key moved from URL query to an `Authorization: Bearer` header
+  (`provider.ts`); `apiKey=` no longer appears in the bundle.
+- ✅ **T-2** live build-time fetch is now opt-in (`FETCH_LIVE_MIDS`, default
+  pinned fallback) with field-by-field `Number.isFinite` + range validation
+  (`scripts/fetch-reference-mids.ts`).
+- ✅ **T-3** toolchain bumped — `vite` 5.2.10→5.4.21, `vitest` 1.6.0→3.2.6
+  (clears both **critical** advisories), `@playwright/test`→1.56.1, `tsx`→4.22.4,
+  `postcss`→8.5.15, plus `pnpm.overrides` (form-data/@babel/core/js-yaml).
+  `pnpm audit` 24→5 advisories, **0 critical / 0 of the old highs**. *Residual: 2
+  high + 3 moderate, all requiring a `vite` 5→6 major bump (Windows-dev-server /
+  Deno-only, no shipped-bundle impact) — deferred, see below.*
+- ✅ **T-4 (CSP)** restrictive CSP `<meta>` injected at build only (active in
+  `preview`/prod, not dev) via a Vite plugin; `connect-src 'self'`. ⏳ **SRI**
+  deferred (Low; needs a build-time hash plugin).
+- ⏳ **F-1 / F-2 / F-3** (state-layer side-lock guard, RFS `*Sent` symmetry,
+  parent terminal reconciliation) — **deferred to Phase 11**, where the RFS/parent
+  machines are extended for Swaps; doing it there avoids a double rework + review.
+- ⏳ **T-6** vendor literals in non-adapter test files — deferred (cosmetic).
+
+**AC (full spec; see Status above for done vs deferred):**
 - External provider auth no longer uses a URL query string for the API key where
   the provider permits a header; if query-param is unavoidable, the exposure is
   documented and requests are batched to minimise key emission. (T-1)
@@ -701,7 +723,14 @@ surface + toolchain — do them together.
 
 **Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-080 · **Source:** `security/FXSW-081-review.md`
 
-**AC:**
+**Status (2026-06-17): mostly done** (shared with FXSW-088 — same work cleared
+both). ✅ T-1 toolchain (criticals cleared; 2 high/3 moderate vite-6 residual),
+✅ T-2 key-in-header, ✅ T-3 build-fetch opt-in + validation, ✅ T-4 CSP (SRI
+deferred). ⏳ **F-2** (structural NDF inertness below the render layer) — deferred
+(Theme D); F-1/F-3/F-4 were already fixed in FXSW-080, so the shipped NDF price is
+correct on every path today; F-2 is residual defense-in-depth.
+
+**AC (full spec; see Status above for done vs deferred):**
 - NDF spot-markup inertness is enforced **structurally**, not only at the render
   boundary: either clamp the effective spot margin to zero for NDF in one shared
   helper keyed off `instrumentOf(deal)` that every consumer goes through, or have
@@ -725,6 +754,43 @@ surface + toolchain — do them together.
   non-NDF instruments; canonical state names + `data-*` unchanged.
 - `dist/` brand-neutral in user-visible strings; no source maps.
 - Simulated feed remains the default and only test/E2E path.
+
+## GA-core security audit follow-up (deferred)
+
+Transcribed from `security/audit-core-pre-phase9-review.md` — a special cold audit
+of the pre-Phase-9 GA core (run 2026-06-17 because the Security Agent only began at
+Phase 9, so Phases 1–8 had never had a dedicated deep review). The core got a clean
+bill on the things that matter most (pricing/util math, margin flooring, no XSS/DOM
+sinks, deterministic suggestion engine, `sessionStorage`/WebAudio hygiene, store
+immutability, build hygiene). Findings: 0 Critical, 0 High, 1 Medium, 3 Low, 2 Info.
+**Deferred** under the "highest-severity only" scoping (all sub-High).
+
+### FXSW-090 — GA-core determinism + scenario-player lifecycle hardening
+
+**Effort:** S–M · **TDD:** Alongside · **Depends on:** — · **Source:** `security/audit-core-pre-phase9-review.md`
+
+**AC:**
+- The `CLIENT_ACCEPT_OR_REJECT` scenario follow-up resolves via a seeded PRNG
+  (reuse `services/feed/rng.ts`), keyed off the deal ID or an injectable seed and
+  overridable for tests; the credit-breach outcome becomes reproducible. (F-1, Medium)
+- The scenario player exposes `forgetDeal(dealId)` that clears that deal's pending
+  timers + `after-si-state` gates; called from the archival path and `removeDeal`,
+  so no stale follow-up emits and the `gates` set cannot grow unbounded. (F-2, Low)
+- Deal IDs (`player.makeDealId`) and display IDs (`lib/ids`) come from an
+  injectable/seeded source so tests can pin them; `addDeal` treats a duplicate
+  `dealId` as an error/regeneration, not a silent no-op. REQ-/TRD- format unchanged. (F-3, Low)
+- (Optional) a documented manual-reproduction seed knob for the spot feed beyond
+  `window.__seedFeed`. (T-1, Low)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass.
+- Seed-42 golden, GA spot + mid sequence, and v3 forward goldens byte-stable.
+- Canonical state names + `data-*` unchanged; `dist/` brand-neutral, no source maps.
+- Simulated feed remains the default and only test/E2E path.
+
+**Note (F-4/T-2, Info):** RFS `Expire`/`ClientClose` are currently unreachable dead
+transitions — re-review when `Expire` forwarding is added (ties into FXSW-088 F-3).
+Suggestion `computedAt` wall-clock is non-load-bearing; no action.
 
 ## Current known follow-ups
 

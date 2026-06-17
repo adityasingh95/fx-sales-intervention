@@ -969,6 +969,38 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
   **FXSW-090**.
 - Phase 10 closed.
 
+## FXSW-088/089 · Security remediation — highest-severity (toolchain + external-feed surface)
+
+Scoped per a "highest-severity only" decision after a full security sweep (three
+reviews: `FXSW-077`, `FXSW-081`, and a special cold GA-core audit
+`audit-core-pre-phase9-review.md`). Themes A (toolchain) + B (external-feed surface)
+done now; C (state machines), D (NDF inertness depth), E (GA-core determinism =
+FXSW-090) deferred.
+
+**A — toolchain bump.** `vite` 5.2.10→5.4.21, `vitest` 1.6.0→3.2.6 (clears both
+critical advisories), `@playwright/test`→1.56.1 (cached chromium-1194; sandbox
+blocks the CDN so pinned to the build whose browser is present), `@vitejs/plugin-react`
+→4.7.0, `tsx`→4.22.4, `postcss`→8.5.15, plus `pnpm.overrides` for
+form-data/@babel/core/js-yaml. `pnpm audit` **24→5** advisories, **0 critical**.
+Residual 2 high/3 moderate all require a `vite` 5→6 major bump (Windows-dev-server /
+Deno-only, no shipped-bundle impact) — deferred. Fixed `vi.fn<A,B>()`→`vi.fn<(…)=>B>()`
+(vitest 3 generic change) in `provider.test.ts`/`poller.test.ts`.
+
+**B — external-feed surface.**
+- API key now sent via `Authorization: Bearer` header, not an `apiKey=` URL query
+  (`provider.ts`); verified gone from `dist/`. (FXSW-088 T-1)
+- Build-time live fetch is opt-in (`FETCH_LIVE_MIDS`, default pinned fallback) with
+  field-by-field `Number.isFinite` + plausible-range validation; a poisoned-but-200
+  payload is rejected to fallback (`scripts/fetch-reference-mids.ts`). `USE_FALLBACK_MIDS`
+  retained as a hard override. (FXSW-088 T-2)
+- Restrictive CSP `<meta>` injected at build only via a Vite plugin (active in
+  `preview`/prod, not dev — HMR needs inline/eval); `connect-src 'self'`; brand-neutral
+  (no provider host in `index.html`). E2E runs against `preview`, so the 12-spec suite
+  validates the CSP doesn't break the app. SRI deferred (Low). (FXSW-088 T-4)
+
+Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (479) · build ✓ · `test:e2e` ✓ (12/12,
+under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

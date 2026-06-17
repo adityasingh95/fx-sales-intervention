@@ -13,9 +13,14 @@ import type { MidMap } from './types';
 //
 // Endpoint: Massive (https://massive.com) — the rebrand of Polygon.io (2025-10).
 // The legacy `api.polygon.io` host has been retired, so we target `api.massive.com`;
-// the path, `C:{PAIR}` ticker convention, and `apiKey` query param are unchanged.
-// Naming the provider is permitted here only (adapter code) per the v3
-// brand-neutrality exception — never in UI strings or build-output identifiers.
+// the path and `C:{PAIR}` ticker convention are unchanged. Naming the provider is
+// permitted here only (adapter code) per the v3 brand-neutrality exception — never
+// in UI strings or build-output identifiers.
+//
+// FXSW-088 (security): the API key is sent via an `Authorization: Bearer` header
+// rather than an `apiKey=` URL query param, so the secret no longer lands in
+// provider/proxy access logs, the browser network panel URL column, or `Referer`.
+// The provider accepts Bearer-header auth as an equivalent to the query param.
 const BASE_URL = 'https://api.massive.com/v2/aggs/ticker';
 
 const PRECISION: Record<Pair, number> = {
@@ -51,8 +56,11 @@ export async function fetchMids(
 ): Promise<MidMap> {
   const out: MidMap = {};
   for (const pair of pairs) {
-    const url = `${BASE_URL}/C:${pair}/prev?adjusted=true&apiKey=${encodeURIComponent(apiKey)}`;
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(5000) });
+    const url = `${BASE_URL}/C:${pair}/prev?adjusted=true`;
+    const res = await fetchImpl(url, {
+      signal: AbortSignal.timeout(5000),
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
     if (res.status === 429) {
       throw new ProviderError('Rate limit exceeded', true);
     }
