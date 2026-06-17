@@ -7,6 +7,8 @@ sources:
   - docs/phase-summaries/FXSW-021-summary.md
   - docs/phase-summaries/FXSW-042-followup-summary.md
   - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
 ticket: FXSW-014..FXSW-020
 ---
@@ -105,6 +107,15 @@ Under v3, opening a **happy auto-priced (ESP / `AUTO`) deal** no longer fires SI
 - an **`auto-priced-note`** paragraph explains the price was streamed within tolerance with no manual markup.
 
 The same auto-priced framing surfaces later in the [historical detail](historical-detail.md) overlay (the `AUTO_PRICE` timeline phase + auto-priced markup note). GA behaviour is unchanged — opening an `AUTO` deal there is a no-op as before. (FXSW-069)
+
+## v4 instrument branches — NDF / Swap
+
+Under `?dev=v4`, `TicketPanel` branches on `instrumentOf(deal)` (`data-instrument` on the panel reflects it):
+
+- **NDF** (points-only) — renders the [forward points panel](forward-pricing.md) **minus** the spot-margin control and the markup-mode toggle, plus an `ndf-note`. The spot margin is structurally zeroed (`spotMarginFor`), in the manual *and* auto-priced views and in the capture. Full detail: [features/ndf.md](ndf.md).
+- **SWAP** (two-leg) — renders the two-leg `SwapPanel` (NEAR/FAR blocks, raw net row, `swap-markup-mode` Per-component/Total toggle, client net + P/L) instead of the spot/forward panels, with the one-sided lock across both legs + net and a `readOnly` auto-priced variant. Full detail: [features/swaps.md](swaps.md).
+
+Both reuse the existing lifecycle — **no new states/machines** ([deal-machine.md](../components/deal-machine.md)). Spot/outright keep the panels documented above. GA and `?dev=v3` are unaffected.
 
 ## Client Summary Panel (FXSW-019)
 

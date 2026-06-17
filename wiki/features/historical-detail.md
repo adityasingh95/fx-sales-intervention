@@ -5,9 +5,10 @@ sources:
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
   - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
   - docs/dev-log.md
 status: in-progress
-ticket: FXSW-060
+ticket: FXSW-060, FXSW-086
 ---
 
 # Feature — Historical Trade Detail
@@ -34,10 +35,16 @@ Under v3 each Historic row is a button; clicking sets `uiStore.openHistoricId` t
 
 Explains the price after the fact, from the `QuoteContext` merged into the deal's `PRICE_BACK` event (see [deal-lifecycle-phase.md](../data-models/deal-lifecycle-phase.md)):
 
-- the **applied margin** (`AppliedMargin` — a single spot bid/ask pair, or independent `spot` + `fwd` pairs for a forward),
+- the **applied margin** (`AppliedMargin` — a single spot bid/ask pair, independent `spot` + `fwd` pairs for a forward, **or a swap net-margin variant**),
 - whether the margin was **AI-suggested** (`aiSuggested`) and the suggestion **rationale**, if any.
 
 For **auto-priced ESP** deals there is no manual markup, so the block instead shows an **auto-priced note** (`auto-priced-note`) — "streamed within tolerance, no manual markup applied" — paired with the `AUTO_PRICE` timeline phase (FXSW-070).
+
+For an **NDF** the summary reflects the points-only markup (the spot margin is structurally zero — see [ndf.md](ndf.md)). For a **swap** it reflects the markup mode (Per-component / Total) and the **net used for execution**.
+
+### Swap leg detail (`SwapLegDetail`, FXSW-086)
+
+For a swap, the overlay renders `SwapLegDetail` (`data-testid="swap-detail"`): per-leg rows (`swap-detail-near` / `swap-detail-far`) with each leg's tenor / two-sided points / value-date, the **raw net** differential (`swap-detail-net-bid` / `swap-detail-net-ask`, far − near), and the **net used for execution** (`swap-detail-exec-bid` / `swap-detail-exec-ask`) — the marked-up net captured at `QuoteSent` via the `AppliedMargin` swap variant. The captured net **reconciles** with what the detail recomputes (FXSW-087 F-4). See [swaps.md](swaps.md).
 
 ## Timeline (`TimelinePanel`)
 

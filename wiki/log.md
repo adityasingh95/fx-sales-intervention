@@ -157,3 +157,21 @@ Operations: `ingest`, `query`, `lint`, `adr`, `schema-update`, `reconcile`.
 ##   - index.md + glossary.md — registered 4 new pages; added v3 terms.
 ##   - Vendor-neutrality: case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits (verified post-write); external provider described generically per ADR-0010 / CLAUDE.md §1 (the src/services/feed/external/ build-layer exception deliberately NOT applied to the wiki).
 ##   - Also sanitized a pre-existing vendor-name leak in decisions/ADR-0005 (three commercial FX-data providers).
+
+## [2026-06-17] ingest | Phases 9–11 (v4 instruments + security remediation, FXSW-072–091; commit a8b475c) — sources phase-09-v4 / phase-10-ndf / phase-11-swaps summaries + dev-log + security/FXSW-081 + FXSW-087 reviews + source.
+##   - NEW features/ndf.md — cash-settled points-only NDF; structural inertness via spotMarginFor (FXSW-089); ndf-note; forward-tenor coercion.
+##   - NEW features/swaps.md — forward-forward two-leg swap; net = far − near; Per-component/Total markup; one-sided lock in math (gateMarginToSide); dual value dates; SwapLegDetail; "legs adjusted" note.
+##   - NEW components/swap-points-feed.md — swapPointsFeed.get(pair,near,far), pure composition of forward-points feed (no new RNG).
+##   - NEW ADR-0012 (?dev=v4 superset + instrumentType discriminator), ADR-0013 (NDF points-only structural), ADR-0014 (swap net-points + Per-component/Total), ADR-0015 (security remediation: build-only CSP+SRI, Bearer key, opt-in+validated build fetch, dev-only poller, toolchain audit 0), ADR-0016 (GA-core determinism: seeded coin-flip / forgetDeal / injectable IDs / ?seed=N).
+##   - features/forward-pricing.md — two-sided points (ForwardPointsPair {bid,ask,mid}, fwd-points-bid/mid/ask), v3 goldens re-baselined (FXSW-073), leg model now real two-leg swap (not "swap-ready").
+##   - data-models/deal.md — replaced "out of scope for v1"; documented instrumentType / legs (NEAR/FAR) / swapRequested.
+##   - features/dev-injector.md + components/dev-injector.md — v4 instrument (inject-instrument) + far-tenor (inject-far-tenor) selectors; refreshed ?dev=1/?dev=v2 → ?dev=v3/?dev=v4 (scenario set no longer version-gated; selectors are).
+##   - features/active-blotter.md + historic-blotter.md — v4 Instrument column + dual value dates (near → far).
+##   - features/historical-detail.md — swap leg-detail (SwapLegDetail) + swap/NDF markup-reason summary.
+##   - features/ticket.md — NDF points-only branch + swap two-leg branch.
+##   - components/deal-machine.md — canQuote side-lock, terminal protection (notTerminal/markTerminal), ClientReject routed to both legs (FXSW-088).
+##   - components/scenario-player.md — buildDeal instrument/tenor coercion, forgetDeal, seeded coin-flip + injectable acceptOrReject (supersedes the stale "Math.random direct / no injectable seam" note).
+##   - components/pricing-feed.md — ?seed=N replay knob (below window.__seedFeed). components/rfs-machine.md — *Sent asymmetry (RFS Executable ≠ client-sent).
+##   - components/external-price-feed.md — Authorization: Bearer key; dev-only poller; build CSP connect-src 'self'.
+##   - glossary.md — net swap points, forward-forward, instrument discriminator, ?dev=v4, NDF, CSP, SRI. index.md — registered new pages + ADRs; refreshed stale v2 dev-refs.
+##   - Brand-neutrality: sanitized pre-existing vendor-name + endpoint-URL leaks (a public reference-rate aggregator, a central-bank feed host, another rate-API host) from ADR-0005, onboarding.md, WIKI_SCHEMA.md. Final case-insensitive vendor-name grep over wiki/ + raw/ → 0 hits. The external market-data provider is described generically throughout.

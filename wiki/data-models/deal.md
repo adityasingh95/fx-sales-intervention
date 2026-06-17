@@ -1,8 +1,11 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-17
 sources:
   - docs/04-dummy-feed-spec.md
   - docs/03-trade-state-model.md
+  - docs/02-functional-spec.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
 ---
 
@@ -18,9 +21,14 @@ type Deal = {
   pair: Pair;                  // 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR'
   side: 'BUY' | 'SELL';
   notional: number;            // in base CCY units
-  tenor: 'SPOT';               // v1 only
+  tenor: Tenor;                // 'SPOT' | '1W' | '2W' | '1M' | '2M' | '3M' | '6M' | '9M' | '1Y'
   defaultMarginPips: number;   // typically 3
   createdAt: number;           // Date.now()
+
+  // v4 instrument fields (all optional; bare-URL GA + ?dev=v3 omit them)
+  instrumentType?: InstrumentType;        // 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP'
+  legs?: DealLeg[];                       // [{kind:'NEAR',tenor}, {kind:'FAR',tenor}] for a SWAP
+  swapRequested?: { near: Tenor; far?: Tenor };  // original request, set only when legs were coerced
 };
 ```
 
@@ -29,9 +37,12 @@ type Deal = {
 | `dealId` | Equivalent to `TradeRequestId` in the canonical workflow. Used to match SI / client events back to the right deal. Inline 6-char alphanumeric ID generator — `Math.random()`-backed, no `nanoid` dependency. |
 | `clientName` | Matches a `ClientProfile` in [client-profile.md](client-profile.md) via `getClientProfile(clientName)`. |
 | `pair` | Closed `Pair` union — typo protection at call sites. The original spec sketch typed this as `string`; the closed union mirrors the [pricing feed](../components/pricing-feed.md) pair set. |
-| `tenor` | Forward / NDF / Flexible Forward / Swap / Block are out of scope for v1. |
-| `defaultMarginPips` | Per-deal default. Tickets start their margin field at this value. The variation in v1 is in trader behavior at the ticket, not in the initial deal payload (all scenarios start at 3 pips). |
+| `tenor` | The full `Tenor` ladder shipped with v3 forwards; `SPOT` is the GA baseline. For a SWAP, `tenor` mirrors the NEAR leg so single-leg consumers stay coherent. |
+| `defaultMarginPips` | Per-deal default. Tickets start their margin field at this value. The variation is in trader behavior at the ticket, not in the initial deal payload (all scenarios start at 3 pips). |
 | `createdAt` | Drives the blotter Time column and the Historic blotter's default-sort key. |
+| `instrumentType` | **v4 discriminator** (`SPOT \| OUTRIGHT \| NDF \| SWAP`). **Optional** — `instrumentOf(deal)` resolves a default from the tenor for legacy deals (`SPOT` tenor → `SPOT`, any forward tenor → `OUTRIGHT`; NDF/SWAP are never auto-derived, only set by `buildDeal` on injection). Keeping it optional left the ~13 existing fixtures untouched. See [ADR-0012](../decisions/ADR-0012-dev-v4-instrument-gate.md). |
+| `legs` | **v4 swap** legs: `DealLeg = { kind: 'NEAR' \| 'FAR'; tenor: Tenor }`, far strictly later than near. Built by `buildSwapLegs(near, far?)` / `resolveSwapLegs`, which coerce a missing/out-of-order far to the shortest valid far (last-tenor near steps back). Absent for spot/outright/NDF. See [features/swaps.md](../features/swaps.md). |
+| `swapRequested` | The originally requested `{ near, far? }`, recorded **only when the legs were coerced** (`resolveSwapLegs` reported `adjusted`). Drives the "legs adjusted" note so the coercion is auditable (FXSW-091 F-1). |
 
 ## Related fields stored elsewhere
 

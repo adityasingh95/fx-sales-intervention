@@ -1,10 +1,11 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-17
 sources:
   - docs/03-trade-state-model.md
   - docs/06-tech-architecture.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
-ticket: FXSW-010
+ticket: FXSW-010, FXSW-088
 ---
 
 # Component — `dealMachine`
@@ -49,13 +50,24 @@ Each row is implemented as an `on: { Trigger: [sendTo(rfs, ...), sendTo(si, ...)
 | `Withdraw` | `Withdraw` → `PickedUp` | `Withdraw` → `WithdrawSent` → `PickedUp` |
 | `Hold` (Release) | `Hold` → `Queued` | `Hold` → `HoldSent` → `Initial` (Dealable=true again) |
 | `Reject` | (no change — see below) | `Reject` → `RejectSent` → `TraderRejected` (terminal) |
-| `ClientReject` (client decline / timeout) | (no change) | `ClientReject` → `ClientRejected` (terminal) |
+| `ClientReject` (client decline / timeout) | `ClientClose` → `ClientClosed` (terminal) — **routed to both legs** since FXSW-088 | `ClientReject` → `ClientRejected` (terminal) |
 | `TradeConfirmed` (client accept) | `TradeConfirmed` → terminal | `TradeConfirmed` → terminal |
 | `AutoPrice` (ESP bootstrap) | `PriceUpdate` → `Executable` | (no-op; SI stays at `Initial`) |
 
 ### Trader `Reject` doesn't transition RFS
 
 `docs/03 §3` says "Raise `Reject` on RFS → RFS terminal" but `docs/03 §1` doesn't list a `Reject` event for RFS — the spec is inconsistent. The build leaves RFS untouched on trader-reject; the row leaves the Active Blotter via the SI terminal state and the 5-second removal rule. Raising `ClientClose` on RFS (the spec-adjacent alternative) would change `rfsState` to `ClientClosed` for the 5-second window, which adds nothing visible and risks confusing the [status-derivation](status-derivation.md). See `docs/dev-log.md` FXSW-010 entry.
+
+## Explicit terminal protection + side-lock guards (FXSW-088)
+
+The parent gained explicit guards so a finished or side-locked deal can never be re-animated by a late or duplicate trader event — protection that is **explicit, not merely topological** (the old behaviour relied on the children's terminal states simply having no handlers):
+
+- **`terminal: boolean`** context flag, set by a `markTerminal` action once a terminal event (`Reject` / `ClientReject` / `TradeConfirmed`) is processed.
+- **`notTerminal` guard** on every trader-driven transition — a terminal deal forwards nothing.
+- **`canQuote` guard** — a `Quote` is allowed only when the deal is not terminal **and** the named side matches the quotable side (`quoteSide === 'BOTH'`, or the event's side equals `quoteSide`). This is the side-lock at the machine level, complementing the pricing-math lock (`gateMarginToSide`) and the UI lock.
+- **`ClientReject` routed to BOTH legs** — SI to `ClientRejected` **and** RFS to `ClientClosed` (via `ClientClose`, accepted from `Executable`, the state RFS is in while SI is `Quoted`) — so both legs close explicitly rather than relying on the store to stop a live RFS. Then `markTerminal`.
+
+No new XState states, events, or machines were added for NDF or swaps — instrument handling lives in the scenario player / pricing layers, not the machines (`docs/03` §10).
 
 ## Children spawned at init
 

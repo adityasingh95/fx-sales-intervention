@@ -7,7 +7,7 @@ sources:
   - docs/phase-summaries/phase-08-v3-summary.md
   - docs/dev-log.md
 status: in-progress
-ticket: FXSW-050..FXSW-053
+ticket: FXSW-050..FXSW-053, FXSW-088
 ---
 
 # Component — External Price Feed
@@ -45,6 +45,8 @@ Between polls the existing seeded randomizer keeps ticking (~300ms), **mean-reve
 4. On failure the poller backs off exponentially (cap 30 min) and reports `error` or `rate-limited`.
 5. `disable()` stops the loop and leaves the last anchor in place until the next enable or a `clearReferences()`.
 
+The API key is sent in an **`Authorization: Bearer <key>` HTTP header** (Phase 9–11 hardening, FXSW-088), not a URL query parameter — so the secret never appears in provider/proxy access logs, the browser network URL column, or a `Referer`. See [ADR-0015](../decisions/ADR-0015-security-remediation.md).
+
 The adapter targets a free-tier-friendly **previous-close aggregate** endpoint (an agent-directed choice so a no-cost key works); the close already arrives in pair convention, so no inversion is needed.
 
 ## Status states + settings UI
@@ -66,6 +68,12 @@ Popover (`role="dialog"`, "Market data feed"): a password-type **API key** input
 ### Key storage
 
 The API key lives in the settings store (`externalFeedKey`) and persists to **`sessionStorage`** only (key `si.externalFeedKey`), alongside `externalFeedEnabled`. It is never bundled and never leaves the session — consistent with the prototype's persistence rule (small UI prefs in `sessionStorage`).
+
+## Confined to dev (Phase 9–11 security remediation)
+
+The **simulated feed is the production default**; the live poller is a **development-only** affordance. The shipped build carries a restrictive Content-Security-Policy with **`connect-src 'self'`** (injected at `vite build`, not in the dev server), so any cross-origin poll is blocked in the production artefact — the live feed runs only under `vite dev`. The build-time reference-mid prebuild that seeds the baked anchors is **opt-in** (an env flag, default off → committed fallback mids) and **range-validated** per pair so a poisoned-but-HTTP-200 response is rejected. The external provider and its endpoint are named **only** in adapter code under the documented build-layer exception — never in user-visible strings or in this wiki. Full rationale: [ADR-0015](../decisions/ADR-0015-security-remediation.md) and [ADR-0005](../decisions/ADR-0005-bake-reference-mids.md).
+
+A residual inconsistency (the key-entry UI still exists while the build CSP forbids the call) is tracked as a follow-up (FXSW-087 T-2).
 
 ## Test contract
 

@@ -50,7 +50,7 @@ Several architectural decisions were made before the build started; their ration
 2. **ADR-0002:** Two parallel state machines (RFS + SI) per deal — see `docs/03-trade-state-model.md` §6 ("Why two machines, not one combined").
 3. **ADR-0003:** XState v5 for deal lifecycle, Zustand for UI/transient state — see `docs/06-tech-architecture.md` §5.
 4. **ADR-0004:** AG-Grid Community over TanStack Table — see `docs/01-prd.md` §9 Q1.
-5. **ADR-0005:** Bake reference mids at build time via Frankfurter, no runtime fetch — see `docs/04-dummy-feed-spec.md` §10.
+5. **ADR-0005:** Bake reference mids at build time via a public reference-rate API, no runtime fetch — see `docs/04-dummy-feed-spec.md` §10.
 6. **ADR-0006:** AI Margin Suggestion as a deterministic rule engine, not a real model call — see `docs/09-suggestion-engine.md` §1.
 7. **ADR-0007:** Credit-limit breach triggers AI Reject recommendation, not wider pricing — see `docs/09-suggestion-engine.md` §7.
 8. **ADR-0008:** Indigo-violet accent reserved exclusively for AI surfaces — see `docs/05-ui-ux-spec.md` §1, §4.5.

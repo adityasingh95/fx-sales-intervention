@@ -1,8 +1,10 @@
 ---
-last_updated: 2026-06-10
+last_updated: 2026-06-17
 sources:
   - docs/02-functional-spec.md
   - docs/phase-summaries/FXSW-042-followup-summary.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
   - docs/dev-log.md
 status: in-progress
 ---
@@ -11,21 +13,26 @@ status: in-progress
 
 Implementation notes for the dev injector control. For the product-level description (what each scenario button does, why it's hidden, the v1 test contract) see the [Dev Injector feature page](../features/dev-injector.md); this page covers the component internals, the dev-version scenario gating, and the **v2 mobile dropdown**.
 
-File: `src/features/dev-injector/DevInjector.tsx`. Hooks: `getDevVersion()` (`src/lib/devVersion.ts`) and [`useIsMobile()`](../components/test-patterns.md) (`src/lib/useIsMobile.ts`).
+File: `src/features/dev-injector/DevInjector.tsx`. Hooks: `isV3()` / `isV4()` (`src/lib/devVersion.ts`) and [`useIsMobile()`](../components/test-patterns.md) (`src/lib/useIsMobile.ts`).
 
-## Dev-version scenario gating
+## Dev-version gating (current model)
 
-The visible scenario set depends on the dev version parsed from the URL:
-
-- **`?dev=1` (or any `dev` query)** → v1 set: `HAPPY_PATH_ESP`, `OFF_HOURS_INTERVENTION`, `CREDIT_BREACH`, `SIZE_LIMIT_MARGIN_TUNE`, `RELEASE_PATH`.
-- **`?dev=v2`** → v1 set **plus** the v2 additions `BOTH_SIDED_INQUIRY`, `QUOTE_DEALT_INQUIRY`.
+Since v2 was promoted to GA (FXSW-047), the **scenario set is no longer version-gated** — `visibleScenarios = SCENARIO_IDS` shows **all** scenarios whenever the injector is present (the seven IDs incl. `BOTH_SIDED_INQUIRY`, `QUOTE_DEALT_INQUIRY`). What the dev version now gates is the **extra controls**:
 
 ```typescript
-const visibleScenarios =
-  devVersion === 'v2' ? [...V1_SCENARIO_IDS, ...V2_SCENARIO_IDS] : V1_SCENARIO_IDS;
+const visibleScenarios: readonly ScenarioId[] = SCENARIO_IDS;
+const showForwardSelect = isV3();    // tenor selector (v3+, true under v4)
+const showInstrumentSelect = isV4(); // instrument + far-tenor selectors (v4 only)
 ```
 
-`V1_SCENARIO_IDS` / `V2_SCENARIO_IDS` / `SCENARIO_IDS` are defined in `src/types/scenario.ts`. Each visible scenario renders a button; clicking it calls `dealFeed.inject(id)`.
+`isV3()` is true under both `?dev=v3` and `?dev=v4` (v4 ⊇ v3); `isV4()` is v4-only ([ADR-0012](../decisions/ADR-0012-dev-v4-instrument-gate.md)). Each visible scenario renders a button; clicking it calls `dealFeed.inject(id, overrides)` with the selected `{ tenor, instrumentType, farTenor }`.
+
+## v4 instrument + far-tenor selectors (FXSW-078, FXSW-082)
+
+When `isV4()`, two `<select>`s join the v3 tenor selector (`forward-tenor-select`, the NEAR leg):
+
+- **`inject-instrument`** — `Auto` / `NDF` / `Swap` (`InjectInstrument`). `Auto` derives SPOT/OUTRIGHT from the tenor (v3 behaviour); `NDF` forces a forward tenor; `Swap` reveals the far-tenor control.
+- **`inject-far-tenor`** — the FAR leg (shown only for `Swap`); offers the full ladder, with out-of-order choices coerced in `buildSwapLegs` (surfaced via the "legs adjusted" note). See [features/swaps.md](../features/swaps.md).
 
 ## Button labels
 

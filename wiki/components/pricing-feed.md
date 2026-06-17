@@ -1,9 +1,10 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-17
 sources:
   - docs/04-dummy-feed-spec.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
-ticket: FXSW-007
+ticket: FXSW-007, FXSW-090
 ---
 
 # Component — `pricingFeed`
@@ -62,7 +63,17 @@ Reference mids are regenerated at every build — see [decisions/ADR-0005-bake-r
 
 `window.__seedFeed` (read at `start()` time) drives a Mulberry32 PRNG + Box-Muller normal sampling. Both are deterministic, dependency-free, and have good statistical properties for non-cryptographic use.
 
-Playwright pins `window.__seedFeed = 42` via `addInitScript` before navigation so tests get reproducible price sequences. The fallback when unset is `Date.now() & 0xFFFFFFFF`.
+Playwright pins `window.__seedFeed = 42` via `addInitScript` before navigation so tests get reproducible price sequences.
+
+### `?seed=N` replay knob (FXSW-090)
+
+`resolveFeedSeed()` reads the seed with a three-level precedence:
+
+1. **`window.__seedFeed`** (programmatic) — the test/E2E path; goldens unchanged.
+2. **`?seed=N`** URL query param (human-friendly) — paste a URL to replay a run; parsed with `Number` + `Number.isFinite`, coerced to a uint32.
+3. **wall-clock** (`Date.now() & 0xFFFFFFFF`) — a fresh, non-reproducible session.
+
+So `window.__seedFeed` always wins (keeping every golden byte-stable), and a human can reproduce a specific simulated run from the URL alone. See [ADR-0016](../decisions/ADR-0016-ga-core-determinism.md).
 
 Golden sequence locked in by the test: seed 42 produces `EURUSD = [1.1715, 1.1714, 1.1714, 1.1714, 1.1714]` for the first 5 ticks.
 
