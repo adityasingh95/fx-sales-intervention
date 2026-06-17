@@ -5,6 +5,13 @@ export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR';
 
 export const PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDINR'] as const satisfies readonly Pair[];
 
+// Non-deliverable pairs — the only pairs an NDF can be struck on (docs/02 §12.2).
+// USDINR (INR is non-convertible/non-deliverable) is the NDF pair in this set;
+// EURUSD/GBPUSD/USDJPY are deliverable and cannot be NDFs.
+export const NDF_PAIRS = ['USDINR'] as const satisfies readonly Pair[];
+
+export const isNdfPair = (pair: Pair): boolean => (NDF_PAIRS as readonly Pair[]).includes(pair);
+
 export type PriceTick = {
   pair: Pair;
   bid: number;

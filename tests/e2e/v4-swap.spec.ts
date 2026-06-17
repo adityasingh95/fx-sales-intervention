@@ -33,7 +33,7 @@ test('v4 swap injection — two-layer ticket: per-leg + all-in markup, side tile
   await expect(panel).toBeVisible();
   await expect(panel).toHaveAttribute('data-instrument', 'SWAP');
 
-  // Legs section: per-leg bid/ask points + prominent component net.
+  // Legs section: per-leg bid/ask points + prominent net.
   await expect(page.getByTestId('swap-panel')).toBeVisible();
   await expect(page.getByTestId('swap-legs-section')).toBeVisible();
   await expect(page.getByTestId('leg-near-points-bid')).not.toHaveText('');
@@ -41,14 +41,17 @@ test('v4 swap injection — two-layer ticket: per-leg + all-in markup, side tile
   await expect(page.getByTestId('swap-net-bid')).not.toHaveText('');
   await expect(page.getByTestId('swap-net-ask')).not.toHaveText('');
 
-  // Layer 1: per-component steppers (near + far, bid + ask) always visible.
+  // Default is Per-component — per-leg steppers visible, all-in net stepper hidden.
+  await expect(page.getByTestId('swap-markup-mode')).toBeVisible();
   await expect(page.getByTestId('margin-input-near-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-far-ask')).toBeVisible();
+  await expect(page.getByTestId('margin-input-net-bid')).toHaveCount(0);
 
-  // Layer 2: all-in net steppers in the side tiles, no mode toggle.
+  // Switching to All-in swaps in a single net stepper per side; per-leg steppers go.
+  await page.getByTestId('swap-markup-mode-total').click();
   await expect(page.getByTestId('margin-input-net-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-net-ask')).toBeVisible();
-  await expect(page.getByTestId('swap-markup-mode')).toHaveCount(0);
+  await expect(page.getByTestId('margin-input-near-bid')).toHaveCount(0);
 
   // Side tiles.
   await expect(page.getByTestId('swap-side-bid')).toBeVisible();
@@ -80,9 +83,9 @@ test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injec
   await rowA.click();
   await expect(page.getByTestId('swap-adjust-note')).toBeVisible();
 
-  // Mark up the net bid on A, then close the ticket.
-  await page.getByTestId('margin-plus-net-bid').click();
-  await expect(page.getByTestId('margin-input-net-bid')).toHaveValue('1');
+  // Mark up the near-leg bid on A (default per-component mode), then close the ticket.
+  await page.getByTestId('margin-plus-near-bid').click();
+  await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('1');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('ticket-panel')).toHaveCount(0);
 
@@ -94,9 +97,9 @@ test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injec
   const rowB = activeBody.locator(`[data-deal-id]:not([data-deal-id="${aId}"])`).first();
   await expect(rowB).toBeVisible({ timeout: 1_000 });
   await rowB.click();
-  // B opens with no adjust note and zero margins on both layers — A's markup did not leak.
+  // B opens in per-component mode with no adjust note and zero leg margin — A's
+  // markup did not leak.
   await expect(page.getByTestId('swap-adjust-note')).toHaveCount(0);
-  await expect(page.getByTestId('margin-input-net-bid')).toHaveValue('0');
   await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('0');
 });
 

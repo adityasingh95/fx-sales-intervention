@@ -1,15 +1,26 @@
 name: ci
 on:
+  # Feature branches are validated via the pull_request event only — listing them
+  # under push too would fire two competing runs for the same commit, and the
+  # cancelled duplicate (a "build" check on the head SHA) trips branch protection.
   push:
     branches:
       - main
-      - 'claude/**'
   pull_request:
+
+# Cancel a PR's superseded in-progress run when a newer commit is pushed. Keyed on
+# the ref (stable per PR), so only runs on older SHAs are cancelled — never the run
+# on the head SHA that determines the required-check state.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    # Headroom for the playwright `install --with-deps` step, which is slow on cold
+    # shared runners and intermittently blew the previous 10-minute budget.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3

@@ -74,6 +74,28 @@ describe('createScenarioPlayer', () => {
     });
   });
 
+  it('coerces an NDF on a deliverable-pair scenario to an NDF (non-deliverable) pair', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_ndf_pair',
+    });
+    // OFF_HOURS_INTERVENTION is a USDJPY (deliverable) scenario — an NDF cannot be
+    // struck on it, so the pair is coerced to USDINR.
+    player.inject('OFF_HOURS_INTERVENTION', { instrumentType: 'NDF' });
+    expect(emitted[0]).toMatchObject({ deal: { instrumentType: 'NDF', pair: 'USDINR' } });
+  });
+
+  it('keeps an already-non-deliverable pair for an NDF (RELEASE_PATH is USDINR)', () => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({
+      emit: (e) => emitted.push(e),
+      generateDealId: () => 'd_ndf_keep',
+    });
+    player.inject('RELEASE_PATH', { instrumentType: 'NDF' });
+    expect(emitted[0]).toMatchObject({ deal: { instrumentType: 'NDF', pair: 'USDINR' } });
+  });
+
   it('keeps an explicit forward tenor for an NDF override (FXSW-078)', () => {
     const emitted: DealEvent[] = [];
     const player = createScenarioPlayer({

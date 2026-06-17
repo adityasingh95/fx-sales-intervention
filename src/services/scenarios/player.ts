@@ -1,4 +1,4 @@
-import type { DealEvent } from '@/services/feed/types';
+import { isNdfPair, NDF_PAIRS, type DealEvent } from '@/services/feed/types';
 import { makeRng, hashSeed } from '@/services/feed/rng';
 import type { Deal } from '@/types/deal';
 import { FORWARD_TENORS, resolveSwapLegs, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
@@ -133,10 +133,18 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
       instrumentType === 'NDF' && !isForwardTenor(requestedTenor)
         ? FORWARD_TENORS[0]
         : requestedTenor;
+    // An NDF can only be struck on a non-deliverable pair (docs/02 §12.2). If the
+    // scenario's pair is deliverable, coerce it to an NDF pair rather than quoting
+    // an NDF on a deliverable currency.
+    const pair =
+      instrumentType === 'NDF' && !isNdfPair(scenario.deal.pair)
+        ? NDF_PAIRS[0]
+        : scenario.deal.pair;
     return {
       dealId,
       createdAt: now(),
       ...scenario.deal,
+      pair,
       tenor,
       instrumentType,
     };
