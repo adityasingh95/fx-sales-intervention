@@ -1205,6 +1205,18 @@ unchanged; changes are additive + guarded):
   ClientReject closes both legs; post-terminal forward refused). Gates: typecheck ✓
   · lint ✓ · `test:run` ✓ (536) · build ✓ · `test:e2e` ✓ (15/15). Goldens stable.
 
+## FXSW-088 T-6 · Vendor literals in non-adapter test files (closed)
+
+- Removed the one genuine positive vendor literal: `fetch-reference-mids.test.ts`
+  no longer asserts `source === 'frankfurter.dev'` (now `!== 'fallback'`) and the
+  test name drops the provider ("live-source response").
+- The vendor strings in `App.test` (Caplin) and `ExternalFeedPanel.test`
+  (polygon/massive) are intentional brand-neutrality **denylist tripwires** — they
+  appear only inside `.not.toContain`/`.not.toMatch` guards that FAIL if a vendor
+  name leaks into rendered output. Removing them would delete the very tests that
+  enforce the rule, so they are retained by design and now comment-marked.
+- Closes the last open FXSW-088 sub-item. Gates: typecheck ✓ · lint ✓ · tests ✓.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

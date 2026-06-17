@@ -690,7 +690,11 @@ state-machine ACs were deferred to Phase 11 (Swaps rework those machines).
   documented (RFS `Executable` ≠ client-sent signal); F-3 explicit terminal
   protection (`terminal` flag guards all forwards) + `ClientReject` routed to both
   legs (RFS `ClientClose`). 536 unit + 15 E2E green.
-- ⏳ **T-6** vendor literals in non-adapter test files — deferred (cosmetic).
+- ✅ **T-6 — DONE (2026-06-17).** Removed the one genuine positive vendor literal
+  (`'frankfurter.dev'` in `fetch-reference-mids.test.ts` → assert `!== 'fallback'`);
+  the remaining vendor strings in `App.test`/`ExternalFeedPanel.test` are
+  intentional brand-neutrality **denylist tripwires** (`.not.toContain`/`.not.toMatch`)
+  and are retained by design + marked as such.
 
 **AC (full spec; see Status above for done vs deferred):**
 - External provider auth no longer uses a URL query string for the API key where

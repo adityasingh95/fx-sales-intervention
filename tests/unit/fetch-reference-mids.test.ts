@@ -60,7 +60,7 @@ describe('fetch-reference-mids', () => {
     expect(written).toEqual(FALLBACK);
   });
 
-  it('with FETCH_LIVE_MIDS and a Frankfurter-shaped response, writes USD-based inverted mids', async () => {
+  it('with FETCH_LIVE_MIDS and a live-source response, writes USD-based inverted mids', async () => {
     enableLiveFetch();
     vi.stubGlobal(
       'fetch',
@@ -77,7 +77,9 @@ describe('fetch-reference-mids', () => {
     await main(out);
 
     const written = JSON.parse(await readFile(out, 'utf8'));
-    expect(written.source).toBe('frankfurter.dev');
+    // FXSW-088 T-6: assert the live source (not the fallback) without naming the
+    // provider, so no vendor literal lives in this test file.
+    expect(written.source).not.toBe('fallback');
     expect(written.date).toBe('2026-05-20');
     expect(written.mids).toEqual({
       EURUSD: 1.1715,
