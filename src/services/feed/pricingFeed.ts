@@ -25,6 +25,21 @@ declare global {
   }
 }
 
+// FXSW-090 T-1: resolve the spot-feed seed for manual reproduction. Precedence:
+//   1. `window.__seedFeed` (programmatic — the test/E2E path; goldens unchanged),
+//   2. a `?seed=N` URL query param (human-friendly — paste a URL to replay a run),
+//   3. wall-clock (a fresh non-reproducible session).
+function resolveFeedSeed(): number {
+  if (typeof window === 'undefined') return Date.now() & 0xffffffff;
+  if (typeof window.__seedFeed === 'number') return window.__seedFeed;
+  const param = new URLSearchParams(window.location.search).get('seed');
+  if (param !== null && param !== '') {
+    const n = Number(param);
+    if (Number.isFinite(n)) return n >>> 0;
+  }
+  return Date.now() & 0xffffffff;
+}
+
 function makeNormal(rng: () => number): () => number {
   let cached: number | null = null;
   return () => {
@@ -103,10 +118,7 @@ export const pricingFeed: PricingFeed = {
 
   start() {
     if (intervalId !== null) return;
-    const seed =
-      typeof window !== 'undefined' && typeof window.__seedFeed === 'number'
-        ? window.__seedFeed
-        : Date.now() & 0xffffffff;
+    const seed = resolveFeedSeed();
     normal = makeNormal(makeRng(seed));
     for (const pair of PAIRS) {
       references.set(pair, referenceMids[pair]);

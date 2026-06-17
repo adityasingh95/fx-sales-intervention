@@ -1,5 +1,7 @@
+import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { Pair } from '@/services/feed/types';
-import type { MarginPair } from '@/types/deal';
+import type { InstrumentType, MarginPair } from '@/types/deal';
+import type { QuoteSide } from '@/lib/quoteSide';
 
 // Pip math per docs/02 §2 + §4.4 + §4.5. CLAUDE.md mandates this module
 // as the single source of truth for pip / margin arithmetic — no inline
@@ -13,6 +15,14 @@ const PIP_SIZE: Record<Pair, number> = {
 };
 
 export const pipSizeFor = (pair: Pair): number => PIP_SIZE[pair];
+
+// NDF is points-only (docs/02 §12.2): the spot-level margin is structurally inert.
+// Every consumer of a priced deal's spot margin must go through this single helper
+// (keyed off the instrument) so the raw `marginPair` state can never reintroduce a
+// spot markup via the keyboard or AI-Apply paths — defence-in-depth below the
+// render boundary (FXSW-089 F-2). Non-NDF instruments keep their margin unchanged.
+export const spotMarginFor = (instrument: InstrumentType, marginPair: MarginPair): MarginPair =>
+  instrument === 'NDF' ? { bid: 0, ask: 0 } : marginPair;
 
 // Round to the pair's display precision to avoid float-drift artifacts
 // (e.g. 1.0850 − 3*0.0001 = 1.0846999999999998).
@@ -92,3 +102,83 @@ export const clientAskFromForward = (
   pair: Pair,
 ): number =>
   clientAskFromTrader(allInRate(spotAsk, fwdPoints, pair), spotMarginPips + fwdMarginPips, pair);
+
+// --- Side-specific forward points (v3+, FXSW-074) ---------------------------
+// The feed quotes two-sided forward points (FXSW-073). The trader outright is
+// therefore side-specific *before* any margin: the bid all-in uses the bid
+// points, the ask all-in uses the ask points, and the mid (used as the P/L
+// reference) uses the mid points. SPOT points are all-zero and collapse each
+// side back to the spot rate. Keeping this selection in pips.ts honours the
+// "no pip math in components" rule — consumers pass the whole points pair.
+
+export type SpotRates = { bid: number; ask: number; mid: number };
+export type OutrightRates = { bid: number; ask: number; mid: number };
+
+export const outrightPair = (
+  spot: SpotRates,
+  points: ForwardPointsPair,
+  pair: Pair,
+): OutrightRates => ({
+  bid: allInRate(spot.bid, points.bid, pair),
+  ask: allInRate(spot.ask, points.ask, pair),
+  mid: allInRate(spot.mid, points.mid, pair),
+});
+
+// Side-specific client prices for a forward: bid takes the bid points, ask the
+// ask points, each widened by its own (spot + forward) margin.
+export const clientForwardPair = (
+  spot: SpotRates,
+  points: ForwardPointsPair,
+  spotMargin: MarginPair,
+  fwdMargin: MarginPair,
+  pair: Pair,
+): MarginPair => ({
+  bid: clientBidFromForward(spot.bid, points.bid, spotMargin.bid, fwdMargin.bid, pair),
+  ask: clientAskFromForward(spot.ask, points.ask, spotMargin.ask, fwdMargin.ask, pair),
+});
+
+// --- Swap pricing (v4, FXSW-084) --------------------------------------------
+// A swap is priced on the *net* forward-points differential (far − near, from
+// swapPointsFeed). The trader marks up either:
+//   • TOTAL          — one bid/ask margin applied to the net points, or
+//   • PER_COMPONENT  — an independent bid/ask margin on each leg (up to four
+//                      values), whose contributions sum into the net spread
+//                      (mirrors the forward spot+fwd margin sum).
+// Net points are already a pip differential, so margins (pips) apply directly —
+// no pipSize scaling (unlike an outright rate). The dealer takes margin off the
+// bid and adds it to the ask, widening the net in the dealer's favour. P/L reuses
+// estimatedProfitUsd with the effective net margin per side.
+
+export type SwapMarkupMode = 'PER_COMPONENT' | 'TOTAL';
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+// Zero the non-quotable side's margin for a one-sided request: the off-side
+// cannot be priced, so it carries no markup and earns no P/L. BOTH is untouched.
+// Mirrors the ForwardPointsPanel/MarginControls lock (FXSW-068).
+export const gateMarginToSide = (margin: MarginPair, quoteSide: QuoteSide): MarginPair => ({
+  bid: quoteSide === 'ASK' ? 0 : margin.bid,
+  ask: quoteSide === 'BID' ? 0 : margin.ask,
+});
+
+// Effective net-points margin per side, after markup-mode resolution + one-sided
+// gating. TOTAL uses the entered net margin directly; PER_COMPONENT sums the two
+// legs' margins (each leg widens the net).
+export const effectiveSwapMargin = (
+  mode: SwapMarkupMode,
+  margins: { total: MarginPair; near: MarginPair; far: MarginPair },
+  quoteSide: QuoteSide = 'BOTH',
+): MarginPair => {
+  const raw = mode === 'TOTAL' ? margins.total : sumMargins(margins.near, margins.far);
+  return gateMarginToSide(raw, quoteSide);
+};
+
+// Client net swap points (pips): bid widened down, ask widened up, by the
+// effective net margin. Pass an already-gated margin for one-sided requests.
+export const clientSwapNetPoints = (
+  net: { bid: number; ask: number },
+  margin: MarginPair,
+): { bid: number; ask: number } => ({
+  bid: round1(net.bid - margin.bid),
+  ask: round1(net.ask + margin.ask),
+});

@@ -3,9 +3,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import ForwardPointsPanel from './ForwardPointsPanel';
 import { allInRate, clientAskFromForward, clientBidFromForward } from '@/lib/pips';
 import { formatRate } from '@/lib/format';
+import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { PriceTick } from '@/services/feed/types';
 
 const tick: PriceTick = { pair: 'EURUSD', bid: 1.1712, mid: 1.1715, ask: 1.1718, timestamp: 0 };
+// Asymmetric two-sided points so bid/ask selection is observable.
+const points: ForwardPointsPair = { bid: -27, ask: -23, mid: -25 };
 
 const renderPanel = (overrides: Partial<React.ComponentProps<typeof ForwardPointsPanel>> = {}) =>
   render(
@@ -13,7 +16,7 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ForwardPoint
       pair="EURUSD"
       tenor="3M"
       tick={tick}
-      fwdPoints={-25}
+      fwdPoints={points}
       markupMode="component"
       onMarkupModeChange={vi.fn()}
       marginPair={{ bid: 0, ask: 0 }}
@@ -26,25 +29,31 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ForwardPoint
 describe('ForwardPointsPanel', () => {
   afterEach(cleanup);
 
-  it('shows forward points and, with no markup, the raw all-in outright', () => {
+  it('shows two-sided forward points (bid/mid/ask) and, with no markup, the raw all-in outright', () => {
     renderPanel();
-    expect(screen.getByTestId('fwd-points').textContent).toBe('-25.0');
+    expect(screen.getByTestId('fwd-points-bid').textContent).toBe('-27.0');
+    expect(screen.getByTestId('fwd-points-mid').textContent).toBe('-25.0');
+    expect(screen.getByTestId('fwd-points-ask').textContent).toBe('-23.0');
     expect(screen.getByTestId('all-in-mid').textContent).toBe(
-      allInRate(tick.mid, -25, 'EURUSD').toFixed(4),
+      allInRate(tick.mid, points.mid, 'EURUSD').toFixed(4),
     );
-    // With zero margins the client all-in equals the raw outright.
+    // With zero margins the client all-in equals the raw outright — bid uses bid
+    // points, ask uses ask points.
     expect(screen.getByTestId('all-in-bid').textContent).toBe(
-      allInRate(tick.bid, -25, 'EURUSD').toFixed(4),
+      allInRate(tick.bid, points.bid, 'EURUSD').toFixed(4),
+    );
+    expect(screen.getByTestId('all-in-ask').textContent).toBe(
+      allInRate(tick.ask, points.ask, 'EURUSD').toFixed(4),
     );
   });
 
-  it('all-in bid/ask reflect the spot + forward-points markup per side', () => {
+  it('all-in bid/ask reflect the side-specific points + spot/forward markup', () => {
     renderPanel({ marginPair: { bid: 4, ask: 5 }, fwdMarginPair: { bid: 1, ask: 2 } });
     expect(screen.getByTestId('all-in-bid').textContent).toBe(
-      formatRate(clientBidFromForward(tick.bid, -25, 4, 1, 'EURUSD'), 'EURUSD'),
+      formatRate(clientBidFromForward(tick.bid, points.bid, 4, 1, 'EURUSD'), 'EURUSD'),
     );
     expect(screen.getByTestId('all-in-ask').textContent).toBe(
-      formatRate(clientAskFromForward(tick.ask, -25, 5, 2, 'EURUSD'), 'EURUSD'),
+      formatRate(clientAskFromForward(tick.ask, points.ask, 5, 2, 'EURUSD'), 'EURUSD'),
     );
   });
 
@@ -58,7 +67,7 @@ describe('ForwardPointsPanel', () => {
         pair="EURUSD"
         tenor="3M"
         tick={tick}
-        fwdPoints={-25}
+        fwdPoints={points}
         markupMode="all-in"
         onMarkupModeChange={vi.fn()}
         marginPair={{ bid: 0, ask: 0 }}

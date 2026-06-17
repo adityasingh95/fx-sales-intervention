@@ -12,9 +12,9 @@ describe('createPoller', () => {
   });
 
   it('polls immediately on start, then every interval', async () => {
-    const fetchMids = vi.fn<[], Promise<MidMap>>().mockResolvedValue({ EURUSD: 1.1 });
+    const fetchMids = vi.fn<() => Promise<MidMap>>().mockResolvedValue({ EURUSD: 1.1 });
     const onResult = vi.fn();
-    const onStatus = vi.fn<[ExternalFeedStatus], void>();
+    const onStatus = vi.fn<(status: ExternalFeedStatus) => void>();
     const poller = createPoller({ fetchMids, onResult, onStatus, intervalMs: 1000 });
 
     poller.start();
@@ -29,7 +29,7 @@ describe('createPoller', () => {
   });
 
   it('stop() halts further polling', async () => {
-    const fetchMids = vi.fn<[], Promise<MidMap>>().mockResolvedValue({});
+    const fetchMids = vi.fn<() => Promise<MidMap>>().mockResolvedValue({});
     const poller = createPoller({
       fetchMids,
       onResult: vi.fn(),
@@ -45,9 +45,9 @@ describe('createPoller', () => {
 
   it('reports rate-limited status and backs off exponentially', async () => {
     const fetchMids = vi
-      .fn<[], Promise<MidMap>>()
+      .fn<() => Promise<MidMap>>()
       .mockRejectedValue(new ProviderError('429', true));
-    const onStatus = vi.fn<[ExternalFeedStatus], void>();
+    const onStatus = vi.fn<(status: ExternalFeedStatus) => void>();
     const poller = createPoller({ fetchMids, onResult: vi.fn(), onStatus, intervalMs: 1000 });
 
     poller.start();
@@ -66,8 +66,8 @@ describe('createPoller', () => {
   });
 
   it('reports generic error status on non-rate-limit failures', async () => {
-    const fetchMids = vi.fn<[], Promise<MidMap>>().mockRejectedValue(new Error('network'));
-    const onStatus = vi.fn<[ExternalFeedStatus], void>();
+    const fetchMids = vi.fn<() => Promise<MidMap>>().mockRejectedValue(new Error('network'));
+    const onStatus = vi.fn<(status: ExternalFeedStatus) => void>();
     const poller = createPoller({ fetchMids, onResult: vi.fn(), onStatus, intervalMs: 1000 });
     poller.start();
     await vi.advanceTimersByTimeAsync(0);

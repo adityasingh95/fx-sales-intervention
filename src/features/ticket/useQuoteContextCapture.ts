@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useDealsStore, type DealEntry } from '@/state/stores/dealsStore';
 import { isForwardTenor, type MarginPair } from '@/types/deal';
+import type { AppliedMargin } from '@/types/lifecycle';
 import type { MarkupMode } from './pricing/ForwardPointsPanel';
 
 // Captures the markup reason when the trader sends a price (FXSW-060). The SI
@@ -16,10 +17,13 @@ export function useQuoteContextCapture(
     markupMode: MarkupMode;
     aiApplied: boolean;
     appliedRationale: string | null;
+    // FXSW-086: present only for SWAP deals — the effective net-points margin +
+    // mode actually applied. Takes precedence over the spot/forward shape.
+    swap?: { mode: 'PER_COMPONENT' | 'TOTAL'; net: MarginPair };
   },
 ): void {
   const recorded = useRef(false);
-  const { marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale } = params;
+  const { marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale, swap } = params;
 
   useEffect(() => {
     if (!entry) return;
@@ -31,14 +35,16 @@ export function useQuoteContextCapture(
     if (siState === 'QuoteSent' && !recorded.current) {
       recorded.current = true;
       const fwd = markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
-      const appliedMargin = isForwardTenor(deal.tenor)
-        ? ({ kind: 'forward', spot: marginPair, fwd } as const)
-        : ({ kind: 'spot', margin: marginPair } as const);
+      const appliedMargin: AppliedMargin = swap
+        ? { kind: 'swap', mode: swap.mode, net: swap.net }
+        : isForwardTenor(deal.tenor)
+          ? { kind: 'forward', spot: marginPair, fwd }
+          : { kind: 'spot', margin: marginPair };
       useDealsStore.getState().recordQuoteContext(deal.dealId, {
         appliedMargin,
         aiSuggested: aiApplied,
         rationale: appliedRationale ?? undefined,
       });
     }
-  }, [entry, marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale]);
+  }, [entry, marginPair, fwdMarginPair, markupMode, aiApplied, appliedRationale, swap]);
 }

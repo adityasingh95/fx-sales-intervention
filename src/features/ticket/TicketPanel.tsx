@@ -6,6 +6,7 @@ import { derivedStatus } from '@/features/blotter/statusFromMachines';
 import { isV3 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
 import { quoteSideFor } from '@/lib/quoteSide';
+import { spotMarginFor } from '@/lib/pips';
 import type { PriceTick } from '@/services/feed/types';
 import { usePrice } from '@/services/feed/usePrice';
 import { getMarketContext } from '@/services/suggestion/marketContext';
@@ -14,12 +15,13 @@ import { useSuggestionState } from './useSuggestionState';
 import { useQuoteContextCapture } from './useQuoteContextCapture';
 import { useDealsStore } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
-import { isForwardTenor, type MarginPair } from '@/types/deal';
+import { instrumentOf, isForwardTenor, type MarginPair } from '@/types/deal';
 import ClientSummaryPanel from './ClientSummaryPanel';
 import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ForwardPointsPanel, { type MarkupMode } from './pricing/ForwardPointsPanel';
 import LegTabs from './pricing/LegTabs';
+import SwapPanel from './pricing/SwapPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SuggestionPanel from './SuggestionPanel';
 import SummaryPanel from './SummaryPanel';
@@ -51,6 +53,12 @@ export default function TicketPanel() {
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
   const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
+  // FXSW-086: SWAP effective net-points margin + mode, reported up by SwapPanel
+  // so the quote-context capture records what was applied at QuoteSent.
+  const [swapPricing, setSwapPricing] = useState<{
+    mode: 'PER_COMPONENT' | 'TOTAL';
+    net: MarginPair;
+  } | null>(null);
   // FXSW-069 (v3): a "happy" auto-priced (ESP) deal needs no manual
   // intervention, so opening it shows a read-only view and does NOT fire
   // PickUp. Latched once per open so it stays stable after the deal
@@ -90,6 +98,7 @@ export default function TicketPanel() {
       setFwdMarginPair({ bid: 0, ask: 0 });
       setSavedFwdForUndo(null);
       setMarkupMode('component');
+      setSwapPricing(null);
       setAiApplied(false);
       setAppliedRationale(null);
       setPricingMode('streaming');
@@ -123,13 +132,29 @@ export default function TicketPanel() {
     }
   }, [openDealId]);
 
-  // FXSW-060: capture the markup reason when the trader sends a price.
+  // FXSW-079/080/089: NDF is points-only. The effective spot margin is zeroed for
+  // an NDF via the shared `spotMarginFor` helper (keyed off the instrument), so
+  // EVERY consumer below — the manual ticket, the auto-priced view, and the
+  // quote-context capture — gets the structurally inert value and no render path
+  // (keyboard / AI-Apply) can reintroduce a spot markup (security F-1/F-2/F-3).
+  const instrument = entry ? instrumentOf(entry.deal) : 'SPOT';
+  const isNdf = instrument === 'NDF';
+  const effectiveSpotMargin: MarginPair = spotMarginFor(instrument, marginPair);
+  const effectiveMarkupMode: MarkupMode = isNdf ? 'component' : markupMode;
+
+  // FXSW-060: capture the markup reason when the trader sends a price. The
+  // captured spot margin is the *effective* one, so an NDF record carries a zero
+  // spot component matching the price actually sent (security F-3).
   useQuoteContextCapture(entry, {
-    marginPair,
+    marginPair: effectiveSpotMargin,
     fwdMarginPair,
-    markupMode,
+    markupMode: effectiveMarkupMode,
     aiApplied,
     appliedRationale,
+    swap:
+      instrument === 'SWAP'
+        ? (swapPricing ?? { mode: 'PER_COMPONENT', net: { bid: 0, ask: 0 } })
+        : undefined,
   });
 
   // Two-pass mount so the slide-in animates from `translate-x-full` to
@@ -151,9 +176,15 @@ export default function TicketPanel() {
   // In all-in markup mode the forward-points margin is held at zero (the spot
   // margin applies to the whole outright).
   const isForward = isForwardTenor(deal.tenor);
-  const fwdPoints = isForward ? forwardPointsFeed.get(deal.pair, deal.tenor) : 0;
+  // FXSW-075: two-sided points flow through pricing — bid side uses bid points,
+  // ask side uses ask points (see lib/pips outrightPair/clientForwardPair).
+  // `instrument`/`isNdf`/`effectiveSpotMargin`/`effectiveMarkupMode` are computed
+  // once above (so the capture hook + both render branches share them).
+  const fwdPoints = isForward
+    ? forwardPointsFeed.get(deal.pair, deal.tenor)
+    : { bid: 0, ask: 0, mid: 0 };
   const effectiveFwdMargin: MarginPair =
-    markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
+    effectiveMarkupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
   const quoteSide = quoteSideFor(deal.side, deal.dealtCcy);
   // v3 only — GA keeps both margin sides editable regardless of request side.
   const restrictMarginSides = isV3();
@@ -167,6 +198,7 @@ export default function TicketPanel() {
       <div
         data-testid="ticket-panel"
         data-deal-id={deal.dealId}
+        data-instrument={instrument}
         data-readonly={autoView ? 'true' : undefined}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -201,7 +233,31 @@ export default function TicketPanel() {
             </span>
           </div>
 
-          {autoView ? (
+          {instrument === 'SWAP' ? (
+            <>
+              {autoView ? (
+                <p
+                  data-testid="auto-priced-note"
+                  className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-sm text-text-dim"
+                >
+                  This deal is auto-priced and streaming to the client within tolerance. No
+                  manual intervention is required.
+                </p>
+              ) : (
+                <ReasonsPanel reasons={rejectionReasons} />
+              )}
+              <SummaryPanel deal={deal} />
+              <SwapPanel
+                deal={deal}
+                tick={displayTick}
+                quoteSide={quoteSide}
+                restrictMarginSides={restrictMarginSides}
+                readOnly={autoView}
+                onPricingChange={setSwapPricing}
+              />
+              <DealSummaryPanel deal={deal} />
+            </>
+          ) : autoView ? (
             <>
               <p
                 data-testid="auto-priced-note"
@@ -212,21 +268,33 @@ export default function TicketPanel() {
               </p>
               <SummaryPanel deal={deal} />
               {isForward && (
-                <ForwardPointsPanel
-                  pair={deal.pair}
-                  tenor={deal.tenor}
-                  tick={displayTick}
-                  fwdPoints={fwdPoints}
-                  markupMode={markupMode}
-                  onMarkupModeChange={setMarkupMode}
-                  marginPair={marginPair}
-                  fwdMarginPair={{ bid: 0, ask: 0 }}
-                  onFwdMarginPairChange={() => {}}
-                />
+                <>
+                  {isNdf && (
+                    <p
+                      data-testid="ndf-note"
+                      className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-[11px] leading-snug text-text-mute"
+                    >
+                      Non-Deliverable Forward — cash-settled. Markup is taken on the
+                      forward points only; there is no spot-level markup.
+                    </p>
+                  )}
+                  <ForwardPointsPanel
+                    pair={deal.pair}
+                    tenor={deal.tenor}
+                    tick={displayTick}
+                    fwdPoints={fwdPoints}
+                    markupMode={effectiveMarkupMode}
+                    onMarkupModeChange={setMarkupMode}
+                    showMarkupToggle={!isNdf}
+                    marginPair={effectiveSpotMargin}
+                    fwdMarginPair={{ bid: 0, ask: 0 }}
+                    onFwdMarginPairChange={() => {}}
+                  />
+                </>
               )}
               <ClientSummaryPanel
                 tick={displayTick}
-                marginPair={marginPair}
+                marginPair={effectiveSpotMargin}
                 notional={deal.notional}
                 pair={deal.pair}
                 quoteSide={quoteSide}
@@ -296,6 +364,7 @@ export default function TicketPanel() {
             marginPair={marginPair}
             onMarginPairChange={setMarginPair}
             restrictMarginSides={restrictMarginSides}
+            showSpotMargin={!isNdf}
             onRefresh={() => {
               if (liveTick) setFrozenTick(liveTick);
             }}
@@ -303,14 +372,24 @@ export default function TicketPanel() {
           {isForward && (
             <>
               <LegTabs legs={deal.legs ?? []} />
+              {isNdf && (
+                <p
+                  data-testid="ndf-note"
+                  className="rounded-sm border border-border bg-bg-elevated/40 p-3 text-[11px] leading-snug text-text-mute"
+                >
+                  Non-Deliverable Forward — cash-settled. Markup is taken on the
+                  forward points only; there is no spot-level markup.
+                </p>
+              )}
               <ForwardPointsPanel
                 pair={deal.pair}
                 tenor={deal.tenor}
                 tick={displayTick}
                 fwdPoints={fwdPoints}
-                markupMode={markupMode}
+                markupMode={effectiveMarkupMode}
                 onMarkupModeChange={setMarkupMode}
-                marginPair={marginPair}
+                showMarkupToggle={!isNdf}
+                marginPair={effectiveSpotMargin}
                 fwdMarginPair={effectiveFwdMargin}
                 onFwdMarginPairChange={setFwdMarginPair}
                 quoteSide={quoteSide}
@@ -320,7 +399,7 @@ export default function TicketPanel() {
           )}
           <ClientSummaryPanel
             tick={displayTick}
-            marginPair={marginPair}
+            marginPair={effectiveSpotMargin}
             notional={deal.notional}
             pair={deal.pair}
             quoteSide={quoteSide}

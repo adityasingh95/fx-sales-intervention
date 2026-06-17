@@ -18,4 +18,14 @@ describe('DevInjector', () => {
     expect(screen.getByTestId('inject-QUOTE_DEALT_INQUIRY')).toBeInTheDocument();
     expect(screen.getByTestId('inject-RESET')).toBeInTheDocument();
   });
+
+  it('hides the v4 instrument selector on the bare URL (FXSW-078)', () => {
+    render(<DevInjector />);
+    expect(screen.queryByTestId('inject-instrument')).toBeNull();
+  });
+
+  it('hides the swap far-tenor selector on the bare URL (FXSW-082)', () => {
+    render(<DevInjector />);
+    expect(screen.queryByTestId('inject-far-tenor')).toBeNull();
+  });
 });

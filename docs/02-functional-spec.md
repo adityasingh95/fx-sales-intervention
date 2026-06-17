@@ -335,3 +335,95 @@ A second round of refinements (FXSW-068…071):
   instead of `PRICE_BACK`; the detail markup-reason notes the deal was auto-priced
   within tolerance.
 - **Forward-points unit** — the forward-points figure is suffixed `pips`.
+
+## 12. Instrument & pricing extensions (Phase 9–11)
+
+Two related bodies of work land across Phases 9–11. **Bid/ask forward points**
+(§12.1) is a *v3-level* refinement: it changes how existing `?dev=v3` outright
+forwards are priced, and v4 inherits it. The new **instruments** — NDF (§12.2)
+and swaps (§12.3) — land behind a new `?dev=v4` URL gate; `src/lib/devVersion.ts`
+widens to `'v1' | 'v3' | 'v4'` and exports `isV4()`, with v4 a superset of v3.
+Bare-URL GA is spot-only and unaffected throughout.
+
+### 12.1 Bid/ask forward points (v3 and above)
+
+Today a single forward-points scalar is added to both sides; bid/ask asymmetry
+only enters through margins. Forward points become **two-sided** — a
+`{ bid, ask }` pair per (pair, tenor) — so the outright bid and ask differ even
+before any markup. This applies to **all v3 outright forwards** (and v4); GA is
+spot-only so it is unaffected.
+
+- The simulated feed returns a points pair derived deterministically from the
+  existing per-(pair, tenor) `mid`, so the mid sequence is unchanged and only the
+  new side values are added (see `docs/04` §9.1).
+- Outright bid uses the bid points, outright ask uses the ask points. All-in
+  client price and estimated P/L derive from the side-specific outright.
+- **v3 is no longer byte-frozen for forwards.** v3 outright-forward pricing
+  snapshots and E2E expectations are re-baselined when this lands; the GA spot
+  golden and the mid sequence are unchanged.
+- Swaps extend this to **up to four** point values — a bid/ask pair per leg
+  (near and far).
+
+### 12.2 Instrument types and NDF (behind `?dev=v4`)
+
+`Deal` gains an explicit `instrumentType: 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP'`
+discriminator (v4). It is orthogonal to `tenor`: `SPOT`/`OUTRIGHT` describe the
+existing single-leg deliverable deals (SPOT tenor vs forward tenor); `NDF` and
+`SWAP` are the new v4 instruments. The Dev Injector gains an instrument selector
+alongside the tenor selector (v4-gated); injecting an instrument is a per-inject
+parameter, exactly like tenor — no new scenario definitions are added.
+
+A **Non-Deliverable Forward (NDF)** is a single-leg, cash-settled forward. It
+behaves like an outright forward with two restrictions that follow from the
+instrument:
+
+- **Not a SPOT request.** An NDF must carry a forward tenor; injecting NDF with
+  SPOT tenor is rejected by the injector (defaults to the shortest forward
+  tenor).
+- **No spot-level markup.** Because only the non-deliverable forward is priced,
+  the spot-margin row and the all-in/per-component toggle are removed from the
+  ticket; markup is taken **only** on the forward-points component (its bid/ask
+  margins and Balance/Zero). All-in price and P/L derive from the outright plus
+  the forward-points margin alone. The one-sided lock (§7.3) still applies.
+
+No fixing/settlement-rate modelling is introduced — the prototype keeps NDF as a
+markup-restricted outright. The AI Margin Suggestion applies to the forward-points
+margin only (`docs/09` §17).
+
+### 12.3 Swaps (behind `?dev=v4`)
+
+An **FX swap** is two legs priced together: a NEAR leg and a FAR leg. Phase 11
+supports **forward-forward** swaps — near and far may each be SPOT or any forward
+tenor, with far strictly later than near. Legs are carried in the existing
+`Deal.legs` seam (`{ kind: 'NEAR' | 'FAR'; tenor }`).
+
+- **Either side or both.** A swap request may ask for one side or both, reusing
+  the existing `side` / `dealtCcy` → `quoteSide` mapping (§7.3). When one-sided,
+  the non-quotable side is locked across both legs (§7.3 lock extended to the
+  two-leg layout).
+- **Net points drive pricing.** The economically meaningful quantity is the
+  **swap differential** = far points − near points, per side. Client price and
+  estimated P/L are computed from the net points, not from either leg alone.
+- **Component or total markup.** The trader may mark up **per-component** (an
+  independent bid/ask points margin on each leg — up to four values) **or**
+  **total** (a single bid/ask margin applied to the net swap points). This
+  mirrors the existing all-in/per-component toggle. Balance/Zero apply within the
+  active markup scope and respect the one-sided lock.
+- Markups are constrained to the request parameters: a one-sided swap exposes
+  only the quotable side's margins; the locked side's steppers are disabled and
+  its Balance/Zero are hidden, per §7.3.
+- **AI Margin Suggestion** is offered only in **Total** mode (it suggests the net
+  points margin); it is hidden in **Per-component** mode (`docs/09` §17).
+
+The two coordinated state machines (RFS + SI) are unchanged — a swap is one deal
+with one lifecycle; the second leg is a pricing/display concern, not a new state
+(see `docs/03` §10).
+
+## 13. Security review cadence
+
+From Phase 9 onward, every phase ends with an independent **Security Agent**
+review (the fifth agent; see `docs/10-security-agent-spec.md`). It reviews the
+built artefacts cold, reports functional and technical findings to `/security/`,
+and proposes a resolution work-item that is filed as ordinary backlog ticket(s)
+and implemented by the build agent without breaking the documented application
+flow.

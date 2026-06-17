@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import { dealtCcyCode, formatTime } from '@/lib/format';
-import { isV3 } from '@/lib/devVersion';
-import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
+import { isV3, isV4 } from '@/lib/devVersion';
+import { valueDateLabel } from '@/lib/time';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { instrumentOf } from '@/types/deal';
 import { useHistoricDeals, type HistoricEntry, type HistoricOutcome } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 
@@ -12,6 +13,8 @@ const HISTORIC_CAP = 100;
 // FXSW-066: Request ID / Trade ID / Value date columns are v3-only; GA layout
 // is unchanged.
 const v3Cols = isV3();
+// FXSW-080: instrument column is v4-only; GA + v3 layouts are unchanged.
+const v4Cols = isV4();
 
 const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'time', label: 'Time', width: 'w-[80px]' },
@@ -23,12 +26,12 @@ const columns: Array<{ key: string; label: string; width: string }> = [
   { key: 'side', label: 'Side', width: 'w-[60px]' },
   { key: 'amount', label: 'Amount', width: 'w-[120px]' },
   { key: 'tenor', label: 'Tenor', width: 'w-[60px]' },
+  ...(v4Cols ? [{ key: 'instrument', label: 'Instrument', width: 'w-[90px]' }] : []),
   ...(v3Cols ? [{ key: 'valueDate', label: 'Value Date', width: 'w-[100px]' }] : []),
   { key: 'outcome', label: 'Outcome', width: 'flex-1 min-w-[160px]' },
 ];
 
-const valueDateFor = (entry: HistoricEntry): string =>
-  formatSettlementDate(valueDateForTenor(new Date(entry.deal.createdAt), entry.deal.tenor));
+const valueDateFor = (entry: HistoricEntry): string => valueDateLabel(entry.deal);
 
 const OUTCOME_COLOR: Record<HistoricOutcome, string> = {
   Executed: 'text-green',
@@ -76,6 +79,11 @@ function Row({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
         <span className="text-text-mute">{dealtCcyCode(entry.deal.pair, entry.deal.dealtCcy)}</span>
       </div>
       <div className="w-[60px] pl-2 font-mono text-xs uppercase">{entry.deal.tenor}</div>
+      {v4Cols && (
+        <div data-testid="deal-instrument" className="w-[90px] font-mono text-xs uppercase">
+          {instrumentOf(entry.deal)}
+        </div>
+      )}
       {v3Cols && (
         <div className="w-[100px] font-mono text-xs tabular-nums">{valueDateFor(entry)}</div>
       )}
@@ -161,7 +169,7 @@ export function HistoricBlotter() {
             )}
           </div>
         ) : (
-          <div className={v3Cols ? 'min-w-[1260px]' : 'min-w-[920px]'}>
+          <div className={v4Cols ? 'min-w-[1350px]' : v3Cols ? 'min-w-[1260px]' : 'min-w-[920px]'}>
             <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
               {columns.map((col) => (
                 <div key={col.key} className={col.width}>

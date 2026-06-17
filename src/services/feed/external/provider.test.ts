@@ -11,22 +11,26 @@ const okResponse = (close: number): Response =>
 describe('provider.fetchMids', () => {
   it('maps the aggregate close to pair mids with pair precision, no inversion', async () => {
     const fetchImpl = vi
-      .fn<Parameters<typeof fetch>, Promise<Response>>()
+      .fn<(...args: Parameters<typeof fetch>) => Promise<Response>>()
       .mockResolvedValueOnce(okResponse(1.17234))
       .mockResolvedValueOnce(okResponse(157.778));
     const mids = await fetchMids('KEY', ['EURUSD', 'USDJPY'], fetchImpl as unknown as typeof fetch);
     expect(mids).toEqual({ EURUSD: 1.1723, USDJPY: 157.78 });
   });
 
-  it('passes the api key and C: symbol in the request URL', async () => {
+  it('sends the api key via an Authorization header (never in the URL) and the C: symbol in the URL', async () => {
     const fetchImpl = vi
-      .fn<Parameters<typeof fetch>, Promise<Response>>()
+      .fn<(...args: Parameters<typeof fetch>) => Promise<Response>>()
       .mockResolvedValue(okResponse(1.1));
     await fetchMids('secret key', ['EURUSD'], fetchImpl as unknown as typeof fetch);
-    const url = String((fetchImpl.mock.calls[0] as unknown[])[0]);
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('https://api.massive.com/v2/aggs/ticker');
     expect(url).toContain('C:EURUSD');
-    expect(url).toContain('apiKey=secret%20key');
+    // FXSW-088: the secret must not leak into the URL (logs/Referer); it rides
+    // in the Authorization header instead.
+    expect(url).not.toContain('apiKey');
+    expect(url).not.toContain('secret');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer secret key');
   });
 
   it('throws a rate-limited ProviderError on HTTP 429', async () => {

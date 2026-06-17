@@ -139,3 +139,19 @@ trader involvement (SI stays `Initial`). That transition now maps to a distinct
 `AUTO_PRICE` phase ("Auto-priced") rather than `PRICE_BACK`, so the timeline does
 not imply a manual price-back for a deal no trader touched. The full observed set
 is REQUEST, PICKUP, RELEASE, PRICE_BACK, AUTO_PRICE, WITHDRAWN, RESPONSE.
+
+## 10. v4 note — instruments are lifecycle-agnostic
+
+The v4 instruments (NDF, swap) and bid/ask forward points introduce **no new
+canonical states, events, or machines**. A swap is one deal with one lifecycle:
+the parent deal machine still coordinates exactly one RFS and one SI child, and
+the FAR leg is a pricing/display concern, not a second machine. NDF reuses the
+outright path with markup restricted to the forward-points component (see
+`docs/02` §12.2). Because the machines are tenor- and instrument-agnostic
+(FXSW-054), this is a pure widening — existing SPOT/outright deals are
+unaffected, and the canonical state names and `data-*` attributes remain the
+compatibility contract.
+
+The observed-phase set is unchanged. Multi-leg deals are summarised by the same
+single phase source (RFS for ESP auto-priced, SI otherwise); the two legs share
+one timeline.

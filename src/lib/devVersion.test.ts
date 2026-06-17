@@ -42,4 +42,24 @@ describe('devVersion', () => {
     const { isV3 } = await freshImport('?theme=preview&dev=v3');
     expect(isV3()).toBe(true);
   });
+
+  it('is v3 but not v4 when ?dev=v3 is present', async () => {
+    const { isV3, isV4 } = await freshImport('?dev=v3');
+    expect(isV3()).toBe(true);
+    expect(isV4()).toBe(false);
+  });
+
+  it('is v4 (a superset of v3) when ?dev=v4 is present', async () => {
+    const { devVersion, isV3, isV4 } = await freshImport('?dev=v4');
+    expect(devVersion).toBe('v4');
+    // v4 ⊇ v3: every existing isV3() call site stays true under v4.
+    expect(isV3()).toBe(true);
+    expect(isV4()).toBe(true);
+  });
+
+  it('is neither v3 nor v4 with no query string', async () => {
+    const { isV3, isV4 } = await freshImport('');
+    expect(isV3()).toBe(false);
+    expect(isV4()).toBe(false);
+  });
 });

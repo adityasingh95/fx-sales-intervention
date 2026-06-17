@@ -39,7 +39,10 @@ test('v3 forward injection — forward points, all-in rates, component markup', 
   const fwd = page.getByTestId('forward-points-panel');
   await expect(fwd).toBeVisible();
   await expect(fwd).toHaveAttribute('data-tenor', '3M');
-  await expect(page.getByTestId('fwd-points')).not.toHaveText('');
+  // FXSW-075: two-sided points — bid/mid/ask cells, each non-empty.
+  await expect(page.getByTestId('fwd-points-bid')).not.toHaveText('');
+  await expect(page.getByTestId('fwd-points-mid')).not.toHaveText('');
+  await expect(page.getByTestId('fwd-points-ask')).not.toHaveText('');
   await expect(page.getByTestId('all-in-bid')).not.toHaveText('—', { timeout: 1_000 });
 
   // Component mode (default) shows the forward-points margin row + its own

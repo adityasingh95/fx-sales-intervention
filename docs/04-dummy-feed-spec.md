@@ -132,3 +132,49 @@ The provider rebranded from Polygon.io to Massive (2025-10); the legacy
 previous-close path, and `apiKey` query param are unchanged. As the call is made
 from the browser it depends on the provider returning permissive CORS headers;
 static hosting has no proxy fallback.
+
+## 9. Forward-points & swap feed extensions
+
+All new feed work is deterministic and seeded. The **mid sequence is unchanged**
+(and so is the GA spot golden) — the changes only add side and leg values derived
+from the existing mids. Two-sided points (§9.1) apply from `?dev=v3` up; swap
+points (§9.2) are consumed only by v4 swaps.
+
+### 9.1 Two-sided forward points (v3 and above)
+
+`forwardPointsFeed.get(pair, tenor)` returns a `ForwardPointsPair`
+`{ bid, ask, mid }` instead of a scalar (the old scalar becomes `mid`). The
+bid/ask spread is derived **deterministically from `mid` and the tenor** —
+widening monotonically with tenor (longer tenor → wider points spread), symmetric
+around `mid` (bid = mid − half-spread, ask = mid + half-spread) — so **no extra
+RNG draws are taken and the `mid` sequence is unchanged**. SPOT remains
+`{ bid: 0, ask: 0, mid: 0 }`. Under v3 the bid/ask values are now used for
+outright forwards (previously both sides used the single value), so v3 forward
+pricing snapshots are re-baselined; GA spot is unaffected.
+
+### 9.2 Swap points
+
+`swapPointsFeed.get(pair, nearTenor, farTenor)` returns the per-leg pairs and the
+net differential:
+
+```
+{
+  near: ForwardPointsPair,   // = forwardPointsFeed.get(pair, nearTenor)
+  far:  ForwardPointsPair,   // = forwardPointsFeed.get(pair, farTenor)
+  net:  { bid, ask }         // far − near, per side
+}
+```
+
+`net.bid = far.bid − near.bid`, `net.ask = far.ask − near.ask`. It is a pure
+composition of `forwardPointsFeed` (no new RNG), so a forward-forward swap
+(near = forward tenor) and an outright-vs-spot swap (near = SPOT) both fall out
+of the same source. `far` must be a later tenor than `near`; the caller enforces
+ordering (the feed does not reorder).
+
+### 9.3 Instrument-aware feed usage
+
+The feed itself is instrument-agnostic — it exposes spot, two-sided forward
+points, and swap points. Instrument semantics (NDF = forward-points markup only;
+swap = net-points pricing) live in `lib/pips.ts` and the ticket, not in the feed.
+The interfaces remain small so a real curve/swap source can replace the simulated
+ones without touching consumers.

@@ -396,6 +396,486 @@ Phase 8 promotes Phase 6 + Phase 7 from opt-in URL flags to the default-on behav
 
 **Done when:** all gates green; bare URL `/` (with no query string) shows DevInjector, the ResizeHandle, the ThemeToggle, and behaves identically to the prior `/?dev=v2&theme=preview`; brand-neutral grep over `dist/` returns zero hits.
 
+## Status note — v3 phase and feedback rounds (FXSW-048…071)
+
+The detailed entries above stop at FXSW-047. Phase 8 (v3, behind `?dev=v3`:
+FXSW-048…061) and the two v3 feedback rounds (FXSW-062…071) shipped and are
+tracked in `docs/dev-log.md` and `docs/phase-summaries/`. The next free ticket is
+**FXSW-072**.
+
+## Phase 9 — bid/ask forward points (v3) + v4 gate scaffolding + Security Agent
+
+**Bid/ask forward points** is a v3-level refinement: existing `?dev=v3` outright
+forwards now price each side off its own points value (v4 inherits it). v3 forward
+goldens are re-baselined; the GA spot golden and the mid sequence are unchanged.
+The new `?dev=v4` gate is introduced here as scaffolding (first consumed by NDF in
+Phase 10). The independent **Security Agent** is stood up to review the build at
+the end of this and every later phase. Specs: `docs/02` §12, `docs/04` §9.1,
+`docs/05` §18.1, `docs/10-security-agent-spec.md`.
+
+### FXSW-072 — `?dev=v4` gate scaffolding (superset of v3)
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** —
+
+**AC:**
+- `src/lib/devVersion.ts` widens `DevVersion` to `'v1' | 'v3' | 'v4'`; add
+  `isV4()`. `isV4()` implies all v3 behaviour (v4 ⊇ v3): every existing `isV3()`
+  call site stays true under `?dev=v4`.
+- Bare URL and `?dev=v3` are byte-for-byte unchanged. (First consumer: NDF,
+  Phase 10 — no v4-gated behaviour ships in this ticket.)
+
+**TDD:** `devVersion.test.ts` — `?dev=v4` → `isV3() && isV4()`; `?dev=v3` →
+`isV3() && !isV4()`; no flag → neither.
+
+**Done when:** all gates green; no v3/GA behaviour change.
+
+### FXSW-073 — Two-sided forward-points feed (v3+)
+
+**Effort:** M · **TDD:** Strict · **Depends on:** —
+
+**AC:**
+- `forwardPointsFeed.get(pair, tenor)` returns `{ bid, ask, mid }` (old scalar →
+  `mid`); spread derived deterministically from `mid` + tenor (**no extra RNG
+  draws**), widening monotonically with tenor, symmetric around `mid`; SPOT →
+  all-zero.
+- The `mid` sequence is unchanged, so the GA spot golden is intact.
+
+**TDD:** feed unit tests for `bid ≤ mid ≤ ask`, monotonic spread by tenor; assert
+the `mid` sequence equals the pre-change scalar (golden unchanged).
+
+**Done when:** all gates green; GA spot golden intact.
+
+### FXSW-074 — Bid/ask points through pricing math (v3+)
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-073
+
+**AC:**
+- `lib/pips.ts`: outright bid uses points `.bid`, ask uses points `.ask`; All-in
+  price + estimated P/L are side-specific. Applies to v3 outright forwards.
+- No pip/margin math inlined in components.
+
+**TDD:** `pips` unit tests for asymmetric points → asymmetric outright with zero
+margin.
+
+**Done when:** all gates green.
+
+### FXSW-075 — Bid/ask points UI + re-baseline v3 snapshots (v3+)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-074
+
+**AC:**
+- Forward-points row shows `fwd-points-bid` / `fwd-points-ask` (each suffixed
+  `pips`) plus the `fwd-points-mid` reference, replacing the single `fwd-points`
+  cell for v3 outright forwards.
+- v3 outright-forward component and E2E snapshots are re-baselined to the
+  side-specific values.
+
+**TDD:** component test — two point cells + mid under `?dev=v3`; updated v3
+forward E2E expectations.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-076 — Security Agent bootstrap + first review
+
+**Effort:** M · **TDD:** n/a · **Depends on:** FXSW-075
+
+**AC:**
+- `/security/` exists with `CLAUDE.md` (unprimed operating prompt) and
+  `TEMPLATE.md`; `docs/10-security-agent-spec.md` published.
+- Security Agent runs cold against the current build and writes
+  `/security/FXSW-077-review.md` with functional + technical findings and a
+  proposed resolution work-item.
+- Build-agent write boundary excludes `/security/` (Security Agent-owned), per
+  `CLAUDE.md`.
+
+**Done when:** review file present; proposed tickets are actionable; report is
+brand-neutral.
+
+### FXSW-077 — Phase 9 docs + dev-log + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-076
+
+**AC:** dev-log entries for the phase; `docs/phase-summaries/phase-09-v4-summary.md`
+written; BACKLOG statuses updated.
+
+**Done when:** all gates green; brand-neutral grep over `dist/` clean.
+
+### Status note — Phase 9 shipped (FXSW-072…077)
+
+Phase 9 (FXSW-072…077) shipped on `claude/pricing-trades-phase-plan-h70vy7` and is
+tracked in `docs/dev-log.md` and `docs/phase-summaries/phase-09-v4-summary.md`. The
+end-of-phase Security Agent review is `security/FXSW-077-review.md` (0 Critical,
+2 High, 5 Medium, 3 Low, 1 Info); its proposed remediation is filed as **FXSW-088**
+(below) for Phase 10 triage.
+
+### Status note — Phase 10 shipped (FXSW-078…081)
+
+Phase 10 (FXSW-078…081) shipped on the same branch; see `docs/dev-log.md` and
+`docs/phase-summaries/phase-10-ndf-summary.md`. The end-of-phase review is
+`security/FXSW-081-review.md` (0 Critical, 2 High, 4 Medium, 2 Low, 1 Info). Its
+three NDF points-only correctness findings (F-1/F-3/F-4) were fixed in-phase during
+FXSW-080 close; the remaining hardening + the deeper inertness refactor are filed as
+**FXSW-089** (below). Next free ticket is **FXSW-090**.
+
+## Phase 10 — NDF (Non-Deliverable Forward)
+
+Adds the `instrumentType` discriminator and the NDF instrument (forward-points
+markup only). Specs: `docs/02` §12.2, `docs/05` §18.2–18.3, `docs/03` §10.
+
+### FXSW-078 — `instrumentType` field + injector selector
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-077
+
+**AC:**
+- `Deal.instrumentType: 'SPOT' | 'OUTRIGHT' | 'NDF' | 'SWAP'`; `ScenarioOverrides`
+  + `buildDeal` merge; default derived from tenor for legacy deals.
+- Dev Injector gains `inject-instrument` (v4-only); NDF requires a forward tenor
+  (SPOT rejected → shortest forward tenor).
+
+**TDD:** buildDeal default-derivation tests; injector validation test.
+
+**Done when:** all gates green; GA/v3 unaffected.
+
+### FXSW-079 — NDF pricing (points-only markup)
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-078
+
+**AC:**
+- NDF ticket removes the spot-margin block and the all-in/per-component toggle;
+  markup taken only on forward points; All-in + P/L from outright + points margin.
+- One-sided lock still applies; `data-instrument="NDF"`, `ndf-note` present.
+
+**TDD:** `pips`/ticket tests — spot margin has no effect for NDF; points margin
+does; lock honoured.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-080 — NDF surfaces + Security Agent pass
+
+**Effort:** S · **TDD:** Alongside · **Depends on:** FXSW-079
+
+**AC:** `deal-instrument` cell in blotters/detail; Security Agent review
+`/security/FXSW-081-review.md` for Phase 10.
+
+**Done when:** all gates green.
+
+### FXSW-081 — Phase 10 docs + dev-log + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-080
+
+**Done when:** dev-log + `phase-10-ndf-summary.md` written; gates green.
+
+## Phase 11 — Swaps (forward-forward)
+
+Two-leg swaps priced on net points; component or total markup; either side or
+both. Specs: `docs/02` §12.3, `docs/04` §9.2, `docs/05` §18.4–18.5, `docs/03` §10.
+
+### Status note — Phase 11 shipped (FXSW-082…087)
+
+**Done (2026-06-17).** All six tickets implemented on
+`claude/pricing-trades-phase-plan-h70vy7`: swap data model + injector
+(FXSW-082), points feed (FXSW-083), pricing math (FXSW-084), two-leg UI
+(FXSW-085), blotter dual value dates + historic detail + execution capture
+(FXSW-086), and this docs/Security-Agent close (FXSW-087). Swaps add **no new
+canonical states/machines** (docs/03 §10). Determinism gate intact (seed-42 / GA
+spot + mid / v3 forward goldens byte-stable); 513 unit + 14 E2E green. Summary:
+`docs/phase-summaries/phase-11-swaps-summary.md`. Cold review:
+`security/FXSW-087-review.md`. **Carried forward:** FXSW-088 F-1/F-2/F-3
+(state-layer guards — deferred), FXSW-089 F-2 (NDF inertness depth), FXSW-090
+(GA-core determinism), plus the SRI + vite-6 residuals from the security pass and
+any new FXSW-087 work-item.
+
+### FXSW-082 — Swap data model + injection
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-081
+
+**AC:**
+- `instrumentType:'SWAP'` populates `Deal.legs` (NEAR + FAR); near/far may each be
+  SPOT or forward (forward-forward); far strictly later than near.
+- Injector adds `inject-far-tenor` (v4-only); far ≤ near rejected.
+
+**TDD:** leg-construction + ordering-validation tests.
+
+**Done when:** all gates green; single-leg deals unaffected.
+
+### FXSW-083 — Swap points feed
+
+**Effort:** S · **TDD:** Strict · **Depends on:** FXSW-082
+
+**AC:** `swapPointsFeed.get(pair, near, far)` → `{ near, far, net{bid,ask} }`,
+`net = far − near` per side, pure composition of `forwardPointsFeed`.
+
+**TDD:** net-differential unit tests incl. forward-forward and SPOT-near cases.
+
+**Done when:** all gates green; seed-42 golden intact.
+
+### FXSW-084 — Swap pricing math
+
+**Effort:** M · **TDD:** Strict · **Depends on:** FXSW-083
+
+**AC:** `lib/pips.ts` builds client price + P/L from net swap points; supports
+per-component (per-leg bid/ask margins) and total (net bid/ask margin) modes.
+
+**TDD:** `pips` tests for both markup modes and one-sided gating.
+
+**Done when:** all gates green.
+
+### FXSW-085 — Swap pricing UI
+
+**Effort:** L · **TDD:** Alongside · **Depends on:** FXSW-084
+
+**AC:**
+- Two-leg pricing panel (`leg-near`/`leg-far`), per-leg points, net row
+  (`swap-net-bid`/`swap-net-ask`), markup-mode toggle (`swap-markup-mode`),
+  per-scope Balance/Zero, one-sided lock across both legs + net.
+- `data-instrument="SWAP"`; `PricingPanel` stays a folder of sub-components and
+  files stay < 300 lines.
+
+**TDD:** component tests for both markup modes, side gating, net display.
+
+**Done when:** all gates green; no console errors.
+
+### FXSW-086 — Swap blotter + historic detail
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-085
+
+**AC:** swap instrument cell + dual value dates (near → far); detail overlay lists
+per-leg tenors/points/value dates + net points used for execution.
+
+**TDD:** blotter/detail component tests.
+
+**Done when:** all gates green.
+
+### FXSW-087 — Phase 11 Security Agent pass + docs + summary
+
+**Effort:** S · **TDD:** n/a · **Depends on:** FXSW-086
+
+**AC:** Security Agent review `/security/FXSW-087-review.md`; dev-log +
+`phase-11-swaps-summary.md`; BACKLOG statuses updated; brand-neutral `dist/`.
+
+**Done when:** all gates green.
+
+## Phase 9 security remediation (triage into Phase 10)
+
+Transcribed from `security/FXSW-077-review.md` (the agent's proposed work-item;
+renumbered from its draft "FXSW-078" to avoid colliding with the planned NDF
+ticket). To be triaged against the specs and implemented in Phase 10. Findings not
+fixed are recorded as accepted risk in the report.
+
+### FXSW-088 — Phase 9 security remediation (external-call surface, build pipeline, hardening)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-077 · **Source:** `security/FXSW-077-review.md`
+
+**Status (2026-06-17): partially done.** Per a "highest-severity only" scoping
+decision, the technical/external-surface ACs were implemented; the functional
+state-machine ACs were deferred to Phase 11 (Swaps rework those machines).
+- ✅ **T-1** API key moved from URL query to an `Authorization: Bearer` header
+  (`provider.ts`); `apiKey=` no longer appears in the bundle.
+- ✅ **T-2** live build-time fetch is now opt-in (`FETCH_LIVE_MIDS`, default
+  pinned fallback) with field-by-field `Number.isFinite` + range validation
+  (`scripts/fetch-reference-mids.ts`).
+- ✅ **T-3** toolchain bumped — `vite` 5.2.10→5.4.21, `vitest` 1.6.0→3.2.6
+  (clears both **critical** advisories), `@playwright/test`→1.56.1, `tsx`→4.22.4,
+  `postcss`→8.5.15, plus `pnpm.overrides` (form-data/@babel/core/js-yaml).
+  `pnpm audit` 24→5 advisories, **0 critical / 0 of the old highs**. *Residual: 2
+  high + 3 moderate, all requiring a `vite` 5→6 major bump (Windows-dev-server /
+  Deno-only, no shipped-bundle impact) — **resolved 2026-06-17 via FXSW-091 T-1**:
+  vite→7.3.5 + esbuild override, `pnpm audit` now 0.*
+- ✅ **T-4 (CSP)** restrictive CSP `<meta>` injected at build only (active in
+  `preview`/prod, not dev) via a Vite plugin; `connect-src 'self'`. ⏳ **SRI**
+  deferred (Low; needs a build-time hash plugin).
+- ✅ **F-1 / F-2 / F-3 — DONE (2026-06-17).** Contract-preserving (canonical
+  state names, `*Sent`, 5s timing unchanged): F-1 side-lock enforced by the deal
+  machine's `canQuote` guard (`quoteSide` in context); F-2 RFS `*Sent` asymmetry
+  documented (RFS `Executable` ≠ client-sent signal); F-3 explicit terminal
+  protection (`terminal` flag guards all forwards) + `ClientReject` routed to both
+  legs (RFS `ClientClose`). 536 unit + 15 E2E green.
+- ✅ **T-6 — DONE (2026-06-17).** Removed the one genuine positive vendor literal
+  (`'frankfurter.dev'` in `fetch-reference-mids.test.ts` → assert `!== 'fallback'`);
+  the remaining vendor strings in `App.test`/`ExternalFeedPanel.test` are
+  intentional brand-neutrality **denylist tripwires** (`.not.toContain`/`.not.toMatch`)
+  and are retained by design + marked as such.
+
+**AC (full spec; see Status above for done vs deferred):**
+- External provider auth no longer uses a URL query string for the API key where
+  the provider permits a header; if query-param is unavoidable, the exposure is
+  documented and requests are batched to minimise key emission. (T-1)
+- The build defaults to the pinned committed reference mids; the live third-party
+  fetch is opt-**in** (not opt-out), and any consumed response is validated
+  field-by-field with `Number.isFinite` + range check before being written/used. (T-2)
+- Toolchain bumped: `vite >= 5.4.15` and `esbuild >= 0.25.0` (override if
+  transitive); `pnpm audit` reports zero moderate+ advisories. (T-3)
+- `index.html` ships a restrictive CSP `<meta>` (`default-src 'self'`;
+  `script-src 'self'`; `connect-src 'self'` + the single provider origin only when
+  the live feed is used); SRI added for emitted assets where feasible. (T-4)
+- One-sided side-lock enforced by a guard in the SI/deal machine (quotable side
+  carried in context), not by the UI `disabled` prop alone. (F-1)
+- `*Sent` acknowledgement model on RFS is either made symmetric with SI or
+  documented so no consumer reads RFS `Executable` as the client-facing "sent"
+  signal. (F-2)
+- Parent deal machine reconciles/terminates once both legs are terminal and routes
+  terminal/reject events to both legs; terminal protection is explicit, not only
+  topological. (F-3)
+- Vendor literals removed from test files outside `src/services/feed/external/`. (T-6)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, and `test:e2e` all pass.
+- The seed-42 golden and the GA spot + mid sequence are byte-stable.
+- Canonical state names and `data-*` test attributes are unchanged.
+- `dist/` remains brand-neutral in user-visible strings and contains no source maps.
+- The simulated feed remains the default and the only test/E2E path.
+
+**Triage notes (Build Agent, primed):** F-1/F-2/F-3 touch the XState layer — any
+guard/parent-state change must preserve canonical state names, the `*Sent`
+contract, and the 5s removal timing (Critical rules #6/#7/#9). Accepted-risk items
+(synthetic data as non-PII; v4 NDF/SWAP instrument lenses with no current code
+surface) stay as recorded in the report until the relevant code exists.
+
+## Phase 10 security remediation (triage into Phase 11)
+
+Transcribed from `security/FXSW-081-review.md`. The three NDF points-only
+correctness findings (F-1 auto-priced spot markup, F-3 audit record, F-4
+auto-view toggle) were **fixed in-phase** during FXSW-080 close — they were
+functional regressions against FXSW-079's own AC, not hardening gaps. The
+remaining items (the deeper state/math-layer enforcement plus the carried-over
+external-surface + toolchain hardening) are filed below for Phase 11 triage.
+This **overlaps FXSW-088** (Phase 9 remediation, still open) on the external-call
+surface + toolchain — do them together.
+
+### FXSW-089 — Phase 10 security remediation (NDF inertness depth + toolchain + carried-over hardening)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-080 · **Source:** `security/FXSW-081-review.md`
+
+**Status (2026-06-17): mostly done** (shared with FXSW-088 — same work cleared
+both). ✅ T-1 toolchain (criticals cleared; vite-6 residual **fully resolved
+2026-06-17 via FXSW-091 T-1** — `pnpm audit` now 0),
+✅ T-2 key-in-header, ✅ T-3 build-fetch opt-in + validation, ✅ T-4 CSP (SRI
+deferred). ⏳ **F-2** (structural NDF inertness below the render layer) — deferred
+(Theme D); F-1/F-3/F-4 were already fixed in FXSW-080, so the shipped NDF price is
+correct on every path today; F-2 is residual defense-in-depth.
+
+**AC (full spec; see Status above for done vs deferred):**
+- NDF spot-markup inertness is enforced **structurally**, not only at the render
+  boundary: either clamp the effective spot margin to zero for NDF in one shared
+  helper keyed off `instrumentOf(deal)` that every consumer goes through, or have
+  the pricing helpers ignore the spot margin for NDF — so the raw `marginPair`
+  state can never reintroduce a markup via the keyboard/AI-Apply paths. (F-2)
+  *(F-1/F-3/F-4 already fixed in FXSW-080; this is the residual defense-in-depth.)*
+- Toolchain bumped: `vite >= 5.4.20`, `vitest >= 3.2.6` (≥1.6.1 minimum),
+  `@playwright/test`/`playwright >= 1.55.1`, `esbuild`/`@babel/core` updated
+  transitively; `pnpm audit` reports zero high+ advisories. (T-1)
+- External provider auth no longer uses a URL query string for the API key where
+  a header is accepted; otherwise documented + batched. (T-2, overlaps FXSW-088)
+- Build defaults to the pinned committed reference mids (live fetch opt-IN);
+  consumed responses validated field-by-field (`Number.isFinite` + range). (T-3,
+  overlaps FXSW-088)
+- `index.html` ships a restrictive CSP `<meta>`; SRI added where feasible. (T-4,
+  overlaps FXSW-088)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass.
+- Seed-42 golden, GA spot + mid sequence, and v3 forward goldens byte-stable for
+  non-NDF instruments; canonical state names + `data-*` unchanged.
+- `dist/` brand-neutral in user-visible strings; no source maps.
+- Simulated feed remains the default and only test/E2E path.
+
+## GA-core security audit follow-up (deferred)
+
+Transcribed from `security/audit-core-pre-phase9-review.md` — a special cold audit
+of the pre-Phase-9 GA core (run 2026-06-17 because the Security Agent only began at
+Phase 9, so Phases 1–8 had never had a dedicated deep review). The core got a clean
+bill on the things that matter most (pricing/util math, margin flooring, no XSS/DOM
+sinks, deterministic suggestion engine, `sessionStorage`/WebAudio hygiene, store
+immutability, build hygiene). Findings: 0 Critical, 0 High, 1 Medium, 3 Low, 2 Info.
+**Deferred** under the "highest-severity only" scoping (all sub-High).
+
+### FXSW-090 — GA-core determinism + scenario-player lifecycle hardening
+
+**Effort:** S–M · **TDD:** Alongside · **Depends on:** — · **Source:** `security/audit-core-pre-phase9-review.md`
+
+**Status (2026-06-17): DONE.** ✅ F-1 (seeded per-deal `CLIENT_ACCEPT_OR_REJECT` +
+injectable `acceptOrReject`), ✅ F-2 (`player.forgetDeal` clears a deal's timers +
+gates; called from store archival + `removeDeal`), ✅ F-3 (injectable seeded
+`lib/ids`; `addDeal` errors on duplicate dealId instead of silent no-op), ✅ T-1
+(`?seed=N` URL fallback below `window.__seedFeed`). 532 unit + 15 E2E green;
+goldens byte-stable.
+
+**AC:**
+- The `CLIENT_ACCEPT_OR_REJECT` scenario follow-up resolves via a seeded PRNG
+  (reuse `services/feed/rng.ts`), keyed off the deal ID or an injectable seed and
+  overridable for tests; the credit-breach outcome becomes reproducible. (F-1, Medium)
+- The scenario player exposes `forgetDeal(dealId)` that clears that deal's pending
+  timers + `after-si-state` gates; called from the archival path and `removeDeal`,
+  so no stale follow-up emits and the `gates` set cannot grow unbounded. (F-2, Low)
+- Deal IDs (`player.makeDealId`) and display IDs (`lib/ids`) come from an
+  injectable/seeded source so tests can pin them; `addDeal` treats a duplicate
+  `dealId` as an error/regeneration, not a silent no-op. REQ-/TRD- format unchanged. (F-3, Low)
+- (Optional) a documented manual-reproduction seed knob for the spot feed beyond
+  `window.__seedFeed`. (T-1, Low)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass.
+- Seed-42 golden, GA spot + mid sequence, and v3 forward goldens byte-stable.
+- Canonical state names + `data-*` unchanged; `dist/` brand-neutral, no source maps.
+- Simulated feed remains the default and only test/E2E path.
+
+**Note (F-4/T-2, Info):** RFS `Expire`/`ClientClose` are currently unreachable dead
+transitions — re-review when `Expire` forwarding is added (ties into FXSW-088 F-3).
+Suggestion `computedAt` wall-clock is non-load-bearing; no action.
+
+## Phase 11 security remediation (triage into Phase 12)
+
+Transcribed from `security/FXSW-087-review.md` (cold end-of-phase review of the
+swap work). 7 findings: 0 Critical, 1 High, 2 Medium, 2 Low, 2 Info. The swap
+pricing math, one-sided gating and capture reconciliation reviewed clean (F-4,
+positive); the items below are the residual functional + technical gaps. The
+review proposed this as "FXSW-090" reviewing cold; **renumbered to FXSW-091** here
+because FXSW-090 was already taken by the GA-core determinism item above.
+
+### FXSW-091 — Phase 11 security remediation (swap leg-validation + one-sided display + toolchain + CSP/feed reconciliation)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-086 · **Source:** `security/FXSW-087-review.md`
+
+**Status (2026-06-17): DONE.** All findings resolved — ✅ F-1 (legs-adjusted note
++ recorded `swapRequested`), ✅ F-2 (off-side client-net/P/L dashed), ✅ F-3 guard
+(sequential-injection E2E), ✅ T-1 (vite→7.3.5 + esbuild override, `pnpm audit`
+**0**), ✅ T-2 (live feed + key-entry confined to dev; prod is simulation-only under
+`connect-src 'self'`), ✅ T-3 (build-time SRI on emitted assets). `pnpm audit` 0;
+522 unit + 15 E2E green; `dist/` ships CSP + SRI, no source maps, brand-neutral.
+
+**AC:**
+- `buildSwapLegs` no longer silently invents a valid far for a missing/out-of-order
+  (far ≤ near) request: the invalid case is either refused at the injection
+  boundary, or the requested-vs-applied tenors are recorded on the deal AND shown
+  as a visible "far adjusted" note in `SwapPanel` + `SwapLegDetail`. Valid requests
+  produce identical legs to today (swap goldens stable). (F-1, Medium)
+- A one-sided swap (`quoteSide` BID or ASK) renders a dash / suppresses the
+  non-quotable side's client-net and P/L instead of showing the raw un-marked net;
+  the quotable side and its `data-testid`s are unchanged. (F-2, Low)
+- A new `v4-swap` E2E asserts: (a) two sequential swap injections do not leak the
+  first deal's leg/net margin into the second's captured execution margin, and the
+  second opens `PER_COMPONENT` with zero margins; (b) the historic "Net used for
+  execution" reconciles with the marked-up net actually sent. (F-3, F-4 guard)
+- ✅ **DONE (2026-06-17)** Toolchain: `vite` 5.4.21 → **7.3.5** + `pnpm.overrides`
+  `esbuild >=0.28.1`; `pnpm audit` **5 → 0** (both highs + 3 moderates cleared);
+  goldens/E2E byte-stable. (T-1, High — also clears the FXSW-088/089 vite-6
+  residual.) *vite 6.4.3 cleared the vite high but its esbuild ^0.25 + a forced
+  0.28.1 broke the build; vite 7's ^0.27 is override-compatible.*
+- The shipped CSP and the opt-in live feed are reconciled: either the runtime
+  poller + API-key entry are removed/disabled in the built artefact (simulation
+  only; secret never collected), OR `connect-src` lists exactly the single provider
+  origin (no wildcard) under the documented v3 exception. (T-2, Medium)
+- (Optional) SRI `integrity=` attributes added for emitted same-origin assets.
+  (T-3, Info — also clears the deferred FXSW-088 SRI sub-item)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass (incl. the new swap
+  leg-validation + one-sided-display + sequential-injection assertions).
+- Seed-42 golden, GA spot + mid sequence, v3 forward goldens, and v4 NDF + swap
+  goldens are byte-stable; canonical state names + `data-*` unchanged.
+- `dist/` brand-neutral in user-visible strings, no source maps, ships the
+  reconciled CSP. Simulated feed remains the default and only test/E2E path.
+
 ## Current known follow-ups
 
 - Capture and attach the actual demo recording if needed.

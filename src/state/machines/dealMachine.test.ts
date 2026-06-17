@@ -196,4 +196,66 @@ describe('dealMachine cross-model coordination', () => {
     }
     actor.stop();
   });
+
+  // FXSW-088 F-1 — the one-sided side-lock is enforced by the parent `canQuote`
+  // guard (quotable side carried in context), not only by the UI disabled prop.
+  const freshSided = (quoteSide: 'BID' | 'ASK' | 'BOTH') => {
+    const actor = createActor(dealMachine, { input: { dealId: 'd_lock', quoteSide } });
+    actor.start();
+    return actor;
+  };
+
+  it('F-1: a quote on the non-quotable side of a one-sided request is rejected by the machine', () => {
+    const actor = freshSided('BID'); // BID quotable, ASK locked
+    actor.send({ type: 'PickUp' });
+    vi.advanceTimersByTime(ACK());
+    expect(si(actor)).toBe('PickedUp');
+    // Quoting the locked ASK side is refused — neither leg advances.
+    actor.send({ type: 'Quote', side: 'ASK' });
+    expect(si(actor)).toBe('PickedUp');
+    expect(rfs(actor)).toBe('PickedUp');
+    // A two-sided quote on a one-sided request is also refused.
+    actor.send({ type: 'Quote', side: 'BOTH' });
+    expect(si(actor)).toBe('PickedUp');
+    // The quotable side proceeds normally.
+    actor.send({ type: 'Quote', side: 'BID' });
+    expect(si(actor)).toBe('QuoteSent');
+    actor.stop();
+  });
+
+  it('F-1: a bare Quote (no side) and a two-sided deal are unaffected', () => {
+    const actor = freshSided('BOTH');
+    actor.send({ type: 'PickUp' });
+    vi.advanceTimersByTime(ACK());
+    actor.send({ type: 'Quote' }); // no side → allowed
+    expect(si(actor)).toBe('QuoteSent');
+    actor.stop();
+  });
+
+  it('F-3: ClientReject closes BOTH legs — SI ClientRejected + RFS ClientClosed', () => {
+    const actor = fresh();
+    actor.send({ type: 'PickUp' });
+    vi.advanceTimersByTime(ACK());
+    actor.send({ type: 'Quote' });
+    vi.advanceTimersByTime(ACK());
+    expect(rfs(actor)).toBe('Executable');
+    actor.send({ type: 'ClientReject' });
+    expect(si(actor)).toBe('ClientRejected');
+    expect(rfs(actor)).toBe('ClientClosed');
+    actor.stop();
+  });
+
+  it('F-3: explicit terminal protection — no parent forward lands after a terminal event', () => {
+    const actor = fresh();
+    actor.send({ type: 'PickUp' });
+    vi.advanceTimersByTime(ACK());
+    actor.send({ type: 'Reject' }); // terminal: parent.terminal = true (SI now RejectSent)
+    expect(si(actor)).toBe('RejectSent');
+    expect(rfs(actor)).toBe('PickedUp');
+    // A late AutoPrice would normally drive RFS PickedUp → Executable; the parent
+    // refuses to forward once terminal, so RFS stays put.
+    actor.send({ type: 'AutoPrice' });
+    expect(rfs(actor)).toBe('PickedUp');
+    actor.stop();
+  });
 });

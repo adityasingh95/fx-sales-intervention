@@ -6,6 +6,7 @@ import type { Deal, RejectionReason } from '@/types/deal';
 import type { DealChannel } from '@/types/scenario';
 import type { DealLifecycleEvent, QuoteContext } from '@/types/lifecycle';
 import { makeRequestId, makeTradeId } from '@/lib/ids';
+import { quoteSideFor } from '@/lib/quoteSide';
 import { lifecyclePhaseFor } from './lifecyclePhase';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
@@ -112,10 +113,20 @@ export const useDealsStore = create<DealsState>((set, get) => ({
   historic: [],
 
   addDeal: (deal, rejectionReasons = [], channel = 'SI') => {
-    if (get().deals.has(deal.dealId)) return;
+    // FXSW-090 F-3: a duplicate dealId is a generator collision, not an expected
+    // no-op. Signal it (rather than silently dropping the new deal or clobbering
+    // the live one) so it is diagnosable; the existing deal is preserved.
+    if (get().deals.has(deal.dealId)) {
+      console.error(`addDeal: duplicate dealId ${deal.dealId} ignored (id collision)`);
+      return;
+    }
 
     const requestId = makeRequestId();
-    const actor = createActor(dealMachine, { input: { dealId: deal.dealId } });
+    // FXSW-088 F-1: carry the request's quotable side into the machine so the
+    // one-sided lock can be enforced by the parent's `canQuote` guard.
+    const actor = createActor(dealMachine, {
+      input: { dealId: deal.dealId, quoteSide: quoteSideFor(deal.side, deal.dealtCcy) },
+    });
     actor.start();
     const ctx = actor.getSnapshot().context;
     const initialSi = String(ctx.si.getSnapshot().value);
@@ -157,6 +168,9 @@ export const useDealsStore = create<DealsState>((set, get) => ({
           events: cur.events,
         };
         cur.actor.stop();
+        // FXSW-090 F-2: release the player's pending timers/gates for this deal
+        // before it leaves the active set, so no stale follow-up fires.
+        dealFeed.forgetDeal(deal.dealId);
         set((state) => {
           const next = new Map(state.deals);
           next.delete(deal.dealId);
@@ -257,6 +271,7 @@ export const useDealsStore = create<DealsState>((set, get) => ({
     const entry = get().deals.get(dealId);
     if (!entry) return;
     entry.actor.stop();
+    dealFeed.forgetDeal(dealId);
     set((state) => {
       const next = new Map(state.deals);
       next.delete(dealId);

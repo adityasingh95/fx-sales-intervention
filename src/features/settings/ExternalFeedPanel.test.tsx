@@ -23,6 +23,9 @@ describe('ExternalFeedPanel', () => {
   });
   afterEach(cleanup);
 
+  // FXSW-088 T-6: intentional brand-neutrality denylist tripwire — the provider
+  // names appear only inside `.not.toContain` guards (the v3 exception covers the
+  // adapter, never user-visible UI). Retained by design.
   it('shows a generic Off status pill with no vendor name', () => {
     render(<ExternalFeedPanel />);
     const pill = screen.getByTestId('external-feed-status');

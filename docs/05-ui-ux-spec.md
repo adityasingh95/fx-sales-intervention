@@ -623,3 +623,68 @@ every existing `data-testid` is preserved on its original element.
   (`data-phase="AUTO_PRICE"`) row and a "streamed within tolerance" markup note.
 - **Forward points** — the figure is suffixed `pips` (the `fwd-points` testid
   still wraps the value only).
+
+## 18. Instrument & pricing UI extensions (Phase 9–11)
+
+Bid/ask forward points (§18.1) is a v3-level refinement and shows under `?dev=v3`
+and above. The instrument UIs (§18.2–18.5) are gated by the new `?dev=v4`
+(a superset of v3, §16). Bare-URL GA is spot-only and unchanged. New `data-*`
+attributes below are additive.
+
+### 18.1 Bid/ask forward points (v3 and above)
+
+The forward-points row shows **two** values, bid and ask (`fwd-points-bid` /
+`fwd-points-ask`), each suffixed `pips`, with the un-marked mid retained as the
+reference (`fwd-points-mid`). This replaces the single `fwd-points` cell for v3
+outright forwards. The marked-up All-in bid/ask already combine spot + points +
+margin per side (§17); the points component now differs by side before margin, so
+the two All-in cells can diverge with zero margin. v3 outright-forward component
+and E2E snapshots are re-baselined when this lands.
+
+### 18.2 Instrument selector (Dev Injector)
+
+The Dev Injector gains an instrument dropdown next to the tenor dropdown
+(`inject-instrument`, v4-only) with `SPOT · OUTRIGHT · NDF · SWAP`. Selecting
+`SWAP` reveals a second tenor dropdown for the far leg (`inject-far-tenor`); the
+near-leg tenor reuses the existing tenor control. Invalid combinations are
+blocked at inject time (NDF with SPOT tenor; swap with far ≤ near). The chosen
+instrument is shown in the ticket header and as a blotter cell
+(`deal-instrument`).
+
+### 18.3 NDF ticket
+
+An NDF ticket (`data-instrument="NDF"`) renders like an outright forward with the
+**spot-margin block removed** and **no all-in/per-component toggle** — markup is
+forward-points-only. The forward-points block (its bid/ask steppers and
+`margin-balance-fwd` / `margin-zero-fwd`) is the sole markup control; the
+one-sided lock (§17.1) still disables the non-quotable side. All-in client price
+and estimated P/L derive from the outright + forward-points margin alone. A small
+"NDF · cash-settled, points-only markup" note (`ndf-note`) explains the reduced
+panel.
+
+### 18.4 Swap ticket
+
+A swap ticket (`data-instrument="SWAP"`) shows a **two-leg pricing panel**: a NEAR
+block and a FAR block, each labelled with its tenor and value date
+(`leg-near` / `leg-far`). Layout:
+
+- **Per-leg points** — each leg shows its bid/ask forward points (§18.1).
+- **Net swap points** — a prominent row shows the net differential bid/ask
+  (`swap-net-bid` / `swap-net-ask`, far − near per side), which is what drives the
+  client quote and estimated P/L.
+- **Markup mode** — the All-in / Per-component toggle is reused
+  (`swap-markup-mode`): *Per-component* exposes an independent bid/ask points
+  margin on each leg (up to four steppers); *Total* exposes a single bid/ask
+  margin applied to the net points. Balance/Zero act within the active scope
+  (`margin-balance-near/far/net`, `margin-zero-near/far/net`).
+- **Side gating** — a one-sided swap locks the non-quotable side across both legs
+  and the net row (steppers `disabled`, Balance/Zero hidden), reusing
+  `restrictMarginSides` / `quoteSide` (§17.1). Two-sided swaps show both sides.
+
+### 18.5 Blotters and detail overlay
+
+Active and Historic blotters add an **Instrument** cell (`deal-instrument`,
+v4-only) showing `SPOT / FWD / NDF / SWAP`. For swaps the Value-date cell shows
+both leg dates (near → far). The Historic detail overlay lists per-leg tenors,
+points, and value dates, plus the net swap points used for the executed price; GA
+layout is unchanged.

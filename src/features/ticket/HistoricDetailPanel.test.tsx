@@ -121,4 +121,52 @@ describe('HistoricDetailPanel', () => {
     render(<HistoricDetailPanel />);
     expect(screen.getByTestId('markup-reason').textContent).toContain('No price was sent');
   });
+
+  it('renders the swap leg detail + net-points markup reason for a swap deal (FXSW-086)', () => {
+    const swapDeal: Deal = {
+      ...deal,
+      pair: 'USDINR',
+      instrumentType: 'SWAP',
+      tenor: '1M',
+      legs: [
+        { kind: 'NEAR', tenor: '1M' },
+        { kind: 'FAR', tenor: '6M' },
+      ],
+    };
+    useDealsStore.setState({
+      historic: [
+        {
+          ...entry,
+          deal: swapDeal,
+          events: [
+            { phase: 'REQUEST', at: swapDeal.createdAt, channel: 'SI', toState: 'Initial' },
+            {
+              phase: 'PRICE_BACK',
+              at: swapDeal.createdAt + 2000,
+              channel: 'SI',
+              toState: 'QuoteSent',
+              appliedMargin: { kind: 'swap', mode: 'TOTAL', net: { bid: 2, ask: 3 } },
+            },
+            {
+              phase: 'RESPONSE',
+              at: swapDeal.createdAt + 3000,
+              channel: 'SI',
+              toState: 'TradeConfirmed',
+            },
+          ],
+        },
+      ],
+    });
+    useUiStore.setState({ openHistoricId: 'd_hist' });
+    render(<HistoricDetailPanel />);
+
+    expect(screen.getByTestId('swap-detail')).toBeTruthy();
+    expect(screen.getByTestId('swap-detail-near').textContent).toContain('1M');
+    expect(screen.getByTestId('swap-detail-far').textContent).toContain('6M');
+    // The execution row appears (a swap margin was captured).
+    expect(screen.getByTestId('swap-detail-exec-bid')).toBeTruthy();
+    // Markup reason renders the net-points swap summary.
+    expect(screen.getByTestId('markup-reason').textContent).toContain('Net 2/3 pips');
+    expect(screen.getByTestId('markup-reason').textContent).toContain('Total');
+  });
 });

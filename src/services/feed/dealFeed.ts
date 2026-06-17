@@ -30,4 +30,8 @@ export const dealFeed: DealFeed = {
   notifyDealState(dealId, siState) {
     player.notifyDealState(dealId, siState);
   },
+
+  forgetDeal(dealId) {
+    player.forgetDeal(dealId);
+  },
 };

@@ -793,6 +793,430 @@ Polish slice after the user previewed Phase 6 live on GitHub Pages. Seven items,
 - Added first application shell and initial blotter row.
 - Added GitHub Pages deployment workflow.
 
+## Phase 9–11 planning · v4 instruments + Security Agent
+
+- Authored specs for the next arc (no implementation yet): a new `?dev=v4` gate
+  (superset of v3; v3/GA frozen), two-sided bid/ask forward points, NDF, and
+  forward-forward swaps; plus an independent **Security Agent** (5th agent) that
+  reviews the build cold at the end of each phase and files findings under
+  `security/`.
+- User-directed decisions: phasing Points → NDF → Swaps with the Security Agent
+  stood up first; swaps allow forward-forward; **bid/ask forward points apply to
+  v3 outright forwards** (not v4-only), while NDF/swaps sit behind a new `?dev=v4`
+  gate; findings to `/security/` with fixes as FXSW backlog tickets.
+- Consequence of the v3 decision: v3 outright-forward goldens/snapshots are
+  re-baselined (the spread is derived from `mid` with no extra RNG draws, so the
+  GA spot golden and mid sequence are unchanged).
+- Agent-directed: keeping the `?dev=v4` gate itself as Phase 9 scaffolding (first
+  consumed by NDF in Phase 10); instruments modelled as a `Deal.instrumentType`
+  discriminator with swaps reusing the existing `Deal.legs` seam (no new states).
+- Touched: `docs/02` §12–13, `docs/03` §10, `docs/04` §9, `docs/05` §18,
+  `docs/10-security-agent-spec.md` (new), `security/CLAUDE.md` + `security/TEMPLATE.md`
+  (new), `docs/BACKLOG.md` (Phase 9–11, FXSW-072…087), `CLAUDE.md`.
+- Gates: docs/specs only; no code changed.
+
+## FXSW-072 · `?dev=v4` gate scaffolding
+
+- `src/lib/devVersion.ts`: widened `DevVersion` to `'v1' | 'v3' | 'v4'` and added
+  `isV4()`. v4 is a superset of v3 — `isV3()` now returns true for both `'v3'` and
+  `'v4'`, so every existing v3 call site lights up under `?dev=v4` with no call-site
+  changes. First v4 consumer is NDF (Phase 10); nothing v4-gated ships here.
+- Decision (agent-directed): make `isV3()` cover v4 rather than thread a new flag
+  through the tree, matching the existing single-gate pattern.
+- Tests: `devVersion.test.ts` — added v3-not-v4, v4-superset, and no-flag-neither
+  cases (8 total).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (464) · build ✓ · `test:e2e` ✓ (10/10).
+  GA and `?dev=v3` unchanged.
+
+## FXSW-073 · Two-sided forward-points feed
+
+- `src/services/feed/forwardPoints.ts`: `forwardPointsFeed.get` now returns
+  `ForwardPointsPair { bid, ask, mid }`. `mid` is the original scalar — same
+  RNG, same jitter — so the seed sequence is byte-stable. The spread is derived
+  RNG-free from the tenor (`halfSpread = 0.3 + 4·years`), strictly widening with
+  maturity, symmetric around `mid`; SPOT is all-zero.
+- Consumer (`TicketPanel.tsx`) reads `.mid` for now, so v3 forward pricing is
+  unchanged this ticket — side-specific bid/ask wiring + v3 snapshot re-baseline
+  land in FXSW-074/075.
+- Tests: feed test rewritten for the pair shape (bid<mid<ask, symmetric, spread
+  widens with tenor; mid monotonicity + sign preserved).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (466) · `test:e2e` ✓ (10/10).
+
+## FXSW-074 · Bid/ask points through pricing math
+
+- `src/lib/pips.ts`: added `outrightPair(spot, points, pair)` and
+  `clientForwardPair(...)` — side-specific helpers that consume the two-sided
+  `ForwardPointsPair` (bid all-in uses bid points, ask uses ask points, mid uses
+  mid). SPOT (all-zero) points collapse each side back to spot. The selection
+  lives in `pips.ts`, not components (per CLAUDE.md "no pip math in components").
+- Pure additions — no consumer rewired yet, so v3 output is unchanged this
+  ticket. FXSW-075 wires the panels to these helpers + re-baselines snapshots.
+- Tests (strict TDD): asymmetric points → asymmetric outright at *zero* margin;
+  SPOT collapse; `clientForwardPair` side selection.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · `test:e2e` ✓ (10/10).
+
+## FXSW-075 · Bid/ask points UI + v3 snapshot re-baseline
+
+- `ForwardPointsPanel`: prop `fwdPoints` is now the two-sided `ForwardPointsPair`.
+  The single `fwd-points` cell is replaced by three cells —
+  `fwd-points-bid` / `fwd-points-mid` / `fwd-points-ask` (each suffixed `pips`).
+  All-in bid/ask now go through `clientForwardPair` (bid uses bid points, ask
+  uses ask points); all-in mid uses mid points.
+- `ClientSummaryPanel`: `fwdPoints` switched to the pair; client bid/ask via
+  `clientForwardPair`, P/L mid reference uses mid points.
+- `TicketPanel`: threads the full `ForwardPointsPair` to both panels.
+- v3 outright-forward output is re-baselined to the side-specific values (this is
+  the one intended visible change of the arc). Updated `ForwardPointsPanel` unit
+  test (asymmetric points → bid/ask selection) and the v3-forwards E2E (asserts
+  the three point cells).
+- Note: `test:e2e` runs `vite preview` against `dist/`, so a `pnpm build` is
+  required before E2E whenever runtime output changes.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (469) · build ✓ · `test:e2e` ✓ (10/10).
+
+## FXSW-076 · Security Agent first review
+
+- Ran the independent, unprimed Security Agent cold against the Phase 9 build
+  (commit `3c4390a`). Output: `security/FXSW-077-review.md` — 11 findings
+  (0 Critical, 2 High, 5 Medium, 3 Low, 1 Info) across functional + technical
+  tracks, with a proposed resolution work-item.
+- Build-agent write boundary respected: the report was authored by the agent under
+  `security/` only; the build agent did not edit `/src`, `/tests`, or the report
+  content beyond commit.
+- One correction round: the first draft reproduced third-party vendor tokens inside
+  `security/`, violating the report's own brand-neutrality requirement (docs/10 §4).
+  Since `security/` is agent-owned, a follow-up agent redacted the literals
+  (generic descriptions + `file:line` pointers retained); `grep` for vendor tokens
+  over the report is now clean.
+
+## FXSW-077 · Phase 9 docs + summary + BACKLOG
+
+- `docs/phase-summaries/phase-09-v4-summary.md` written (scope, tickets, decisions,
+  security posture, gate results).
+- `docs/BACKLOG.md`: Phase 9 status note (FXSW-072…077 shipped); security work-item
+  transcribed as **FXSW-088** (renumbered from the agent's draft to avoid colliding
+  with the planned NDF ticket) for Phase 10 triage.
+- Phase 9 closed. Gates at close: typecheck ✓ · lint ✓ · `test:run` ✓ (469) ·
+  build ✓ · `test:e2e` ✓ (10/10); `dist/` brand-neutral.
+
+## FXSW-078 · `instrumentType` discriminator + injector selector
+
+- `types/deal.ts`: added `InstrumentType = 'SPOT'|'OUTRIGHT'|'NDF'|'SWAP'`, an
+  optional `Deal.instrumentType`, `defaultInstrumentForTenor(tenor)` (SPOT→SPOT,
+  forward→OUTRIGHT), and an `instrumentOf(deal)` resolver. Optional + resolver
+  means zero churn to the ~13 legacy `Deal` fixtures while keeping the field
+  type-safe; `buildDeal` always sets it on injected deals.
+- `types/scenario.ts` + `player.ts`: `ScenarioOverrides.instrumentType`;
+  `buildDeal` resolves the instrument (override → scenario → derived) and coerces
+  an NDF on a SPOT request to the shortest forward tenor (`FORWARD_TENORS[0]`),
+  per docs/02 §12.2.
+- `DevInjector`: v4-only `inject-instrument` selector (`Auto` = derive from tenor;
+  `NDF` now; SWAP added in Phase 11), threaded through desktop + mobile.
+- Tests: `player.test.ts` — default derivation + NDF SPOT→forward coercion +
+  explicit-forward NDF; `DevInjector.test.tsx` — selector hidden on bare URL.
+  (v4 visibility + NDF injection covered by the NDF E2E in FXSW-079/080.)
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (473) · build ✓ · `test:e2e` ✓
+  (10/10). GA/v3 unaffected.
+
+## FXSW-079 · NDF pricing (points-only markup)
+
+- `TicketPanel`: resolves `instrumentOf(deal)`; for NDF zeroes the spot markup
+  everywhere it feeds pricing (`effectiveSpotMargin`), forces component markup
+  mode, adds `data-instrument` on the panel and an `ndf-note`. The Trader Rate
+  cells stay (the spot still feeds the outright) — only the markup is removed.
+- `PricingPanel`: `showSpotMargin` prop (default true) — NDF hides the per-side
+  spot-margin steppers and the Balance/Zero / single-margin footer while keeping
+  the bid/mid/ask cells + freeze controls.
+- `ForwardPointsPanel`: `showMarkupToggle` prop (default true) — NDF hides the
+  all-in/per-component toggle (markup is always on the points).
+- One-sided lock still applies (the existing `restrictMarginSides`/`quoteSide`
+  path is unchanged). All-in + P/L derive from the outright + points margin via
+  the existing `clientForwardPair`, with spot margin forced to zero.
+- Tests: `TicketPanel.test.tsx` — NDF hides spot-margin block + toggle, shows
+  `ndf-note` + points steppers; SPOT keeps the spot-margin block and shows no
+  note. New `tests/e2e/v4-ndf.spec.ts` exercises the `?dev=v4` instrument
+  selector → NDF injection → points-only ticket end to end.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
+  (11/11). GA/v3 unaffected.
+
+## FXSW-080 · NDF surfaces + Security Agent pass (Phase 10)
+
+- Added a v4-only **Instrument** column (`deal-instrument`) to the Active and
+  Historic blotters and an Instrument field to the historic detail panel, all
+  showing `instrumentOf(deal)`. Gated on `isV4()` so GA + v3 layouts are byte-
+  unchanged; table min-widths widened only under v4.
+- Extended `tests/e2e/v4-ndf.spec.ts` to assert the row's `deal-instrument` cell.
+- Phase 10 end-of-phase Security Agent review: `security/FXSW-081-review.md`
+  (9 findings: 0C/2H/4M/2L/1I), authored under `security/` by the unprimed agent;
+  brand-neutral (verified).
+- **In-phase fix of the review's NDF correctness regressions (F-1/F-3/F-4):** the
+  review found NDF spot-markup inertness was enforced only on the manual ticket
+  branch, so the auto-priced (ESP) NDF applied a 3-pip spot markup (F-1, High), the
+  quote-context capture recorded a phantom spot markup (F-3), and the auto view kept
+  the markup toggle (F-4) — all regressions against FXSW-079's own AC. Fixed by
+  computing the effective (NDF-zeroed) spot margin + markup mode **once** and sharing
+  them across the manual branch, the auto branch, and `useQuoteContextCapture`. Added
+  an auto-priced-NDF E2E. The deeper state/math-layer enforcement (F-2) + toolchain
+  (T-1) + carried-over external hardening (T-2/T-3/T-4) are filed as FXSW-089.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (475) · build ✓ · `test:e2e` ✓
+  (12/12). GA/v3 unaffected.
+
+## FXSW-081 · Phase 10 docs + summary + BACKLOG
+
+- `docs/phase-summaries/phase-10-ndf-summary.md` finalised (scope, tickets,
+  decisions, security posture, gates).
+- `docs/BACKLOG.md`: Phase 10 status note (FXSW-078…081 shipped); remaining security
+  work filed as **FXSW-089** (overlaps the still-open FXSW-088); next free ticket
+  **FXSW-090**.
+- Phase 10 closed.
+
+## FXSW-088/089 · Security remediation — highest-severity (toolchain + external-feed surface)
+
+Scoped per a "highest-severity only" decision after a full security sweep (three
+reviews: `FXSW-077`, `FXSW-081`, and a special cold GA-core audit
+`audit-core-pre-phase9-review.md`). Themes A (toolchain) + B (external-feed surface)
+done now; C (state machines), D (NDF inertness depth), E (GA-core determinism =
+FXSW-090) deferred.
+
+**A — toolchain bump.** `vite` 5.2.10→5.4.21, `vitest` 1.6.0→3.2.6 (clears both
+critical advisories), `@playwright/test`→1.56.1 (cached chromium-1194; sandbox
+blocks the CDN so pinned to the build whose browser is present), `@vitejs/plugin-react`
+→4.7.0, `tsx`→4.22.4, `postcss`→8.5.15, plus `pnpm.overrides` for
+form-data/@babel/core/js-yaml. `pnpm audit` **24→5** advisories, **0 critical**.
+Residual 2 high/3 moderate all require a `vite` 5→6 major bump (Windows-dev-server /
+Deno-only, no shipped-bundle impact) — deferred. Fixed `vi.fn<A,B>()`→`vi.fn<(…)=>B>()`
+(vitest 3 generic change) in `provider.test.ts`/`poller.test.ts`.
+
+**B — external-feed surface.**
+- API key now sent via `Authorization: Bearer` header, not an `apiKey=` URL query
+  (`provider.ts`); verified gone from `dist/`. (FXSW-088 T-1)
+- Build-time live fetch is opt-in (`FETCH_LIVE_MIDS`, default pinned fallback) with
+  field-by-field `Number.isFinite` + plausible-range validation; a poisoned-but-200
+  payload is rejected to fallback (`scripts/fetch-reference-mids.ts`). `USE_FALLBACK_MIDS`
+  retained as a hard override. (FXSW-088 T-2)
+- Restrictive CSP `<meta>` injected at build only via a Vite plugin (active in
+  `preview`/prod, not dev — HMR needs inline/eval); `connect-src 'self'`; brand-neutral
+  (no provider host in `index.html`). E2E runs against `preview`, so the 12-spec suite
+  validates the CSP doesn't break the app. SRI deferred (Low). (FXSW-088 T-4)
+
+Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (479) · build ✓ · `test:e2e` ✓ (12/12,
+under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
+
+## FXSW-082 · Swap data model + injection (Phase 11)
+
+- `types/deal.ts`: `tenorRank(tenor)` + `buildSwapLegs(near, far?)` — returns a
+  validated `[NEAR, FAR]` pair with FAR strictly later than NEAR; a missing/
+  out-of-order far is coerced to the tenor after near, and a last-tenor near is
+  stepped back so a later far exists.
+- `ScenarioOverrides.farTenor`; `buildDeal` SWAP branch populates `Deal.legs`
+  (NEAR=requested tenor, FAR=farTenor) and mirrors `Deal.tenor` to the near leg.
+  Single-leg deals are untouched (no `legs`).
+- `DevInjector`: instrument selector gains `Swap`; a v4-only `inject-far-tenor`
+  select appears when Swap is chosen (the tenor select becomes the NEAR leg),
+  threaded through desktop + mobile.
+- Per docs/03 §10, swaps add no new states/machines — pure data widening.
+- Tests: `tests/unit/swap-legs.test.ts` (ordering/coercion/edge cases);
+  `player.test.ts` (SWAP legs + far≤near coercion + single-leg unaffected);
+  injector far-select hidden on bare URL.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (489) · build ✓ · `test:e2e` ✓
+  (12/12). GA/v3/single-leg unaffected.
+
+## FXSW-083 · Swap points feed (Phase 11)
+
+- `services/feed/swapPoints.ts`: `swapPointsFeed.get(pair, near, far)` →
+  `{ near, far, net{bid,ask} }`, a **pure composition** of `forwardPointsFeed`
+  (`net = far − near` per side, `round1`). No new RNG, so the seed-42 spot stream
+  and forward mid sequence are untouched; SPOT-near falls out naturally
+  (near = {0,0,0} → net = far). Caller enforces far-later-than-near ordering.
+- Strict TDD: `swapPoints.test.ts` — forward-forward (net = far−near per side),
+  SPOT-near (net = far), net magnitude grows with far/near spread, and a
+  no-perturbation check on the forward mid sequence.
+- Not yet wired into the app (FXSW-084 consumes it) — bundle hash unchanged.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (493) · build ✓ · `test:e2e` ✓ (12/12).
+
+## FXSW-084 · Swap pricing math (Phase 11)
+
+- `lib/pips.ts` swap section: `SwapMarkupMode` (`PER_COMPONENT|TOTAL`),
+  `gateMarginToSide(margin, quoteSide)` (one-sided lock — zeroes the off-side,
+  mirrors FXSW-068), `effectiveSwapMargin(mode, {total,near,far}, quoteSide)`
+  (TOTAL = entered net margin; PER_COMPONENT = sum of leg margins, mirroring the
+  forward spot+fwd sum), and `clientSwapNetPoints(net, margin)` (bid down / ask up
+  by the effective net margin; pips applied directly — net is already a pip
+  differential, no pipSize scaling). P/L reuses `estimatedProfitUsd`.
+- Strict TDD in `pips.test.ts`: both markup modes, total↔per-component equivalence
+  when totals match, one-sided gating (BID/ASK), and P/L only on the quotable side.
+- Math only — wired into the ticket in FXSW-085 (bundle hash unchanged).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ · build ✓ · `test:e2e` ✓ (12/12).
+
+## FXSW-085 · Swap pricing UI (Phase 11)
+
+- New pricing sub-components: `pricing/SwapLegBlock.tsx` (one leg — tenor +
+  value date + two-sided points + optional per-component margin) and
+  `pricing/SwapPanel.tsx` (orchestrator: NEAR/FAR blocks, prominent net row
+  `swap-net-bid`/`swap-net-ask` = far−near per side, markup-mode toggle
+  `swap-markup-mode` [Per-component ↔ Total], per-scope Balance/Zero, client
+  net + Est. P/L). Both <300 lines.
+- One-sided lock reuses `restrictMarginSides`/`quoteSide` across both legs + net
+  (off-side steppers disabled, Balance/Zero hidden); `readOnly` (auto-priced)
+  hides the toggle and disables steppers.
+- `TicketPanel` branches on `instrument === 'SWAP'` ahead of the autoView/manual
+  ternary, rendering one `SwapPanel` for both (readOnly = autoView). Panel keeps
+  `data-instrument="SWAP"`. TicketPanel stays the orchestrator shell (already
+  >300 pre-FXSW-085); the new pricing files carry the swap logic.
+- Markup state (mode, near/far/total margins) is local to SwapPanel, reset per
+  deal. P/L via `estimatedProfitUsd` on the effective net margin.
+- Tests: `SwapPanel.test.tsx` (7 — legs/points/dates, net row, both markup modes,
+  one-sided lock, two-sided, read-only) + `tests/e2e/v4-swap.spec.ts` (inject →
+  two-leg ticket → mode toggle). Note: swap quote-context capture + historic
+  detail are FXSW-086; AI-suggestion-in-Total is a follow-up.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (507) · build ✓ · `test:e2e` ✓ (13/13).
+
+## FXSW-086 · Swap blotter + historic detail (Phase 11)
+
+- Blotter dual value dates: `lib/time.ts` gains `valueDateLabel(deal)` (swap →
+  `near → far`, else single); both blotters' `valueDateFor` delegate to it. The
+  instrument cell already shows `SWAP` via `instrumentOf`.
+- Swap execution capture: `AppliedMargin` gains a `{ kind:'swap'; mode; net }`
+  variant. `SwapPanel` reports its effective (gated) net margin + mode up via a
+  new `onPricingChange`; `TicketPanel` holds it (`swapPricing`, reset per deal)
+  and passes it to `useQuoteContextCapture`, which records the swap variant at
+  QuoteSent (takes precedence over spot/forward).
+- Historic detail: new read-only `pricing/SwapLegDetail.tsx` lists per-leg
+  tenor/points/value-date, the raw net differential, and — when a price was sent
+  — the net used for execution (raw net marked up by the captured net margin).
+  `HistoricDetailPanel` renders it for swaps and `formatMargin` summarises the
+  swap markup reason (`Net b/a pips · Mode`).
+- Tests: `valueDateLabel` unit (dual vs single), `SwapLegDetail.test.tsx` (legs/
+  net/exec), a `HistoricDetailPanel` swap case, and an extended `v4-swap` E2E
+  driving a swap through to the historic detail overlay.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (513) · build ✓ · `test:e2e` ✓ (14/14).
+
+## FXSW-087 · Phase 11 Security Agent pass + docs + summary
+
+- Independent **cold** Security Agent review (unprimed subagent, own operating
+  prompt under `security/CLAUDE.md`) of the swap work →
+  `security/FXSW-087-review.md`. **7 findings: 0 Critical, 1 High, 2 Medium,
+  2 Low, 2 Info.** Swap pricing math, one-sided gating (now enforced in
+  `lib/pips.ts`, not UI-only) and capture reconciliation reviewed clean (F-4).
+- Residuals filed as **FXSW-091** (the review proposed "FXSW-090" reviewing cold;
+  renumbered — FXSW-090 was already the GA-core determinism item): F-1 silent
+  `buildSwapLegs` coercion, F-2 off-side raw-net display, T-1 vite-6 toolchain
+  highs, T-2 CSP/live-poller reconciliation, T-3/SRI.
+- `docs/phase-summaries/phase-11-swaps-summary.md` written (scope, tickets,
+  decisions, security counts, determinism). BACKLOG: Phase 11 shipped status note
+  + FXSW-091 work-item.
+- `dist/` verified brand-neutral: no source maps, product name present, only the
+  documented feed-adapter host literal (`massive`) present — no
+  `caplin`/`polygon`/`frankfurter`/other vendor leaks.
+- Gates green: `test:run` 513 · `test:e2e` 14/14 · build brand-neutral.
+
+## FXSW-091 (T-1) · Resolve the remaining High advisory — toolchain to vite 7
+
+- `vite` 5.4.21 → **7.3.5** (major) + `pnpm.overrides` `esbuild@<0.28.1 → >=0.28.1`.
+  Sequence/rationale: `vite` 6.4.3 cleared the `server.fs.deny` high but its
+  `esbuild ^0.25` + a forced `0.28.1` broke the build (esbuild can't lower
+  destructuring for vite 6's target); `vite` 7 (`esbuild ^0.27`, newer default
+  target) is compatible with the `0.28.1` override and builds cleanly.
+- **`pnpm audit`: 5 → 0** — both High advisories (vite `server.fs.deny`, esbuild
+  binary-integrity) and the 3 moderates cleared. (24 → 0 across the whole
+  remediation arc.) Resolves FXSW-087-review **T-1 (High)** and clears the
+  FXSW-088/089 vite-6 toolchain residual.
+- `@vitejs/plugin-react` 4.7.0 and `vitest` 3.2.6 both declare vite 7 support;
+  Node 22.22 satisfies vite 7's engine floor. No config changes needed (the
+  build-only CSP `transformIndexHtml` plugin still injects under vite 7).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (513) · build ✓ · `test:e2e` ✓
+  (14/14). CSP present in `dist`; no source maps; `dist` brand-neutral (only the
+  documented feed-adapter host). Seed-42 / GA / v3 / v4 goldens byte-stable.
+- Remaining FXSW-091 items (F-1 leg coercion, F-2 off-side display, T-2 CSP/feed
+  reconciliation, T-3/SRI) are unaffected and still open.
+
+## FXSW-091 (F-1/F-2/F-3/T-2/T-3) · Phase 11 security remediation — completed
+
+Resolves the remaining FXSW-087-review items (T-1 toolchain was done separately):
+- **F-1** (Medium) — `resolveSwapLegs` reports whether a swap request was coerced
+  (far missing / far ≤ near / last-tenor near); `buildDeal` records the original
+  request on `Deal.swapRequested`, and a shared `SwapAdjustNote` surfaces a visible
+  "legs adjusted" note in `SwapPanel` + the historic `SwapLegDetail`. Valid
+  requests are unflagged (legs/goldens unchanged).
+- **F-2** (Low) — a one-sided swap now dashes the non-quotable side's client net +
+  P/L (`bidQuotable`/`askQuotable`) instead of showing the raw un-marked net;
+  `readOnly` still shows both sides for a two-sided auto-priced quote.
+- **F-3** (guard) — `v4-swap` E2E injects two swaps in sequence and asserts the
+  second opens with zero leg margins (no markup leak), plus the F-1 note path.
+- **T-2** (Medium) — the live reference-mid poller + its API-key entry are confined
+  to the dev server (`import.meta.env.DEV`): `main.tsx` only wires it in dev, and
+  `ExternalFeedPanel` shows a simulation-only message instead of the key input in
+  the prod build. The harmless status indicator stays in all builds. This reconciles
+  the shipped `connect-src 'self'` CSP (which would block the poll) with the feature
+  — the secret is never collected in the artefact that enforces the policy.
+- **T-3** (Info) — a build-only Vite plugin adds SHA-384 `integrity` (+ `crossorigin`)
+  to the emitted same-origin `<script>`/`<link>` tags; verified present in `dist`
+  and enforced by the E2E preview run. Added `src/vite-env.d.ts` for `import.meta.env`.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (522) · build ✓ · `test:e2e` ✓ (15/15).
+  `pnpm audit` 0. `dist/` ships CSP + SRI, no source maps, brand-neutral (only the
+  documented feed-adapter host).
+
+## FXSW-090 · GA-core determinism + scenario-player lifecycle hardening
+
+Resolves the GA-core cold-audit work-item (`security/audit-core-pre-phase9-review.md`):
+- **F-1** (Medium) — the `CLIENT_ACCEPT_OR_REJECT` follow-up (CREDIT_BREACH) is now
+  resolved by a per-deal **seeded PRNG** (`makeRng(hashSeed(dealId) ^ PLAYER_SEED)`,
+  reusing `services/feed/rng`) instead of `Math.random`, so a deal's accept/reject
+  outcome is reproducible; an injectable `acceptOrReject` option pins it in tests.
+- **F-2** (Low) — the player tracks timers by owning `dealId` (`Map<handle,dealId>`)
+  and exposes `forgetDeal(dealId)` that clears that deal's pending timers + gates.
+  `dealFeed` forwards it; `dealsStore` calls it on archival and `removeDeal`, so no
+  stale follow-up fires and the `gates` set cannot grow unbounded over a session.
+- **F-3** (Low) — `lib/ids` (`makeRequestId`/`makeTradeId`) takes an injectable
+  random source (default `Math.random`) so a seeded rng pins ids in tests
+  (REQ-/TRD- format unchanged); `addDeal` now logs a `console.error` on a duplicate
+  `dealId` (generator collision) and preserves the original instead of silently
+  no-oping. `player.makeDealId` was already injectable via `generateDealId`.
+- **T-1** (Low) — `pricingFeed` gains a documented `?seed=N` URL-param fallback for
+  manual reproduction, **below** `window.__seedFeed` in precedence so the seed-42
+  golden / test path is byte-unchanged.
+- Tests: player (seeded reproducibility, override, `forgetDeal` cancels timer +
+  drops gate), `lib/ids` (seeded determinism + format), store (duplicate-dealId
+  error + original preserved). Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (532) ·
+  build ✓ · `test:e2e` ✓ (15/15). Goldens byte-stable.
+
+## FXSW-088 (F-1/F-2/F-3) · State-layer hardening (deferred → done)
+
+The XState-layer items from `security/FXSW-077-review.md`, contract-preserving
+(canonical SI/RFS state names, the `*Sent` contract, and 5s removal timing all
+unchanged; changes are additive + guarded):
+- **F-1** — the one-sided side-lock is now enforced by a guard in the **deal
+  machine**, not only the UI `disabled` prop. `DealContext.quoteSide` is carried
+  from the deal (`dealsStore` passes `quoteSideFor(side, dealtCcy)` as input); a
+  `canQuote` guard rejects a `Quote` naming the non-quotable side (or a two-sided
+  quote on a one-sided request). A bare `Quote` and two-sided deals are unchanged.
+- **F-2** — documented the RFS `*Sent` asymmetry in `rfsMachine`: RFS `Executable`
+  is "dealable/auto-priced", NOT the client-facing "sent" signal; SI
+  `QuoteSent → Quoted` is the single source of truth (per `statusFromMachines` +
+  the capture hook). Not mirrored, because adding RFS `*Sent` states would change
+  canonical names + the ESP `Queued → Executable` path.
+- **F-3** — explicit terminal protection + route terminal to both legs:
+  `DealContext.terminal` is set on any terminal event (Reject / ClientReject /
+  TradeConfirmed) and every parent forward is guarded `notTerminal`, so a
+  late/duplicate trader event can never re-animate a finished deal (explicit, not
+  merely topological). `ClientReject` now also routes RFS `ClientClose` so both
+  legs reach a terminal state; the archived outcome is unchanged (SI `ClientRejected`
+  is checked first in `outcomeFromFinalStates`).
+- Tests: dealMachine (locked-side quote rejected; bare/two-sided unaffected;
+  ClientReject closes both legs; post-terminal forward refused). Gates: typecheck ✓
+  · lint ✓ · `test:run` ✓ (536) · build ✓ · `test:e2e` ✓ (15/15). Goldens stable.
+
+## FXSW-088 T-6 · Vendor literals in non-adapter test files (closed)
+
+- Removed the one genuine positive vendor literal: `fetch-reference-mids.test.ts`
+  no longer asserts `source === 'frankfurter.dev'` (now `!== 'fallback'`) and the
+  test name drops the provider ("live-source response").
+- The vendor strings in `App.test` (Caplin) and `ExternalFeedPanel.test`
+  (polygon/massive) are intentional brand-neutrality **denylist tripwires** — they
+  appear only inside `.not.toContain`/`.not.toMatch` guards that FAIL if a vendor
+  name leaks into rendered output. Removing them would delete the very tests that
+  enforce the rule, so they are retained by design and now comment-marked.
+- Closes the last open FXSW-088 sub-item. Gates: typecheck ✓ · lint ✓ · tests ✓.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

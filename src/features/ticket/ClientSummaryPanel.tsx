@@ -1,13 +1,13 @@
 import { formatRate } from '@/lib/format';
 import {
   allInRate,
-  clientAskFromForward,
   clientAskFromTrader,
-  clientBidFromForward,
   clientBidFromTrader,
+  clientForwardPair,
   estimatedProfitUsd,
 } from '@/lib/pips';
 import type { QuoteSide } from '@/lib/quoteSide';
+import type { ForwardPointsPair } from '@/services/feed/forwardPoints';
 import type { Pair, PriceTick } from '@/services/feed/types';
 import type { MarginPair } from '@/types/deal';
 
@@ -41,7 +41,9 @@ export interface ClientSummaryPanelProps {
   // FXSW-057: forward deals pass the forward points + forward-points margin.
   // When `fwdPoints` is defined, client prices are all-in outright rates and
   // P/L uses the summed spot + forward margin. Spot deals omit both.
-  fwdPoints?: number;
+  // FXSW-075: forward points are two-sided — bid side uses bid points, ask uses
+  // ask points; the mid is the P/L reference.
+  fwdPoints?: ForwardPointsPair;
   fwdMarginPair?: MarginPair;
 }
 
@@ -54,26 +56,29 @@ export default function ClientSummaryPanel({
   fwdPoints,
   fwdMarginPair,
 }: ClientSummaryPanelProps) {
-  const isForward = fwdPoints !== undefined;
   const fwdBid = fwdMarginPair?.bid ?? 0;
   const fwdAsk = fwdMarginPair?.ask ?? 0;
 
+  const fwdClient =
+    tick !== null && fwdPoints !== undefined
+      ? clientForwardPair(tick, fwdPoints, marginPair, { bid: fwdBid, ask: fwdAsk }, pair)
+      : null;
   const clientBid =
     tick === null
       ? null
-      : isForward
-        ? clientBidFromForward(tick.bid, fwdPoints, marginPair.bid, fwdBid, pair)
+      : fwdClient
+        ? fwdClient.bid
         : clientBidFromTrader(tick.bid, marginPair.bid, pair);
   const clientAsk =
     tick === null
       ? null
-      : isForward
-        ? clientAskFromForward(tick.ask, fwdPoints, marginPair.ask, fwdAsk, pair)
+      : fwdClient
+        ? fwdClient.ask
         : clientAskFromTrader(tick.ask, marginPair.ask, pair);
 
-  // For forwards, P/L is referenced off the all-in mid.
+  // For forwards, P/L is referenced off the all-in mid (using the mid points).
   const profitMid =
-    tick === null ? 0 : isForward ? allInRate(tick.mid, fwdPoints, pair) : tick.mid;
+    tick === null ? 0 : fwdPoints !== undefined ? allInRate(tick.mid, fwdPoints.mid, pair) : tick.mid;
   // Total margin per side folds in the forward-points component.
   const totalBid = marginPair.bid + fwdBid;
   const totalAsk = marginPair.ask + fwdAsk;
