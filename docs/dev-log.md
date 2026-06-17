@@ -1248,6 +1248,16 @@ GUI-review feedback on the v4 instruments, addressed as a batch:
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (536 + 4 new swap-side cases) ·
   `test:e2e` ✓ (15/15).
 
+## Swap per-component margin overflow fix (2026-06-17)
+
+Visual bug: in per-component markup mode the bid/ask `MarginRow` controls inside
+each `SwapLegBlock` were laid out side-by-side (`flex items-start gap-4`). When
+both leg blocks sit side-by-side (`sm:flex-row`) and each gets roughly half the
+panel width, the fixed-width stepper+input elements overflowed the right boundary
+of the FAR leg. Fixed by stacking bid and ask rows vertically (`flex flex-col
+gap-2`) inside each leg block so each `MarginRow` spans the full leg width.
+- Gates: typecheck ✓ · lint ✓.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

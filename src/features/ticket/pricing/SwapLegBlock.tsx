@@ -104,8 +104,8 @@ export default function SwapLegBlock({
           <span className="text-[10px] uppercase tracking-tight text-text-mute">
             {kind} points margin
           </span>
-          <div className="flex items-start gap-4">
-            <div className="flex flex-1 justify-center">
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-center">
               <MarginRow
                 testIdSuffix="bid"
                 idPrefix={`${idPrefix}-`}
@@ -116,7 +116,7 @@ export default function SwapLegBlock({
                 disabled={bidLocked}
               />
             </div>
-            <div className="flex flex-1 justify-center">
+            <div className="flex justify-center">
               <MarginRow
                 testIdSuffix="ask"
                 idPrefix={`${idPrefix}-`}
