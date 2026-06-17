@@ -62,8 +62,28 @@ concern, so the RFS + SI children and the `*Sent` contract are untouched.
 
 ## Security review
 
-See `security/FXSW-087-review.md` for the cold end-of-phase review (severity
-breakdown and posture are folded in here once the review lands).
+See `security/FXSW-087-review.md` for the cold end-of-phase review. **7 findings:
+0 Critical, 1 High, 2 Medium, 2 Low, 2 Info.**
+
+**Posture:** the swap price-integrity posture is good — the net differential
+(far − near) is built once at the feed boundary with no new RNG draws, margins are
+floored non-negative, and crucially the **one-sided lock is enforced in the
+pricing math** (`gateMarginToSide` in `lib/pips.ts`), not UI-only, closing a
+single-point-enforcement weakness flagged in earlier phases; captured execution
+margins reconcile with what the historic detail recomputes (F-4, positive Info).
+The residual functional risks are softer: `buildSwapLegs` **silently coerces** a
+missing/out-of-order (far ≤ near) far leg rather than refusing it (F-1, Medium —
+can price a different tenor pair than requested) and a one-sided swap still renders
+the off-side **raw** net (dimmed, not suppressed) (F-2, Low). On the technical
+track the FXSW-088/089 remediation **landed** (restrictive CSP, Bearer-header API
+key, opt-in + range-validated build fetch, toolchain 24 → 5 advisories); the
+remaining items are the two **High** dev-tooling advisories needing a `vite` 5→6
+bump (T-1) and an internal inconsistency where the new `connect-src 'self'` CSP
+blocks the opt-in live poller while its key is still collected into
+`sessionStorage` (T-2, Medium). None of these are swap-pricing defects. They are
+filed as **FXSW-091** for next-phase triage (the review's own work-item is
+renumbered from its cold-proposed FXSW-090, which was already taken by the GA-core
+determinism item).
 
 ## Determinism + compatibility
 

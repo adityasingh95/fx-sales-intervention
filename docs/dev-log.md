@@ -1090,6 +1090,25 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
   driving a swap through to the historic detail overlay.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (513) · build ✓ · `test:e2e` ✓ (14/14).
 
+## FXSW-087 · Phase 11 Security Agent pass + docs + summary
+
+- Independent **cold** Security Agent review (unprimed subagent, own operating
+  prompt under `security/CLAUDE.md`) of the swap work →
+  `security/FXSW-087-review.md`. **7 findings: 0 Critical, 1 High, 2 Medium,
+  2 Low, 2 Info.** Swap pricing math, one-sided gating (now enforced in
+  `lib/pips.ts`, not UI-only) and capture reconciliation reviewed clean (F-4).
+- Residuals filed as **FXSW-091** (the review proposed "FXSW-090" reviewing cold;
+  renumbered — FXSW-090 was already the GA-core determinism item): F-1 silent
+  `buildSwapLegs` coercion, F-2 off-side raw-net display, T-1 vite-6 toolchain
+  highs, T-2 CSP/live-poller reconciliation, T-3/SRI.
+- `docs/phase-summaries/phase-11-swaps-summary.md` written (scope, tickets,
+  decisions, security counts, determinism). BACKLOG: Phase 11 shipped status note
+  + FXSW-091 work-item.
+- `dist/` verified brand-neutral: no source maps, product name present, only the
+  documented feed-adapter host literal (`massive`) present — no
+  `caplin`/`polygon`/`frankfurter`/other vendor leaks.
+- Gates green: `test:run` 513 · `test:e2e` 14/14 · build brand-neutral.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

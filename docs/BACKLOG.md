@@ -807,6 +807,50 @@ immutability, build hygiene). Findings: 0 Critical, 0 High, 1 Medium, 3 Low, 2 I
 transitions — re-review when `Expire` forwarding is added (ties into FXSW-088 F-3).
 Suggestion `computedAt` wall-clock is non-load-bearing; no action.
 
+## Phase 11 security remediation (triage into Phase 12)
+
+Transcribed from `security/FXSW-087-review.md` (cold end-of-phase review of the
+swap work). 7 findings: 0 Critical, 1 High, 2 Medium, 2 Low, 2 Info. The swap
+pricing math, one-sided gating and capture reconciliation reviewed clean (F-4,
+positive); the items below are the residual functional + technical gaps. The
+review proposed this as "FXSW-090" reviewing cold; **renumbered to FXSW-091** here
+because FXSW-090 was already taken by the GA-core determinism item above.
+
+### FXSW-091 — Phase 11 security remediation (swap leg-validation + one-sided display + toolchain + CSP/feed reconciliation)
+
+**Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-086 · **Source:** `security/FXSW-087-review.md`
+
+**AC:**
+- `buildSwapLegs` no longer silently invents a valid far for a missing/out-of-order
+  (far ≤ near) request: the invalid case is either refused at the injection
+  boundary, or the requested-vs-applied tenors are recorded on the deal AND shown
+  as a visible "far adjusted" note in `SwapPanel` + `SwapLegDetail`. Valid requests
+  produce identical legs to today (swap goldens stable). (F-1, Medium)
+- A one-sided swap (`quoteSide` BID or ASK) renders a dash / suppresses the
+  non-quotable side's client-net and P/L instead of showing the raw un-marked net;
+  the quotable side and its `data-testid`s are unchanged. (F-2, Low)
+- A new `v4-swap` E2E asserts: (a) two sequential swap injections do not leak the
+  first deal's leg/net margin into the second's captured execution margin, and the
+  second opens `PER_COMPONENT` with zero margins; (b) the historic "Net used for
+  execution" reconciles with the marked-up net actually sent. (F-3, F-4 guard)
+- Toolchain: `vite` moved to a patched line (`>=6.4.3`) or `esbuild` pinned
+  `>=0.28.1` via `pnpm.overrides`; `pnpm audit` reports zero high+ advisories;
+  goldens/E2E byte-stable. (T-1, High — supersedes the FXSW-088/089 vite-6 residual)
+- The shipped CSP and the opt-in live feed are reconciled: either the runtime
+  poller + API-key entry are removed/disabled in the built artefact (simulation
+  only; secret never collected), OR `connect-src` lists exactly the single provider
+  origin (no wildcard) under the documented v3 exception. (T-2, Medium)
+- (Optional) SRI `integrity=` attributes added for emitted same-origin assets.
+  (T-3, Info — also clears the deferred FXSW-088 SRI sub-item)
+
+**Done when:**
+- `lint`, `typecheck`, `test:run`, `test:e2e` all pass (incl. the new swap
+  leg-validation + one-sided-display + sequential-injection assertions).
+- Seed-42 golden, GA spot + mid sequence, v3 forward goldens, and v4 NDF + swap
+  goldens are byte-stable; canonical state names + `data-*` unchanged.
+- `dist/` brand-neutral in user-visible strings, no source maps, ships the
+  reconciled CSP. Simulated feed remains the default and only test/E2E path.
+
 ## Current known follow-ups
 
 - Capture and attach the actual demo recording if needed.
