@@ -6,10 +6,20 @@ on:
       - 'claude/**'
   pull_request:
 
+# Dedupe runs: a push to a branch with an open PR otherwise fires two identical
+# runs (push + pull_request). Keying the group on the commit SHA (identical for
+# both events) collapses them into one group; cancel-in-progress keeps a single
+# run, so one run alone determines the required-check state.
+concurrency:
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    # Headroom for the playwright `install --with-deps` step, which is slow on cold
+    # shared runners and intermittently blew the previous 10-minute budget.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
