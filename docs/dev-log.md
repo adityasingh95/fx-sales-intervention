@@ -1020,6 +1020,19 @@ under the enforced CSP). Seed-42 / GA / v3 goldens unaffected.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (489) · build ✓ · `test:e2e` ✓
   (12/12). GA/v3/single-leg unaffected.
 
+## FXSW-083 · Swap points feed (Phase 11)
+
+- `services/feed/swapPoints.ts`: `swapPointsFeed.get(pair, near, far)` →
+  `{ near, far, net{bid,ask} }`, a **pure composition** of `forwardPointsFeed`
+  (`net = far − near` per side, `round1`). No new RNG, so the seed-42 spot stream
+  and forward mid sequence are untouched; SPOT-near falls out naturally
+  (near = {0,0,0} → net = far). Caller enforces far-later-than-near ordering.
+- Strict TDD: `swapPoints.test.ts` — forward-forward (net = far−near per side),
+  SPOT-near (net = far), net magnitude grows with far/near spread, and a
+  no-perturbation check on the forward mid sequence.
+- Not yet wired into the app (FXSW-084 consumes it) — bundle hash unchanged.
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (493) · build ✓ · `test:e2e` ✓ (12/12).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
