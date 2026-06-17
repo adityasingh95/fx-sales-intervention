@@ -570,6 +570,21 @@ does; lock honoured.
 Two-leg swaps priced on net points; component or total markup; either side or
 both. Specs: `docs/02` §12.3, `docs/04` §9.2, `docs/05` §18.4–18.5, `docs/03` §10.
 
+### Status note — Phase 11 shipped (FXSW-082…087)
+
+**Done (2026-06-17).** All six tickets implemented on
+`claude/pricing-trades-phase-plan-h70vy7`: swap data model + injector
+(FXSW-082), points feed (FXSW-083), pricing math (FXSW-084), two-leg UI
+(FXSW-085), blotter dual value dates + historic detail + execution capture
+(FXSW-086), and this docs/Security-Agent close (FXSW-087). Swaps add **no new
+canonical states/machines** (docs/03 §10). Determinism gate intact (seed-42 / GA
+spot + mid / v3 forward goldens byte-stable); 513 unit + 14 E2E green. Summary:
+`docs/phase-summaries/phase-11-swaps-summary.md`. Cold review:
+`security/FXSW-087-review.md`. **Carried forward:** FXSW-088 F-1/F-2/F-3
+(state-layer guards — deferred), FXSW-089 F-2 (NDF inertness depth), FXSW-090
+(GA-core determinism), plus the SRI + vite-6 residuals from the security pass and
+any new FXSW-087 work-item.
+
 ### FXSW-082 — Swap data model + injection
 
 **Effort:** M · **TDD:** Alongside · **Depends on:** FXSW-081
