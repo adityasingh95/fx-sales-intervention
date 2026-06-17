@@ -1,17 +1,18 @@
 name: ci
 on:
+  # Feature branches are validated via the pull_request event only — listing them
+  # under push too would fire two competing runs for the same commit, and the
+  # cancelled duplicate (a "build" check on the head SHA) trips branch protection.
   push:
     branches:
       - main
-      - 'claude/**'
   pull_request:
 
-# Dedupe runs: a push to a branch with an open PR otherwise fires two identical
-# runs (push + pull_request). Keying the group on the commit SHA (identical for
-# both events) collapses them into one group; cancel-in-progress keeps a single
-# run, so one run alone determines the required-check state.
+# Cancel a PR's superseded in-progress run when a newer commit is pushed. Keyed on
+# the ref (stable per PR), so only runs on older SHAs are cancelled — never the run
+# on the head SHA that determines the required-check state.
 concurrency:
-  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
