@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-// v4 (FXSW-082/085) — inject a forward-forward swap and exercise the two-leg
-// pricing panel: per-leg points, the net-differential row, the markup-mode
-// toggle, and the one-sided lock. Gated behind ?dev=v4.
+// v4 (FXSW-082/085) — inject a forward-forward swap and exercise the side-first
+// pricing panel: Bid + Ask tiles, per-leg points breakdown, the net-differential
+// row, the net-only markup, and the one-sided lock. Gated behind ?dev=v4.
 
-test('v4 swap injection — two-leg ticket: per-leg points, net row, markup-mode toggle', async ({
+test('v4 swap injection — side-first ticket: per-leg points, net row, net markup', async ({
   page,
 }) => {
   test.setTimeout(20_000);
@@ -32,23 +32,20 @@ test('v4 swap injection — two-leg ticket: per-leg points, net row, markup-mode
   await expect(panel).toBeVisible();
   await expect(panel).toHaveAttribute('data-instrument', 'SWAP');
 
-  // Two-leg panel with per-leg points and the net differential row.
+  // Side-first panel: Bid + Ask tiles, per-leg points breakdown, net diff row.
   await expect(page.getByTestId('swap-panel')).toBeVisible();
-  await expect(page.getByTestId('leg-near')).toHaveAttribute('data-tenor', '1M');
-  await expect(page.getByTestId('leg-far')).toHaveAttribute('data-tenor', '6M');
+  await expect(page.getByTestId('swap-side-bid')).toBeVisible();
+  await expect(page.getByTestId('swap-side-ask')).toBeVisible();
   await expect(page.getByTestId('leg-near-points-bid')).not.toHaveText('');
+  await expect(page.getByTestId('leg-far-points-ask')).not.toHaveText('');
   await expect(page.getByTestId('swap-net-bid')).not.toHaveText('');
   await expect(page.getByTestId('swap-net-ask')).not.toHaveText('');
 
-  // Per-component is the default — a margin on each leg, no net-points margin.
-  await expect(page.getByTestId('margin-input-near-bid')).toBeVisible();
-  await expect(page.getByTestId('margin-input-far-ask')).toBeVisible();
-  await expect(page.getByTestId('margin-input-net-bid')).toHaveCount(0);
-
-  // Switching to Total swaps in a single net-points margin.
-  await page.getByTestId('swap-markup-mode-total').click();
+  // Markup is net-only — one net stepper per side, no per-leg steppers or toggle.
   await expect(page.getByTestId('margin-input-net-bid')).toBeVisible();
+  await expect(page.getByTestId('margin-input-net-ask')).toBeVisible();
   await expect(page.getByTestId('margin-input-near-bid')).toHaveCount(0);
+  await expect(page.getByTestId('swap-markup-mode')).toHaveCount(0);
 });
 
 test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injections (FXSW-091 F-1/F-3)', async ({
@@ -76,9 +73,9 @@ test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injec
   await rowA.click();
   await expect(page.getByTestId('swap-adjust-note')).toBeVisible();
 
-  // Mark up a leg on A, then close the ticket.
-  await page.getByTestId('margin-plus-near-bid').click();
-  await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('1');
+  // Mark up the net bid on A, then close the ticket.
+  await page.getByTestId('margin-plus-net-bid').click();
+  await expect(page.getByTestId('margin-input-net-bid')).toHaveValue('1');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('ticket-panel')).toHaveCount(0);
 
@@ -90,9 +87,9 @@ test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injec
   const rowB = activeBody.locator(`[data-deal-id]:not([data-deal-id="${aId}"])`).first();
   await expect(rowB).toBeVisible({ timeout: 1_000 });
   await rowB.click();
-  // B opens with no adjust note and zero leg margins — A's markup did not leak.
+  // B opens with no adjust note and zero net margin — A's markup did not leak.
   await expect(page.getByTestId('swap-adjust-note')).toHaveCount(0);
-  await expect(page.getByTestId('margin-input-near-bid')).toHaveValue('0');
+  await expect(page.getByTestId('margin-input-net-bid')).toHaveValue('0');
 });
 
 test('v4 swap lifecycle — archives to Historic; detail overlay lists per-leg + net (FXSW-086)', async ({

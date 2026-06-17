@@ -153,7 +153,7 @@ export default function TicketPanel() {
     appliedRationale,
     swap:
       instrument === 'SWAP'
-        ? (swapPricing ?? { mode: 'PER_COMPONENT', net: { bid: 0, ask: 0 } })
+        ? (swapPricing ?? { mode: 'TOTAL', net: { bid: 0, ask: 0 } })
         : undefined,
   });
 

@@ -3,25 +3,33 @@ import { useEffect, useState } from 'react';
 import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import {
   clientSwapNetPoints,
-  effectiveSwapMargin,
   estimatedProfitUsd,
+  gateMarginToSide,
   type SwapMarkupMode,
 } from '@/lib/pips';
 import type { QuoteSide } from '@/lib/quoteSide';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
 import type { MarginSuggestion } from '@/services/suggestion/types';
-import { swapLegSide, type Deal, type MarginPair } from '@/types/deal';
+import {
+  oppositeSide,
+  swapLegSide,
+  type Deal,
+  type MarginPair,
+  type Side,
+  type Tenor,
+} from '@/types/deal';
 import { BalanceZeroRow, MarginRow } from './MarginControls';
 import SuggestionPanel from '../SuggestionPanel';
 import SwapAdjustNote from './SwapAdjustNote';
-import SwapLegBlock from './SwapLegBlock';
 
-// Swap pricing panel (FXSW-085, docs/05 §18.4). Two-leg layout (NEAR + FAR) with
-// per-leg points, a prominent net-differential row (far − near per side), a
-// markup-mode toggle (Per-component = a margin on each leg; Total = one margin on
-// the net), per-scope Balance/Zero, and the one-sided lock across both legs + net.
-// Client net points and estimated P/L derive from the net via lib/pips.
+// Swap pricing panel (FXSW-085 → redesigned). Organised by *dealing side* (the two
+// prices the desk can show), not by leg: a Bid tile and an Ask tile sit side by
+// side, each carrying one net-points markup, the marked-up client net + estimated
+// P/L, and the per-leg (near/far) points underneath as read-only context. A
+// one-sided request dims the whole non-quotable tile, so the lock reads as "this
+// side isn't quotable" rather than a scatter of disabled steppers. Markup is
+// net-only (docs/05 §18.4); the AI suggestion applies a single net margin.
 
 const ZERO: MarginPair = { bid: 0, ask: 0 };
 const fmtPoints = (n: number): string => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
@@ -32,30 +40,117 @@ const PROFIT_FMT = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-function ModeButton({
-  mode,
-  label,
-  active,
-  onSelect,
-}: {
-  mode: SwapMarkupMode;
-  label: string;
-  active: boolean;
-  onSelect: (mode: SwapMarkupMode) => void;
-}) {
+interface SideTileProps {
+  scope: 'bid' | 'ask';
+  directionLabel: string;
+  quotable: boolean;
+  locked: boolean;
+  readOnly: boolean;
+  marginValue: number;
+  onMarginChange: (next: number) => void;
+  clientNet: number;
+  pnl: number;
+  nearTenor: Tenor;
+  farTenor: Tenor;
+  nearPoint: number;
+  farPoint: number;
+}
+
+function SideTile({
+  scope,
+  directionLabel,
+  quotable,
+  locked,
+  readOnly,
+  marginValue,
+  onMarginChange,
+  clientNet,
+  pnl,
+  nearTenor,
+  farTenor,
+  nearPoint,
+  farPoint,
+}: SideTileProps) {
   return (
-    <button
-      type="button"
-      data-testid={`swap-markup-mode-${mode === 'PER_COMPONENT' ? 'per-component' : 'total'}`}
-      aria-pressed={active}
-      onClick={() => onSelect(mode)}
+    <section
+      data-testid={`swap-side-${scope}`}
+      data-quotable={quotable}
+      aria-label={`Client ${scope}`}
       className={clsx(
-        'rounded-sm border px-2 py-1 text-xs font-medium transition-colors',
-        active ? 'border-border-focus text-text' : 'border-border text-text-dim hover:text-text',
+        'flex flex-1 flex-col gap-2 rounded-sm border p-3',
+        quotable
+          ? 'border-border-focus/40 bg-bg-elevated/60'
+          : 'border-border bg-bg-elevated/30 opacity-40',
       )}
     >
-      {label}
-    </button>
+      <div className="flex items-baseline justify-between gap-2">
+        <span
+          data-testid={`swap-side-${scope}-direction`}
+          className={clsx(
+            'rounded-sm px-1.5 py-0.5 text-[10px] font-semibold',
+            scope === 'bid' ? 'bg-red/15 text-red' : 'bg-blue/15 text-blue',
+          )}
+        >
+          {directionLabel}
+        </span>
+        <span className="text-[10px] uppercase tracking-tight text-text-mute">Client {scope}</span>
+      </div>
+
+      {/* Headline marked-up net + estimated P/L. A non-quotable side shows a dash,
+          never the raw un-marked net (FXSW-091 F-2). */}
+      <div className="text-center">
+        <div
+          data-testid={`client-net-${scope}`}
+          className="font-mono text-xl tabular-nums text-text"
+        >
+          {quotable ? fmtPoints(clientNet) : '—'}
+        </div>
+        <div
+          data-testid={`swap-pnl-${scope}`}
+          className="text-[10px] uppercase tracking-tight text-text-mute"
+        >
+          {quotable ? PROFIT_FMT.format(pnl) : '—'}
+        </div>
+      </div>
+
+      {/* Single net-points markup for this side. */}
+      {!readOnly && (
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[10px] uppercase tracking-tight text-text-mute">Net markup</span>
+          <MarginRow
+            testIdSuffix={scope}
+            idPrefix="net-"
+            labelPrefix="net "
+            value={marginValue}
+            onChange={(n) => onMarginChange(Math.max(0, Math.floor(n)))}
+            glow={false}
+            disabled={locked}
+          />
+        </div>
+      )}
+
+      {/* Read-only per-leg points breakdown — the components behind the net. */}
+      <div className="mt-1 flex justify-between border-t border-border pt-2 text-[10px] text-text-mute">
+        <span>
+          <span className="uppercase tracking-tight">Near {nearTenor}</span>{' '}
+          <span
+            data-testid={`leg-near-points-${scope}`}
+            className="font-mono tabular-nums text-text-dim"
+          >
+            {fmtPoints(nearPoint)}
+          </span>
+        </span>
+        <span>
+          <span className="uppercase tracking-tight">Far {farTenor}</span>{' '}
+          <span
+            data-testid={`leg-far-points-${scope}`}
+            className="font-mono tabular-nums text-text-dim"
+          >
+            {fmtPoints(farPoint)}
+          </span>
+        </span>
+      </div>
+    </section>
   );
 }
 
@@ -66,11 +161,13 @@ export interface SwapPanelProps {
   restrictMarginSides?: boolean;
   readOnly?: boolean;
   // FXSW-086: report the effective net-points margin + mode upward so the quote-
-  // context capture can record what was actually applied at QuoteSent.
+  // context capture can record what was actually applied at QuoteSent. Markup is
+  // net-only now, so the mode is always TOTAL (the field is kept for the captured
+  // AppliedMargin shape + historic deals priced under the old per-component UI).
   onPricingChange?: (pricing: { mode: SwapMarkupMode; net: MarginPair }) => void;
-  // AI Margin Suggestion for the swap net-points markup. Applying it switches to
-  // Total mode and writes the suggested pips to both sides of the net margin; the
-  // panel reports the AI-applied flag upward for the quote-context capture.
+  // AI Margin Suggestion for the swap net-points markup. Applying it writes the
+  // suggested pips to both sides of the net margin; the panel reports the
+  // AI-applied flag upward for the quote-context capture.
   suggestion?: MarginSuggestion | null;
   onRecompute?: () => void;
   onReject?: () => void;
@@ -91,18 +188,12 @@ export default function SwapPanel({
   currentVolatility,
   onAiAppliedChange,
 }: SwapPanelProps) {
-  const [mode, setMode] = useState<SwapMarkupMode>('PER_COMPONENT');
-  const [nearMargin, setNearMargin] = useState<MarginPair>(ZERO);
-  const [farMargin, setFarMargin] = useState<MarginPair>(ZERO);
   const [totalMargin, setTotalMargin] = useState<MarginPair>(ZERO);
   // Saved net margin captured before an AI Apply, restored losslessly on Undo.
   const [savedTotalForUndo, setSavedTotalForUndo] = useState<MarginPair | null>(null);
 
   // Reset markup state whenever a different deal opens.
   useEffect(() => {
-    setMode('PER_COMPONENT');
-    setNearMargin(ZERO);
-    setFarMargin(ZERO);
     setTotalMargin(ZERO);
     setSavedTotalForUndo(null);
   }, [deal.dealId]);
@@ -125,23 +216,32 @@ export default function SwapPanel({
   const askLocked = readOnly || !askQuotable;
   const showBalanceZero = !readOnly && !(restrictMarginSides && quoteSide !== 'BOTH');
 
-  const effMargin = effectiveSwapMargin(
-    mode,
-    { total: totalMargin, near: nearMargin, far: farMargin },
-    quoteSide,
-  );
+  const effMargin = gateMarginToSide(totalMargin, quoteSide);
   const clientNet = clientSwapNetPoints(swap.net, effMargin);
 
   // Report the effective (gated) net margin upward for quote-context capture.
   useEffect(() => {
-    onPricingChange?.({ mode, net: effMargin });
+    onPricingChange?.({ mode: 'TOTAL', net: effMargin });
     // effMargin is a fresh object each render; depend on its primitive parts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, effMargin.bid, effMargin.ask, onPricingChange]);
+  }, [effMargin.bid, effMargin.ask, onPricingChange]);
 
   const midRate = tick?.mid ?? 0;
   const plBid = estimatedProfitUsd(effMargin.bid, deal.notional, deal.pair, midRate);
   const plAsk = estimatedProfitUsd(effMargin.ask, deal.notional, deal.pair, midRate);
+
+  // The client-facing dealing direction for each tile. A directional request quotes
+  // on a single side (quoteSide): that side carries the deal's own near/far
+  // direction; the opposite tile inverts it. A two-sided request has no single
+  // direction, so both tiles read "Two-way".
+  const base = deal.pair.slice(0, 3);
+  const word = (s: Side): string => (s === 'BUY' ? 'Buy' : s === 'SELL' ? 'Sell' : 'Two-way');
+  const directionLabel = (scope: 'bid' | 'ask'): string => {
+    if (deal.side === 'BOTH' || quoteSide === 'BOTH') return 'Two-way';
+    const isPrimary = scope.toUpperCase() === quoteSide;
+    const baseSide = isPrimary ? deal.side : oppositeSide(deal.side);
+    return `${word(swapLegSide(baseSide, 'NEAR'))}/${word(swapLegSide(baseSide, 'FAR'))} ${base}`;
+  };
 
   return (
     <section
@@ -156,12 +256,8 @@ export default function SwapPanel({
           currentMargin={totalMargin.bid}
           onApply={(pips) => {
             setSavedTotalForUndo(totalMargin);
-            setMode('TOTAL');
             setTotalMargin({ bid: pips, ask: pips });
-            onAiAppliedChange?.(
-              true,
-              suggestion?.kind === 'ready' ? suggestion.rationale : null,
-            );
+            onAiAppliedChange?.(true, suggestion?.kind === 'ready' ? suggestion.rationale : null);
           }}
           onUndo={() => {
             if (savedTotalForUndo) {
@@ -175,141 +271,73 @@ export default function SwapPanel({
           currentVolatility={currentVolatility}
         />
       )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
           Swap · {nearTenor} → {farTenor}
         </h2>
-        {!readOnly && (
-          <div data-testid="swap-markup-mode" className="flex gap-1">
-            <ModeButton
-              mode="PER_COMPONENT"
-              label="Per-component"
-              active={mode === 'PER_COMPONENT'}
-              onSelect={setMode}
-            />
-            <ModeButton mode="TOTAL" label="Total" active={mode === 'TOTAL'} onSelect={setMode} />
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="flex-1">
-          <SwapLegBlock
-            kind="NEAR"
-            tenor={nearTenor}
-            side={swapLegSide(deal.side, 'NEAR')}
-            valueDate={nearDate}
-            points={swap.near}
-            showMargin={mode === 'PER_COMPONENT'}
-            margin={nearMargin}
-            onMarginChange={setNearMargin}
-            bidLocked={bidLocked}
-            askLocked={askLocked}
-            showBalanceZero={showBalanceZero}
-          />
-        </div>
-        <div className="flex-1">
-          <SwapLegBlock
-            kind="FAR"
-            tenor={farTenor}
-            side={swapLegSide(deal.side, 'FAR')}
-            valueDate={farDate}
-            points={swap.far}
-            showMargin={mode === 'PER_COMPONENT'}
-            margin={farMargin}
-            onMarginChange={setFarMargin}
-            bidLocked={bidLocked}
-            askLocked={askLocked}
-            showBalanceZero={showBalanceZero}
-          />
-        </div>
-      </div>
-
-      {/* Net differential (far − near per side) — the basis for the client quote. */}
-      <div className="flex flex-col gap-1 rounded-sm border border-border-focus/40 bg-bg-elevated/60 p-2">
-        <span className="text-[10px] uppercase tracking-tight text-text-mute">Net swap points</span>
-        <div className="grid grid-cols-2 gap-x-4 text-center">
-          <div>
-            <span data-testid="swap-net-bid" className="font-mono text-base tabular-nums text-text">
-              {fmtPoints(swap.net.bid)}
-            </span>
-            <div className="text-[10px] uppercase tracking-tight text-text-mute">Net bid</div>
-          </div>
-          <div>
-            <span data-testid="swap-net-ask" className="font-mono text-base tabular-nums text-text">
-              {fmtPoints(swap.net.ask)}
-            </span>
-            <div className="text-[10px] uppercase tracking-tight text-text-mute">Net ask</div>
-          </div>
-        </div>
-      </div>
-
-      {mode === 'TOTAL' && (
-        <div className="flex flex-col gap-2">
-          <span className="text-[10px] uppercase tracking-tight text-text-mute">
-            Net points margin
+        <span className="flex gap-3 font-mono text-[10px] uppercase tracking-tight text-text-mute">
+          <span>
+            Near <span data-testid="leg-near-value-date">{nearDate}</span>
           </span>
-          <div className="flex items-start gap-4">
-            <div className="flex flex-1 justify-center">
-              <MarginRow
-                testIdSuffix="bid"
-                idPrefix="net-"
-                labelPrefix="net "
-                value={totalMargin.bid}
-                onChange={(n) =>
-                  setTotalMargin({ bid: Math.max(0, Math.floor(n)), ask: totalMargin.ask })
-                }
-                glow={false}
-                disabled={bidLocked}
-              />
-            </div>
-            <div className="flex flex-1 justify-center">
-              <MarginRow
-                testIdSuffix="ask"
-                idPrefix="net-"
-                labelPrefix="net "
-                value={totalMargin.ask}
-                onChange={(n) =>
-                  setTotalMargin({ bid: totalMargin.bid, ask: Math.max(0, Math.floor(n)) })
-                }
-                glow={false}
-                disabled={askLocked}
-              />
-            </div>
-          </div>
-          {showBalanceZero && (
-            <BalanceZeroRow
-              marginPair={totalMargin}
-              onMarginPairChange={setTotalMargin}
-              idPrefix="net"
-              minMargin={0}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Client net (marked-up) + estimated P/L per quotable side. A non-quotable
-          side on a one-sided swap shows a dash, not the raw un-marked net (F-2). */}
-      <div className="grid grid-cols-2 gap-x-4 text-center">
-        <div className={clsx(!bidQuotable && 'opacity-40')}>
-          <div data-testid="client-net-bid" className="font-mono tabular-nums text-text">
-            {bidQuotable ? fmtPoints(clientNet.bid) : '—'}
-          </div>
-          <div data-testid="swap-pnl-bid" className="text-[10px] uppercase tracking-tight text-text-mute">
-            {bidQuotable ? PROFIT_FMT.format(plBid) : '—'}
-          </div>
-          <div className="text-[10px] uppercase tracking-tight text-text-mute">Client bid</div>
-        </div>
-        <div className={clsx(!askQuotable && 'opacity-40')}>
-          <div data-testid="client-net-ask" className="font-mono tabular-nums text-text">
-            {askQuotable ? fmtPoints(clientNet.ask) : '—'}
-          </div>
-          <div data-testid="swap-pnl-ask" className="text-[10px] uppercase tracking-tight text-text-mute">
-            {askQuotable ? PROFIT_FMT.format(plAsk) : '—'}
-          </div>
-          <div className="text-[10px] uppercase tracking-tight text-text-mute">Client ask</div>
-        </div>
+          <span>
+            Far <span data-testid="leg-far-value-date">{farDate}</span>
+          </span>
+        </span>
       </div>
+
+      {/* Raw (un-marked) net differential — the reference both client prices widen from. */}
+      <div className="flex items-center justify-between rounded-sm border border-border bg-bg-elevated/40 px-2 py-1">
+        <span className="text-[10px] uppercase tracking-tight text-text-mute">Net swap points</span>
+        <span className="font-mono text-xs tabular-nums text-text">
+          <span data-testid="swap-net-bid">{fmtPoints(swap.net.bid)}</span>
+          {' / '}
+          <span data-testid="swap-net-ask">{fmtPoints(swap.net.ask)}</span>
+        </span>
+      </div>
+
+      {/* Side-first tiles: Bid + Ask, each with its net markup and per-leg breakdown. */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <SideTile
+          scope="bid"
+          directionLabel={directionLabel('bid')}
+          quotable={bidQuotable}
+          locked={bidLocked}
+          readOnly={readOnly}
+          marginValue={totalMargin.bid}
+          onMarginChange={(n) => setTotalMargin({ bid: n, ask: totalMargin.ask })}
+          clientNet={clientNet.bid}
+          pnl={plBid}
+          nearTenor={nearTenor}
+          farTenor={farTenor}
+          nearPoint={swap.near.bid}
+          farPoint={swap.far.bid}
+        />
+        <SideTile
+          scope="ask"
+          directionLabel={directionLabel('ask')}
+          quotable={askQuotable}
+          locked={askLocked}
+          readOnly={readOnly}
+          marginValue={totalMargin.ask}
+          onMarginChange={(n) => setTotalMargin({ bid: totalMargin.bid, ask: n })}
+          clientNet={clientNet.ask}
+          pnl={plAsk}
+          nearTenor={nearTenor}
+          farTenor={farTenor}
+          nearPoint={swap.near.ask}
+          farPoint={swap.far.ask}
+        />
+      </div>
+
+      {showBalanceZero && (
+        <BalanceZeroRow
+          marginPair={totalMargin}
+          onMarginPairChange={setTotalMargin}
+          idPrefix="net"
+          minMargin={0}
+        />
+      )}
     </section>
   );
 }
