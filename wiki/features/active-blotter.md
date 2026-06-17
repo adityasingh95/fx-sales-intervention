@@ -5,6 +5,8 @@ sources:
   - docs/03-trade-state-model.md
   - docs/05-ui-ux-spec.md
   - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
 ticket: FXSW-012
 ---
@@ -41,6 +43,13 @@ Under v3, two extra columns are inserted, gated by `isV3()` (the column list is 
 | Value Date | `valueDateForTenor(deal, tenor)` | Tenor-aware settlement date; `SPOT` resolves to the standard spot value date. See [forward-pricing.md](forward-pricing.md). |
 
 The mobile card-stack (narrow viewports) gains a matching line carrying the Request ID + value date for v3 deals (FXSW-066). Historic adds a Trade ID on top of these — see [historic-blotter.md](historic-blotter.md).
+
+### v4 Instrument column + dual value dates (`?dev=v4`)
+
+Under v4 (gated by `isV4()`, same spread pattern):
+
+- an **Instrument** column shows `instrumentOf(deal)` — `SPOT` / `OUTRIGHT` / `NDF` / `SWAP` (FXSW-078/080 for NDF, FXSW-086 for SWAP). See [ndf.md](ndf.md) / [swaps.md](swaps.md).
+- the **Value Date** cell shows **both leg dates** for a swap, `near → far` (FXSW-086); single-leg instruments show the one tenor-aware date as before.
 
 ## Row treatment per display status
 

@@ -1,9 +1,11 @@
 ---
-last_updated: 2026-06-16
+last_updated: 2026-06-17
 sources:
   - docs/00-glossary.md
   - docs/phase-summaries/FXSW-046-summary.md
   - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
 status: stable
 ---
 
@@ -49,7 +51,9 @@ Domain terms used across this prototype. Prefer the industry-standard term over 
 | **Forward / Outright forward** | A trade settling on a single date later than spot, at a rate agreed today. |
 | **NDF** | Non-Deliverable Forward. A forward that cash-settles in a major currency on a fixing date; used for restricted EM currencies. |
 | **Flexible forward / Time-option forward** | A forward where the client can settle on any date within an agreed window. |
-| **Swap** | Two simultaneous legs: a near leg (often spot) and a far leg (forward), opposite directions, same notional. Spot-forward swap vs forward-forward swap. |
+| **Swap** | Two simultaneous legs: a near leg (often spot) and a far leg (forward), opposite directions, same notional. Spot-forward swap vs forward-forward swap. The v4 instrument is the **forward-forward** swap — see [features/swaps.md](features/swaps.md). |
+| **Forward-forward swap** | An FX swap whose **both** legs are forwards (near + far, far strictly later). The v4 swap instrument; priced on the net forward-points differential. |
+| **Net swap points** | The forward-points differential `net = far − near` (per side) that a [swap](features/swaps.md) is quoted on. Client net + P/L derive from it; a zero-markup quote shows exactly the raw differential. |
 | **Block trade** | A bundled set of related deals netted by tenor; can be priced together. |
 | **Pip** | Smallest standard price increment. For most pairs the 4th decimal (0.0001); for JPY pairs the 2nd decimal (0.01). |
 | **Bid / Ask / Mid** | Bid = the price you can sell at; Ask = the price you can buy at; Mid = arithmetic midpoint. The Ask–Bid difference is the spread. |
@@ -122,6 +126,11 @@ Reference implementations publish these in a container at `/PRIVATE/FX/SALES/BLO
 | **Auto-priced** | An ESP deal streamed within tolerance with no manual markup. In v3 it opens a read-only ticket and shows the `AUTO_PRICE` timeline phase instead of `PRICE_BACK`. |
 | **Lifecycle phase / timeline** | Display-only waypoints (REQUEST/PICKUP/RELEASE/PRICE_BACK/AUTO_PRICE/WITHDRAWN/RESPONSE) observed from the SI/RFS machines for the v3 historical detail. See [data-models/deal-lifecycle-phase.md](data-models/deal-lifecycle-phase.md). |
 | **Request ID / Trade ID** | Synthetic display identifiers minted in v3 (`REQ-XXXXXX` at deal creation; `TRD-XXXXXX` at archive for executed deals). |
+| **`?dev=v4`** | URL preview flag for the v4 instruments (NDF, swap); a strict superset of `?dev=v3` (`isV3()` is true under v4). See [ADR-0012](decisions/ADR-0012-dev-v4-instrument-gate.md). |
+| **Instrument discriminator** | `Deal.instrumentType` (`SPOT \| OUTRIGHT \| NDF \| SWAP`); optional, with `instrumentOf(deal)` deriving a default from the tenor for legacy deals. The v4 discriminator routing pricing + display. See [data-models/deal.md](data-models/deal.md). |
+| **NDF** *(prototype)* | Non-Deliverable Forward — the v4 cash-settled, **points-only** instrument (no spot markup). See [features/ndf.md](features/ndf.md). |
+| **CSP (Content-Security-Policy)** | The browser security header the build injects to restrict where the page may load/connect (`script-src 'self'`, `connect-src 'self'`, …). Build-only; the dev server is exempt. See [ADR-0015](decisions/ADR-0015-security-remediation.md). |
+| **SRI (Subresource Integrity)** | SHA-384 `integrity` hashes added to the build's emitted `<script>`/`<link>` tags so a tampered asset is rejected by the browser. See [ADR-0015](decisions/ADR-0015-security-remediation.md). |
 
 ## Source
 

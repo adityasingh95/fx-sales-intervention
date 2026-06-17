@@ -210,7 +210,7 @@ Operating rules from `/CLAUDE.md` that matter beyond a single ticket:
 - **TypeScript strict.** No `any`. No `// @ts-ignore`. If a type is hard, write the type — don't escape.
 - **No mutation.** Zustand stores use immutable updates (`set(state => ({...}))`, `new Map(...)` for Maps). State transitions always go through XState — never set a deal's status field directly.
 - **Pricing / date math lives in `/src/lib/`.** Don't inline pip arithmetic or T+2 settlement math in components.
-- **No real network calls.** `fetch`, `WebSocket`, `EventSource` are banned in `/src`. The only network call in the entire codebase is the build-time `prebuild` Frankfurter fetch in `scripts/fetch-reference-mids.ts`, and it has a hard-coded fallback (see [ADR-0005](decisions/ADR-0005-bake-reference-mids.md)).
+- **No real network calls by default.** `fetch`, `WebSocket`, `EventSource` are banned in `/src`. The build-time `prebuild` reference-rate fetch in `scripts/fetch-reference-mids.ts` is **opt-in** (env-flag gated) with a hard-coded fallback (see [ADR-0005](decisions/ADR-0005-bake-reference-mids.md)); the v4 opt-in live poller is a dev-only affordance behind the build CSP (see [ADR-0015](decisions/ADR-0015-security-remediation.md)).
 - **No persistence beyond `sessionStorage`**, and even that only for the mute toggle (and any future AI-suggestion dismissal flag).
 - **Audio playback requires a user-gesture unlock.** See [features/notifications.md](features/notifications.md) §Audible-cue.
 - **`*Sent` SI states are not skippable.** The 250ms ack delay is part of the UX fidelity ([ADR-0009](decisions/ADR-0009-simulated-ack-delays.md)).

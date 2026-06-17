@@ -1,9 +1,10 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-17
 sources:
   - docs/03-trade-state-model.md
+  - docs/phase-summaries/phase-09-v4-summary.md
 status: stable
-ticket: FXSW-010
+ticket: FXSW-010, FXSW-088
 ---
 
 # Component — `rfsMachine`
@@ -64,6 +65,10 @@ ESP deals start at `Executable` directly (auto-priced); SI-eligible deals start 
 ## ESP terminal coordination
 
 For ESP deals (auto-priced), SI stays at `Initial` for the whole deal — there is no intervention. When RFS reaches `TradeConfirmed`, the parent dealMachine raises a synthetic `TradeConfirmed` on the SI machine via a guarded `Initial → TradeConfirmed` transition. This preserves the two-machine symmetry — every deal has both machines reach a terminal state — and means status derivation doesn't need an ESP special case.
+
+## `*Sent` acknowledgement asymmetry (FXSW-088 F-2)
+
+Unlike the [SI machine](si-machine.md) — which models the simulated backend ack with explicit `*Sent` states (`QuoteSent`, `WithdrawSent`, …) — **RFS has no `*Sent` states**, and that asymmetry is deliberate. RFS `Executable` means "auto-/re-priced and dealable"; it is **not** the client-facing "price sent" signal. The single source of truth for "a price was sent to the client" is the **SI** side (`QuoteSent → Quoted`): status derivation requires SI `Quoted` for `STREAMING`, and the quote-context capture records at SI `QuoteSent`. **No consumer may read RFS `Executable` as the sent signal.** Adding `*Sent` states to RFS would change canonical state names and the ESP `Queued → Executable` auto-price path, so the asymmetry is documented and constrained here rather than made symmetric. (Flagged in `security/FXSW-077`/`FXSW-081` lineage; documented at FXSW-088.)
 
 ## Out of scope
 

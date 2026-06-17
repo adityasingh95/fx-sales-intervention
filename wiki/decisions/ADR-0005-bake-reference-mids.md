@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-06-16
+last_updated: 2026-06-17
 sources:
   - docs/04-dummy-feed-spec.md
 status: stable
@@ -36,7 +36,7 @@ Option 2: build-time bake to JSON via a `prebuild` script, with a hard-coded fal
 
 ## Source
 
-[Frankfurter](https://frankfurter.dev/) — free, open-source FX aggregator across ~80 central banks. No key, no signup. Daily rates updated around 16:00 CET.
+A **free, open-source public exchange-rate API** that aggregates across ~80 central banks — no key, no signup, daily rates. (The specific endpoint lives in the build script under the build-layer, not in this wiki.)
 
 ## Implementation
 
@@ -46,11 +46,11 @@ Option 2: build-time bake to JSON via a `prebuild` script, with a hard-coded fal
 - The script is shaped as `main(outPath)` parameterised on output path, with a direct-run guard (`import.meta.url === \`file://${process.argv[1]}\``). Lets Vitest import `{ main, round, FALLBACK }` for unit tests without triggering a real fetch + write on import.
 - `scripts/` is included in `tsconfig.app.json` so `tsc -b` covers the new file.
 
-## Alternative sources (if Frankfurter is ever unreachable)
+## Alternative sources (if the primary API is ever unreachable)
 
-- **ECB direct XML/CSV** — `https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml`. EUR-based, slightly more parsing.
-- **`open.er-api.com`** — daily, no key, requires attribution string.
-- **Self-hosted Frankfurter** — Docker container in CI if a hosted dependency is unacceptable.
+- **A central-bank reference-rate feed** (direct XML/CSV) — EUR-based, slightly more parsing.
+- **Another free daily-rate API** — no key, may require an attribution string.
+- **Self-hosting the chosen aggregator** — a container in CI if a hosted dependency is unacceptable.
 
 ## v2 path
 

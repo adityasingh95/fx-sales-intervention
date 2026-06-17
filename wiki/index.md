@@ -14,10 +14,12 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [features/ticket.md](features/ticket.md) — **stable.** SI ticket panel, panel stack (Reasons/Summary/AI/Pricing/ClientSummary/DealSummary/Footer), streaming + fixed pricing modes, hold-to-confirm + double-click footer actions.
 - [features/ai-margin-suggestion.md](features/ai-margin-suggestion.md) — **stable.** AI suggestion panel, ready / applied / credit-decline / computing layouts. Deterministic engine + Apply / Undo / Recompute / Why? / Reject-shortcut.
 - [features/notifications.md](features/notifications.md) — **stable.** Toast + title flash + row flash + WebAudio chime + mute toggle + dispatcher dedupe.
-- [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=1` / `?dev=v2`; collapses to a `Dev ▾` popover on mobile. Internals in [components/dev-injector.md](components/dev-injector.md).
+- [features/dev-injector.md](features/dev-injector.md) — hidden injector for scenario playback under `?dev=v3` / `?dev=v4` (v4 adds the instrument + far-tenor selectors); collapses to a `Dev ▾` popover on mobile. Internals in [components/dev-injector.md](components/dev-injector.md).
 - [features/theme-switching.md](features/theme-switching.md) — **stable.** Light theme (`ThemeToggle` Sun/Moon + the pure-parser/guarded-getter URL-gate pattern). Shipped behind `?theme=preview` in Phase 7, promoted to GA in FXSW-047.
-- [features/forward-pricing.md](features/forward-pricing.md) — *in-progress (v3, `?dev=v3`).* Outright forwards (tenors 1W–1Y): spot + forward points, all-in vs per-component markup, forward Balance/Zero (floor 0), `pips` unit, tenor-aware value dates, leg-tabs (swap-ready).
-- [features/historical-detail.md](features/historical-detail.md) — *in-progress (v3).* Read-only detail overlay on clickable Historic rows: deal terms, markup reason (or auto-priced note), lifecycle timeline.
+- [features/forward-pricing.md](features/forward-pricing.md) — *in-progress (v3, `?dev=v3`).* Outright forwards (tenors 1W–1Y): **two-sided** spot + forward points, all-in vs per-component markup, forward Balance/Zero (floor 0), `pips` unit, tenor-aware value dates.
+- [features/ndf.md](features/ndf.md) — *in-progress (v4, `?dev=v4`).* Non-Deliverable Forward: cash-settled, **points-only** (no spot markup), structural inertness via `spotMarginFor`, `ndf-note`.
+- [features/swaps.md](features/swaps.md) — *in-progress (v4, `?dev=v4`).* Forward-forward swaps: two legs (NEAR+FAR) priced on net forward points, Per-component / Total markup, one-sided lock across both legs, dual value dates, leg-detail.
+- [features/historical-detail.md](features/historical-detail.md) — *in-progress (v3).* Read-only detail overlay on clickable Historic rows: deal terms, markup reason (or auto-priced note), swap leg-detail, lifecycle timeline.
 
 ## Components
 
@@ -26,14 +28,15 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [components/deal-machine.md](components/deal-machine.md) — parent actor, cross-model coordination, context shape.
 - [components/status-derivation.md](components/status-derivation.md) — `(rfsState, siState, dealable) → DisplayStatus` mapping.
 - [components/pricing-feed.md](components/pricing-feed.md) — random-walk price simulator, Mulberry32 + Box-Muller, seedable.
-- [components/external-price-feed.md](components/external-price-feed.md) — *in-progress (v3, `?dev=v3`).* Opt-in runtime market-data adapter (generic external provider, no vendor named): GUI API key in `sessionStorage`, 5-min poll re-anchors the simulator, status pill (Off/Connecting/Live/Error/Rate limited), OFF by default.
+- [components/external-price-feed.md](components/external-price-feed.md) — *in-progress (v3, `?dev=v3`).* Opt-in runtime market-data adapter (generic external provider, no vendor named): GUI API key (`Authorization: Bearer`) in `sessionStorage`, 5-min poll re-anchors the simulator, status pill, OFF by default, dev-only under the build CSP.
+- [components/swap-points-feed.md](components/swap-points-feed.md) — *in-progress (v4, `?dev=v4`).* `swapPointsFeed.get(pair, near, far)` — net = far − near per side, a pure composition of the forward-points feed (no new RNG).
 - [components/deal-feed.md](components/deal-feed.md) — scenario-driven event emitter, state-gate bridge to the store.
 - [components/scenario-player.md](components/scenario-player.md) — time-gated + state-gated follow-up dispatcher.
 - [components/deals-store.md](components/deals-store.md) — Zustand store, machine spawning, archival to historic.
 - [components/theme-store.md](components/theme-store.md) — **stable.** Zustand theme store (`dark` / `light`); `?theme=preview` resolution, force-dark when flag off, sole writer of `document.documentElement.dataset.theme`.
 - [components/suggestion-engine.md](components/suggestion-engine.md) — **stable.** Deterministic rule engine, tier base + size + market + reason + behaviour deltas. Rationale builder + CREDIT_DECLINE_RATIONALE constant.
-- [components/dev-injector.md](components/dev-injector.md) — *in-progress (v2).* Dev injector internals: dev-version scenario gating (`?dev=1` vs `?dev=v2`), compact labels (`Hold/Release`), and the v2 mobile `Dev ▾` popover (fixed positioning to escape the header overflow clip).
-- [components/resize-handle.md](components/resize-handle.md) — *in-progress (v2).* Draggable blotter split (`?dev=v2`): the handle's `containerRef` live-read event contract paired with `App.tsx`'s grow-weighted-flex layout contract.
+- [components/dev-injector.md](components/dev-injector.md) — Dev injector internals: dev-version gating (`isV3()` tenor selector, `isV4()` instrument + far-tenor selectors), compact labels (`Hold/Release`), the mobile `Dev ▾` popover.
+- [components/resize-handle.md](components/resize-handle.md) — Draggable blotter split (GA since FXSW-047): the handle's `containerRef` live-read event contract paired with `App.tsx`'s grow-weighted-flex layout contract.
 - [components/test-patterns.md](components/test-patterns.md) — recurring test patterns: seed pinning, fake timers for `*Sent`, hold-to-confirm interaction, harness pattern, `queueMicrotask` cleanup, cell-testid scoping, throwaway debug spec, `data-*` over text/color.
 
 ## Data models
@@ -51,13 +54,18 @@ Catalog of every wiki page. Organized by category. Updated on every ingest.
 - [decisions/ADR-0002-two-parallel-state-machines.md](decisions/ADR-0002-two-parallel-state-machines.md) — RFS + SI as parallel machines, parent coordinates.
 - [decisions/ADR-0003-xstate-zustand.md](decisions/ADR-0003-xstate-zustand.md) — XState v5 for deals, Zustand for UI / transient state.
 - [decisions/ADR-0004-ag-grid-community.md](decisions/ADR-0004-ag-grid-community.md) — superseded; flex-row table replaced AG-Grid at FXSW-012.
-- [decisions/ADR-0005-bake-reference-mids.md](decisions/ADR-0005-bake-reference-mids.md) — Frankfurter prebuild, hard-coded fallback.
+- [decisions/ADR-0005-bake-reference-mids.md](decisions/ADR-0005-bake-reference-mids.md) — reference-mid prebuild (public rate API), hard-coded fallback.
 - [decisions/ADR-0006-deterministic-suggestion-engine.md](decisions/ADR-0006-deterministic-suggestion-engine.md) — AI margin engine is a pure function, not a model call.
 - [decisions/ADR-0007-credit-breach-recommend-decline.md](decisions/ADR-0007-credit-breach-recommend-decline.md) — credit-breach → recommend decline, not wider pricing.
 - [decisions/ADR-0008-ai-indigo-accent.md](decisions/ADR-0008-ai-indigo-accent.md) — indigo-violet reserved exclusively for AI surfaces.
 - [decisions/ADR-0009-simulated-ack-delays.md](decisions/ADR-0009-simulated-ack-delays.md) — 250ms `*Sent` delays kept, zero-able in tests.
 - [decisions/ADR-0010-brand-neutral-product.md](decisions/ADR-0010-brand-neutral-product.md) — vendor names forbidden in shipped artifacts and (stricter) anywhere in the wiki layer.
 - [decisions/ADR-0011-tailwind-rgb-variable-tokens.md](decisions/ADR-0011-tailwind-rgb-variable-tokens.md) — Tailwind colour utilities reference RGB-triple CSS variables via `rgb(var(--color-X) / <alpha-value>)` so themes flip via the cascade and opacity modifiers survive.
+- [decisions/ADR-0012-dev-v4-instrument-gate.md](decisions/ADR-0012-dev-v4-instrument-gate.md) — `?dev=v4` as a strict superset of `?dev=v3`; optional `instrumentType` discriminator + `instrumentOf()` resolver.
+- [decisions/ADR-0013-ndf-points-only-pricing.md](decisions/ADR-0013-ndf-points-only-pricing.md) — NDF priced points-only, enforced structurally via `spotMarginFor` (not UI-only).
+- [decisions/ADR-0014-swap-net-points-pricing.md](decisions/ADR-0014-swap-net-points-pricing.md) — swaps price on net forward points; Per-component vs Total markup; one-sided lock enforced in the pricing math.
+- [decisions/ADR-0015-security-remediation.md](decisions/ADR-0015-security-remediation.md) — build-only CSP + SRI, `Authorization: Bearer` key, opt-in + validated build fetch, dev-only live poller, toolchain bump (audit 0).
+- [decisions/ADR-0016-ga-core-determinism.md](decisions/ADR-0016-ga-core-determinism.md) — seeded coin-flip, `forgetDeal` cleanup, injectable IDs, `?seed=N` replay.
 
 ## Scenarios
 

@@ -3,6 +3,8 @@ last_updated: 2026-06-16
 sources:
   - docs/02-functional-spec.md
   - docs/phase-summaries/phase-08-v3-summary.md
+  - docs/phase-summaries/phase-10-ndf-summary.md
+  - docs/phase-summaries/phase-11-swaps-summary.md
   - docs/dev-log.md
 status: stable
 ticket: FXSW-012
@@ -37,6 +39,10 @@ Under v3 (gated by `isV3()`, inserted via `...(isV3() ? [col] : [])` spreads so 
 | Value Date | `valueDateForTenor` | Tenor-aware settlement date. |
 
 Each Historic **row becomes clickable** under v3 (FXSW-060): clicking sets `uiStore.openHistoricId` and opens the read-only [historical trade detail](historical-detail.md) overlay (deal terms + markup reason + lifecycle timeline). Without the flag, Historic rows are static as before.
+
+### v4 Instrument column + dual value dates (`?dev=v4`)
+
+Under v4 (`isV4()`): an **Instrument** column shows `instrumentOf(deal)` (`SPOT`/`OUTRIGHT`/`NDF`/`SWAP`), and the **Value Date** cell shows both swap leg dates `near → far` (FXSW-086). The [historical detail](historical-detail.md) overlay additionally carries the per-leg swap breakdown. See [ndf.md](ndf.md) / [swaps.md](swaps.md).
 
 ## Sorting & capacity
 
