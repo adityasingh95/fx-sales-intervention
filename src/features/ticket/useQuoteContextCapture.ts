@@ -3,6 +3,7 @@ import { useDealsStore, type DealEntry } from '@/state/stores/dealsStore';
 import { isForwardTenor, type MarginPair } from '@/types/deal';
 import type { AppliedMargin } from '@/types/lifecycle';
 import type { MarkupMode } from './pricing/ForwardPointsPanel';
+import type { SwapPricingReport } from './pricing/SwapPanel';
 
 // Captures the markup reason when the trader sends a price (FXSW-060). The SI
 // machine creates the PRICE_BACK lifecycle event on the QuoteSent transition;
@@ -17,9 +18,9 @@ export function useQuoteContextCapture(
     markupMode: MarkupMode;
     aiApplied: boolean;
     appliedRationale: string | null;
-    // FXSW-086: present only for SWAP deals — the effective net-points margin +
-    // mode actually applied. Takes precedence over the spot/forward shape.
-    swap?: { mode: 'PER_COMPONENT' | 'TOTAL'; net: MarginPair };
+    // FXSW-086: present only for SWAP deals — effective net-points margin + mode +
+    // per-component breakdown. Takes precedence over the spot/forward shape.
+    swap?: SwapPricingReport;
   },
 ): void {
   const recorded = useRef(false);
@@ -36,7 +37,13 @@ export function useQuoteContextCapture(
       recorded.current = true;
       const fwd = markupMode === 'all-in' ? { bid: 0, ask: 0 } : fwdMarginPair;
       const appliedMargin: AppliedMargin = swap
-        ? { kind: 'swap', mode: swap.mode, net: swap.net }
+        ? {
+            kind: 'swap',
+            mode: swap.mode,
+            net: swap.net,
+            components: swap.components,
+            quoteSide: swap.quoteSide,
+          }
         : isForwardTenor(deal.tenor)
           ? { kind: 'forward', spot: marginPair, fwd }
           : { kind: 'spot', margin: marginPair };

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Pill from '@/components/Pill';
 import { isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
-import { instrumentOf } from '@/types/deal';
+import { instrumentOf, type MarginPair } from '@/types/deal';
 import { useHistoricDealById, type HistoricOutcome } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
 import type { AppliedMargin } from '@/types/lifecycle';
@@ -26,14 +26,57 @@ const OUTCOME_PILL: Record<HistoricOutcome, 'green' | 'red' | 'grey'> = {
   Cancelled: 'grey',
 };
 
-const formatMargin = (m: AppliedMargin): string => {
+const formatMargin = (m: Exclude<AppliedMargin, { kind: 'swap' }>): string => {
   if (m.kind === 'spot') return `Bid ${m.margin.bid} / Ask ${m.margin.ask} pips`;
-  if (m.kind === 'swap') {
-    const mode = m.mode === 'TOTAL' ? 'Total' : 'Per-component';
-    return `Net ${m.net.bid}/${m.net.ask} pips · ${mode}`;
-  }
   return `Spot ${m.spot.bid}/${m.spot.ask} · Fwd ${m.fwd.bid}/${m.fwd.ask} pips`;
 };
+
+function SwapMarkupDetail({
+  mode,
+  net,
+  components,
+  quoteSide = 'BOTH',
+}: {
+  mode: 'PER_COMPONENT' | 'TOTAL';
+  net: MarginPair;
+  components?: { spot: MarginPair; near: MarginPair; far: MarginPair };
+  quoteSide?: 'BID' | 'ASK' | 'BOTH';
+}) {
+  if (mode === 'TOTAL' || !components) {
+    const modeLabel = mode === 'TOTAL' ? 'Total' : 'Per-component';
+    return <>{`Net ${net.bid}/${net.ask} pips · ${modeLabel}`}</>;
+  }
+  const showBid = quoteSide !== 'ASK';
+  const showAsk = quoteSide !== 'BID';
+  const rows = [
+    { label: 'Spot', bid: components.spot.bid, ask: components.spot.ask },
+    { label: 'Near pts', bid: components.near.bid, ask: components.near.ask },
+    { label: 'Far pts', bid: components.far.bid, ask: components.far.ask },
+  ];
+  return (
+    <div className="flex flex-col gap-0.5 font-mono text-xs">
+      <div className="flex text-[10px] uppercase tracking-tight text-text-mute">
+        <span className="w-16" />
+        {showBid && <span className="w-8 text-right">Bid</span>}
+        {showAsk && <span className="ml-3 w-8 text-right">Ask</span>}
+        <span className="ml-2 text-text-mute">pips</span>
+      </div>
+      {rows.map(({ label, bid, ask }) => (
+        <div key={label} className="flex items-baseline">
+          <span className="w-16 text-text-mute">{label}</span>
+          {showBid && <span className="w-8 text-right tabular-nums text-text">{bid}</span>}
+          {showAsk && <span className="ml-3 w-8 text-right tabular-nums text-text">{ask}</span>}
+        </div>
+      ))}
+      <div className="flex items-baseline border-t border-border pt-0.5">
+        <span className="w-16 font-medium text-text-mute">Net</span>
+        {showBid && <span className="w-8 text-right tabular-nums text-text">{net.bid}</span>}
+        {showAsk && <span className="ml-3 w-8 text-right tabular-nums text-text">{net.ask}</span>}
+        <span className="ml-2 text-text-mute">pips</span>
+      </div>
+    </div>
+  );
+}
 
 export default function HistoricDetailPanel() {
   const openHistoricId = useUiStore((s) => s.openHistoricId);
@@ -152,7 +195,18 @@ export default function HistoricDetailPanel() {
             </div>
             {priceBack?.appliedMargin ? (
               <>
-                <div className="text-sm text-text">{formatMargin(priceBack.appliedMargin)}</div>
+                <div className="text-sm text-text">
+                  {priceBack.appliedMargin.kind === 'swap' ? (
+                    <SwapMarkupDetail
+                      mode={priceBack.appliedMargin.mode}
+                      net={priceBack.appliedMargin.net}
+                      components={priceBack.appliedMargin.components}
+                      quoteSide={priceBack.appliedMargin.quoteSide}
+                    />
+                  ) : (
+                    formatMargin(priceBack.appliedMargin)
+                  )}
+                </div>
                 <div className="text-xs text-text-dim">
                   {priceBack.aiSuggested ? 'AI-suggested' : 'Manual'}
                   {priceBack.rationale ? ` — ${priceBack.rationale}` : ''}

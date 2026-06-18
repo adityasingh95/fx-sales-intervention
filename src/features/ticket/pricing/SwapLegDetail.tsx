@@ -24,7 +24,8 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
   const farTenor = legs[1]?.tenor ?? deal.tenor;
   const swap = swapPointsFeed.get(deal.pair, nearTenor, farTenor);
   const trade = new Date(deal.createdAt);
-  const execNet = executedNetMargin ? clientSwapNetPoints(swap.net, executedNetMargin) : null;
+  const hasMarkup = executedNetMargin != null && (executedNetMargin.bid !== 0 || executedNetMargin.ask !== 0);
+  const execNet = hasMarkup ? clientSwapNetPoints(swap.net, executedNetMargin) : null;
 
   const sideLabel = (s: Side): string => (s === 'BOTH' ? '2-way' : s);
   const rows: Array<{

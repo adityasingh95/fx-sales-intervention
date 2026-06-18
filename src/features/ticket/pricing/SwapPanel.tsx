@@ -54,15 +54,22 @@ function ModeButton({
   );
 }
 
+// Pricing state reported upward at each change, captured in QuoteContext at QuoteSent.
+export interface SwapPricingReport {
+  mode: SwapMarkupMode;
+  net: MarginPair;
+  // Present only in PER_COMPONENT mode — the individual component markups before summing.
+  components?: { spot: MarginPair; near: MarginPair; far: MarginPair };
+  quoteSide: QuoteSide;
+}
+
 export interface SwapPanelProps {
   deal: Deal;
   tick: PriceTick | null;
   quoteSide?: QuoteSide;
   restrictMarginSides?: boolean;
   readOnly?: boolean;
-  // FXSW-086: effective net-points margin (per active mode, gated) + mode reported
-  // upward for quote-context capture at QuoteSent.
-  onPricingChange?: (pricing: { mode: SwapMarkupMode; net: MarginPair }) => void;
+  onPricingChange?: (pricing: SwapPricingReport) => void;
   suggestion?: MarginSuggestion | null;
   onRecompute?: () => void;
   onReject?: () => void;
@@ -124,9 +131,17 @@ export default function SwapPanel({
   const clientNet = clientSwapNetPoints(swap.net, effMargin);
 
   useEffect(() => {
-    onPricingChange?.({ mode, net: effMargin });
+    onPricingChange?.({
+      mode,
+      net: effMargin,
+      components:
+        mode === 'PER_COMPONENT'
+          ? { spot: spotMargin, near: nearMargin, far: farMargin }
+          : undefined,
+      quoteSide,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, effMargin.bid, effMargin.ask, onPricingChange]);
+  }, [mode, effMargin.bid, effMargin.ask, onPricingChange, quoteSide]);
 
   const midRate = tick?.mid ?? 0;
   const plBid = estimatedProfitUsd(effMargin.bid, deal.notional, deal.pair, midRate);
