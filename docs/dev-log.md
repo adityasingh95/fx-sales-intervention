@@ -1406,6 +1406,33 @@ swaps; and for every instrument both perspectives should be named.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (554). `wiki/` agent-owned
   (flagged for ingest).
 
+## Production-readiness spec + backlog (docs-only, 2026-06-18)
+
+Authored a standalone production-readiness package off the back of a full
+end-to-end analysis (architecture/state/services, UI/features, build/test/tooling/
+security/docs). No `src/` changes — specs + backlog only, so the work is ready to
+pick up later if desired. Target is **customer-facing** (i18n + full WCAG 2.1 AA
+are first-class); real-data feeds and auth/multi-user are recorded as dependencies
+only, not specced.
+
+1. **New spec `docs/11-production-readiness-spec.md`.** Umbrella spec, sectioned
+   §0–§10: scope/principles, resilience & error handling, observability, dev/prod
+   separation, security follow-through, accessibility, i18n & config, testing &
+   quality gates, performance/ops, the out-of-scope integration dependency list,
+   and the standing cross-cutting constraints. Backlog tickets reference it by
+   section + requirement id.
+2. **Backlog Phases 12–19 (`FXSW-093 … FXSW-118`, 26 tickets).** Appended to
+   `BACKLOG.md` before the standing follow-ups, in the established
+   `Effort/TDD/Depends/Docs/AC/TDD-tests/Done-when` format: resilience (93–97),
+   observability (98–100), dev/prod separation (101–103), security follow-through
+   (104–106), accessibility (107–109), i18n & config (110–112), testing (113–115),
+   perf/ops (116–118). Each inherits the determinism + brand-neutrality gates; the
+   end-of-phase Security Agent review convention applies per phase.
+3. **Index + log.** Added rows 10 + 11 to the `README.md` read-order table; this
+   entry. Next free ticket after the track is **FXSW-119**.
+
+- Gates: docs-only change, no `src/` edits; `lint`/`typecheck` unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
