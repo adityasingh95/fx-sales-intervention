@@ -59,10 +59,10 @@ const config: Config = {
         '10': '40px',
       },
       borderRadius: {
-        sm: '4px',
-        md: '6px',
-        lg: '10px',
-        xl: '14px',
+        sm: '2px',
+        md: '2px',
+        lg: '3px',
+        xl: '4px',
       },
       fontFamily: {
         sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
