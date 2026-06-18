@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// v4 (FXSW-082/085) — inject a forward-forward swap and exercise the two-layer
-// pricing panel: per-leg component markup (SwapLegsSection) + all-in net markup
-// (side tiles), per-leg points, the component-net row, and the one-sided lock.
-// Gated behind ?dev=v4.
+// v4 (FXSW-082/085) — inject a forward-forward swap and exercise the side-first
+// pricing panel: two direction tiles (Buy/Sell + Sell/Buy), each with its spot +
+// near/far points, a markup-mode toggle (Per-component spot+legs / All-in), and
+// the one-sided lock. Gated behind ?dev=v4.
 
-test('v4 swap injection — two-layer ticket: per-leg + all-in markup, side tiles', async ({
+test('v4 swap injection — side tiles with spot + leg points, per-component & all-in markup', async ({
   page,
 }) => {
   test.setTimeout(20_000);
@@ -33,29 +33,29 @@ test('v4 swap injection — two-layer ticket: per-leg + all-in markup, side tile
   await expect(panel).toBeVisible();
   await expect(panel).toHaveAttribute('data-instrument', 'SWAP');
 
-  // Legs section: per-leg bid/ask points + prominent net.
+  // Two direction tiles, each with its spot + near/far points.
   await expect(page.getByTestId('swap-panel')).toBeVisible();
-  await expect(page.getByTestId('swap-legs-section')).toBeVisible();
+  await expect(page.getByTestId('swap-side-bid')).toBeVisible();
+  await expect(page.getByTestId('swap-side-ask')).toBeVisible();
+  await expect(page.getByTestId('swap-side-bid-direction')).toHaveText(/Buy\/Sell/);
+  await expect(page.getByTestId('swap-side-ask-direction')).toHaveText(/Sell\/Buy/);
+  await expect(page.getByTestId('swap-spot-bid')).not.toHaveText('');
   await expect(page.getByTestId('leg-near-points-bid')).not.toHaveText('');
   await expect(page.getByTestId('leg-far-points-ask')).not.toHaveText('');
-  await expect(page.getByTestId('swap-net-bid')).not.toHaveText('');
-  await expect(page.getByTestId('swap-net-ask')).not.toHaveText('');
 
-  // Default is Per-component — per-leg steppers visible, all-in net stepper hidden.
+  // Default is Per-component — shared spot + per-leg steppers; no all-in stepper.
   await expect(page.getByTestId('swap-markup-mode')).toBeVisible();
+  await expect(page.getByTestId('margin-input-spot-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-near-bid')).toBeVisible();
-  await expect(page.getByTestId('margin-input-far-ask')).toBeVisible();
+  await expect(page.getByTestId('margin-input-far-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-net-bid')).toHaveCount(0);
 
-  // Switching to All-in swaps in a single net stepper per side; per-leg steppers go.
+  // Switching to All-in swaps in a single net stepper per side; component steppers go.
   await page.getByTestId('swap-markup-mode-total').click();
   await expect(page.getByTestId('margin-input-net-bid')).toBeVisible();
   await expect(page.getByTestId('margin-input-net-ask')).toBeVisible();
+  await expect(page.getByTestId('margin-input-spot-bid')).toHaveCount(0);
   await expect(page.getByTestId('margin-input-near-bid')).toHaveCount(0);
-
-  // Side tiles.
-  await expect(page.getByTestId('swap-side-bid')).toBeVisible();
-  await expect(page.getByTestId('swap-side-ask')).toBeVisible();
 });
 
 test('v4 swap — legs-adjusted note on far ≤ near; margins reset across injections (FXSW-091 F-1/F-3)', async ({

@@ -140,10 +140,11 @@ export const clientForwardPair = (
 // --- Swap pricing (v4, FXSW-084) --------------------------------------------
 // A swap is priced on the *net* forward-points differential (far − near, from
 // swapPointsFeed). The trader marks up either:
-//   • TOTAL          — one bid/ask margin applied to the net points, or
-//   • PER_COMPONENT  — an independent bid/ask margin on each leg (up to four
-//                      values), whose contributions sum into the net spread
-//                      (mirrors the forward spot+fwd margin sum).
+//   • TOTAL          — one bid/ask "all-in" margin per side applied to the net, or
+//   • PER_COMPONENT  — a shared spot margin plus an independent forward-points
+//                      margin on each leg (near + far) per side, whose
+//                      contributions sum into the net spread (mirrors the forward
+//                      spot+fwd margin sum).
 // Net points are already a pip differential, so margins (pips) apply directly —
 // no pipSize scaling (unlike an outright rate). The dealer takes margin off the
 // bid and adds it to the ask, widening the net in the dealer's favour. P/L reuses
@@ -162,14 +163,20 @@ export const gateMarginToSide = (margin: MarginPair, quoteSide: QuoteSide): Marg
 });
 
 // Effective net-points margin per side, after markup-mode resolution + one-sided
-// gating. TOTAL uses the entered net margin directly; PER_COMPONENT sums the two
-// legs' margins (each leg widens the net).
+// gating. TOTAL uses the entered net margin directly; PER_COMPONENT sums the
+// shared spot margin and both legs' forward-points margins (each widens the net).
+// `spot` defaults to zero so callers that don't model a spot component are
+// unaffected.
+const ZERO_MARGIN: MarginPair = { bid: 0, ask: 0 };
 export const effectiveSwapMargin = (
   mode: SwapMarkupMode,
-  margins: { total: MarginPair; near: MarginPair; far: MarginPair },
+  margins: { total: MarginPair; near: MarginPair; far: MarginPair; spot?: MarginPair },
   quoteSide: QuoteSide = 'BOTH',
 ): MarginPair => {
-  const raw = mode === 'TOTAL' ? margins.total : sumMargins(margins.near, margins.far);
+  const raw =
+    mode === 'TOTAL'
+      ? margins.total
+      : sumMargins(sumMargins(margins.near, margins.far), margins.spot ?? ZERO_MARGIN);
   return gateMarginToSide(raw, quoteSide);
 };
 
