@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Pill from '@/components/Pill';
 import { isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
-import { clientDirectionForDealtSide } from '@/lib/quoteSide';
+import { clientDirectionForDealtSide, clientSideLabelForDealtSide } from '@/lib/quoteSide';
 import { instrumentOf, type MarginPair } from '@/types/deal';
 import { useHistoricDealById, type HistoricOutcome } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
@@ -218,11 +218,17 @@ export default function HistoricDetailPanel() {
               className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-sm border border-border bg-bg-elevated/40 px-3 py-2 text-xs"
             >
               <span className="uppercase tracking-tight text-text-mute">Dealt</span>
-              <span className="font-medium text-text">
-                {clientDirectionForDealtSide(executedSide, deal.pair)}
-              </span>
+              {!isSwap && (
+                <span className="font-medium text-text">
+                  {clientDirectionForDealtSide(executedSide, deal.pair)}
+                </span>
+              )}
               <span className="rounded-sm bg-bg-elevated px-1.5 py-0.5 font-mono uppercase tracking-tight text-text-dim">
-                bank {executedSide.toLowerCase()}
+                {clientSideLabelForDealtSide(executedSide)}
+              </span>
+              <span className="text-text-mute">·</span>
+              <span className="rounded-sm bg-bg-elevated px-1.5 py-0.5 font-mono uppercase tracking-tight text-text-dim">
+                Bank {executedSide.toLowerCase()}
               </span>
               {wasTwoWay ? (
                 <span data-testid="execution-request-note" className="text-text-mute">
