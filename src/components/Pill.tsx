@@ -11,13 +11,13 @@ export type PillColor =
   | 'ai';
 
 const colorClasses: Record<PillColor, string> = {
-  amber: 'bg-amber/15 text-amber border-amber/30',
-  blue: 'bg-blue/15 text-blue-soft border-blue/30',
-  teal: 'bg-teal/15 text-teal border-teal/30',
-  green: 'bg-green/15 text-green border-green/30',
-  red: 'bg-red/15 text-red border-red/30',
-  grey: 'bg-grey-700/30 text-text-dim border-grey-700',
-  ai: 'bg-ai-bg text-ai-accent border-ai-border',
+  amber: 'bg-amber/20 text-amber border border-amber/40',
+  blue: 'bg-blue/12 text-blue border border-blue/30',
+  teal: 'bg-teal/12 text-teal border border-teal/30',
+  green: 'bg-green/12 text-green border border-green/30',
+  red: 'bg-red/12 text-red border border-red/30',
+  grey: 'bg-grey-700/20 text-text-mute border border-grey-700/40',
+  ai: 'bg-ai-bg text-ai-accent border border-ai-border',
 };
 
 export interface PillProps {
@@ -29,7 +29,7 @@ export default function Pill({ color, children }: PillProps) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-xs font-medium uppercase tracking-tight',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold uppercase tracking-tight',
         colorClasses[color],
       )}
     >
