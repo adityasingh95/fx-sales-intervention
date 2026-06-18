@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { quoteSideFor } from './quoteSide';
+import { clientSideLabelForDealtSide, quoteSideFor } from './quoteSide';
+
+describe('clientSideLabelForDealtSide', () => {
+  it('bank BID → Client Ask (bank buying, client offering)', () => {
+    expect(clientSideLabelForDealtSide('BID')).toBe('Client Ask');
+  });
+
+  it('bank ASK → Client Bid (bank selling, client buying)', () => {
+    expect(clientSideLabelForDealtSide('ASK')).toBe('Client Bid');
+  });
+});
 
 describe('quoteSideFor', () => {
   it('BUY base → ASK (bank sells base)', () => {

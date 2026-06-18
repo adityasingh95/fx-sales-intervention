@@ -196,9 +196,61 @@ describe('HistoricDetailPanel', () => {
 
     const banner = screen.getByTestId('execution-side');
     expect(banner).toHaveAttribute('data-executed-side', 'ASK');
-    // ASK = bank sells base = client buys base (EUR).
+    // Non-swap: direction text is shown (ASK = bank sells base = client buys base).
     expect(banner.textContent).toContain('Client buys EUR');
+    // Both side labels are shown: client bid (opposite of bank ask) + bank ask.
+    expect(banner.textContent).toContain('Client Bid');
+    expect(banner.textContent).toContain('Bank ask');
     expect(screen.getByTestId('execution-request-note')).toBeTruthy();
+  });
+
+  it('omits direction text but shows both side labels for a swap execution (FXSW-092)', () => {
+    const swapDeal: Deal = {
+      ...deal,
+      pair: 'USDINR',
+      instrumentType: 'SWAP',
+      tenor: '1M',
+      legs: [
+        { kind: 'NEAR', tenor: '1M' },
+        { kind: 'FAR', tenor: '6M' },
+      ],
+    };
+    useDealsStore.setState({
+      historic: [
+        {
+          ...entry,
+          deal: swapDeal,
+          executedSide: 'BID',
+          events: [
+            { phase: 'REQUEST', at: swapDeal.createdAt, channel: 'SI', toState: 'Initial' },
+            {
+              phase: 'PRICE_BACK',
+              at: swapDeal.createdAt + 2000,
+              channel: 'SI',
+              toState: 'QuoteSent',
+              appliedMargin: { kind: 'swap', mode: 'TOTAL', net: { bid: 2, ask: 3 } },
+            },
+            {
+              phase: 'RESPONSE',
+              at: swapDeal.createdAt + 3000,
+              channel: 'SI',
+              toState: 'TradeConfirmed',
+            },
+          ],
+        },
+      ],
+    });
+    useUiStore.setState({ openHistoricId: 'd_hist' });
+    render(<HistoricDetailPanel />);
+
+    const banner = screen.getByTestId('execution-side');
+    expect(banner).toHaveAttribute('data-executed-side', 'BID');
+    // Swap: no single-direction label (two-legged instrument).
+    expect(banner.textContent).not.toContain('Client buys');
+    expect(banner.textContent).not.toContain('Client sells');
+    // Both side labels are shown: client ask (opposite of bank bid) + bank bid.
+    expect(banner.textContent).toContain('Client Ask');
+    expect(banner.textContent).toContain('Bank bid');
   });
 
   it('omits the executed-side banner when no side was recorded', () => {

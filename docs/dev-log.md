@@ -1389,6 +1389,23 @@ sides as if both executed.
   agent-owned (flagged for ingest).
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (551).
 
+## Executed-side banner: per-instrument labelling (FXSW-092 follow-up, 2026-06-18)
+
+GUI feedback on the executed-side banner: a swap has two legs with opposite
+directions, so the single "Client buys/sells BASE" direction line is wrong for
+swaps; and for every instrument both perspectives should be named.
+
+1. **Suppress the direction line for swaps.** The `Client buys/sells BASE`
+   text now renders only for single-leg instruments (spot/forward/NDF); swaps
+   omit it because a two-legged instrument has no single buy/sell direction.
+2. **Name both perspectives.** All instruments now show `Client Bid` / `Client
+   Ask` alongside `Bank bid` / `Bank ask`. New `clientSideLabelForDealtSide`
+   helper in `quoteSide.ts` (bank BID → Client Ask; bank ASK → Client Bid).
+- Tests: `quoteSide` (+1 block, 2 cases), `HistoricDetailPanel` (updated the
+  two-way case to assert both labels; +1 swap case asserting no direction text).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (554). `wiki/` agent-owned
+  (flagged for ingest).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
