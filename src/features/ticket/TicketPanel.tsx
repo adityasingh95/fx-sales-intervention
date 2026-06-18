@@ -21,7 +21,7 @@ import DealSummaryPanel from './DealSummaryPanel';
 import PricingPanel from './PricingPanel';
 import ForwardPointsPanel, { type MarkupMode } from './pricing/ForwardPointsPanel';
 import LegTabs from './pricing/LegTabs';
-import SwapPanel from './pricing/SwapPanel';
+import SwapPanel, { type SwapPricingReport } from './pricing/SwapPanel';
 import ReasonsPanel from './ReasonsPanel';
 import SuggestionPanel from './SuggestionPanel';
 import SummaryPanel from './SummaryPanel';
@@ -53,12 +53,9 @@ export default function TicketPanel() {
   const [fwdMarginPair, setFwdMarginPair] = useState<MarginPair>({ bid: 0, ask: 0 });
   const [savedFwdForUndo, setSavedFwdForUndo] = useState<MarginPair | null>(null);
   const [markupMode, setMarkupMode] = useState<MarkupMode>('component');
-  // FXSW-086: SWAP effective net-points margin + mode, reported up by SwapPanel
-  // so the quote-context capture records what was applied at QuoteSent.
-  const [swapPricing, setSwapPricing] = useState<{
-    mode: 'PER_COMPONENT' | 'TOTAL';
-    net: MarginPair;
-  } | null>(null);
+  // FXSW-086: SWAP effective net-points margin + mode + components, reported by
+  // SwapPanel so the quote-context capture records what was applied at QuoteSent.
+  const [swapPricing, setSwapPricing] = useState<SwapPricingReport | null>(null);
   // FXSW-069 (v3): a "happy" auto-priced (ESP) deal needs no manual
   // intervention, so opening it shows a read-only view and does NOT fire
   // PickUp. Latched once per open so it stays stable after the deal
@@ -153,7 +150,7 @@ export default function TicketPanel() {
     appliedRationale,
     swap:
       instrument === 'SWAP'
-        ? (swapPricing ?? { mode: 'TOTAL', net: { bid: 0, ask: 0 } })
+        ? (swapPricing ?? { mode: 'TOTAL', net: { bid: 0, ask: 0 }, quoteSide: 'BOTH' })
         : undefined,
   });
 

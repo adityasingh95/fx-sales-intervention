@@ -23,7 +23,16 @@ export type LifecyclePhase =
 export type AppliedMargin =
   | { kind: 'spot'; margin: MarginPair }
   | { kind: 'forward'; spot: MarginPair; fwd: MarginPair }
-  | { kind: 'swap'; mode: 'PER_COMPONENT' | 'TOTAL'; net: MarginPair };
+  | {
+      kind: 'swap';
+      mode: 'PER_COMPONENT' | 'TOTAL';
+      // Effective net-points margin (bid widens down, ask widens up).
+      net: MarginPair;
+      // Individual component markups, present only for PER_COMPONENT mode.
+      components?: { spot: MarginPair; near: MarginPair; far: MarginPair };
+      // Which dealing direction(s) were priced — drives which columns to show.
+      quoteSide?: 'BID' | 'ASK' | 'BOTH';
+    };
 
 // Context captured at quote time, merged into the PRICE_BACK event so the
 // detail view can explain *why* the price was what it was.
