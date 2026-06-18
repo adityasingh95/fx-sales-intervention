@@ -44,7 +44,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-bg-app text-text">
       <div
         aria-hidden
-        className="h-[2px] bg-gradient-to-r from-blue to-ai-accent"
+        className="h-[2px] bg-gradient-to-r from-teal to-ai-accent"
       />
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-bg-panel px-3 sm:px-4">
         <h1 className="shrink-0 whitespace-nowrap font-sans text-sm font-medium tracking-tight text-text sm:text-md">
