@@ -14,6 +14,9 @@ test-results
 .idea
 *.swp
 
+# Claude Code agent working directories
+.claude/worktrees
+
 # TS incremental
 *.tsbuildinfo
 
