@@ -24,8 +24,7 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
   const farTenor = legs[1]?.tenor ?? deal.tenor;
   const swap = swapPointsFeed.get(deal.pair, nearTenor, farTenor);
   const trade = new Date(deal.createdAt);
-  const hasMarkup = executedNetMargin != null && (executedNetMargin.bid !== 0 || executedNetMargin.ask !== 0);
-  const execNet = hasMarkup ? clientSwapNetPoints(swap.net, executedNetMargin) : null;
+  const execNet = executedNetMargin ? clientSwapNetPoints(swap.net, executedNetMargin) : null;
 
   const sideLabel = (s: Side): string => (s === 'BOTH' ? '2-way' : s);
   const rows: Array<{
@@ -85,15 +84,23 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
           <span data-testid="swap-detail-net-ask">{fmtPoints(swap.net.ask)}</span>
         </span>
       </div>
-      {execNet && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="uppercase tracking-tight text-text-mute">Net used for execution</span>
-          <span className="font-mono tabular-nums text-text">
-            <span data-testid="swap-detail-exec-bid">{fmtPoints(execNet.bid)}</span>
-            {' / '}
-            <span data-testid="swap-detail-exec-ask">{fmtPoints(execNet.ask)}</span>
-          </span>
-        </div>
+      {execNet !== null && executedNetMargin && (
+        <>
+          <div className="flex items-center justify-between text-xs">
+            <span className="uppercase tracking-tight text-text-mute">Markup applied</span>
+            <span className="font-mono tabular-nums text-[10px] text-text-mute">
+              +{executedNetMargin.bid.toFixed(1)} / +{executedNetMargin.ask.toFixed(1)} pips
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="uppercase tracking-tight text-text-mute">Net used for execution</span>
+            <span className="font-mono tabular-nums text-text">
+              <span data-testid="swap-detail-exec-bid">{fmtPoints(execNet.bid)}</span>
+              {' / '}
+              <span data-testid="swap-detail-exec-ask">{fmtPoints(execNet.ask)}</span>
+            </span>
+          </div>
+        </>
       )}
     </section>
   );
