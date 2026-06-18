@@ -117,18 +117,15 @@ export default function SwapSideTile({
           : 'border-border bg-bg-elevated/30 opacity-40',
       )}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <span
-          data-testid={`swap-side-${scope}-direction`}
-          className={clsx(
-            'rounded-sm px-1.5 py-0.5 text-[10px] font-semibold',
-            scope === 'bid' ? 'bg-red/15 text-red' : 'bg-blue/15 text-blue',
-          )}
-        >
-          {directionLabel}
-        </span>
-        <span className="text-[10px] uppercase tracking-tight text-text-mute">Client {scope}</span>
-      </div>
+      <span
+        data-testid={`swap-side-${scope}-direction`}
+        className={clsx(
+          'self-start rounded-sm px-1.5 py-0.5 text-[10px] font-semibold',
+          scope === 'bid' ? 'bg-red/15 text-red' : 'bg-blue/15 text-blue',
+        )}
+      >
+        {directionLabel}
+      </span>
 
       {/* Shared spot rate for the side. */}
       <div className="flex items-baseline justify-between">
