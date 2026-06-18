@@ -22,7 +22,7 @@ A frontend prototype of an FX sales manual-pricing intervention workstation, dri
 | 08 | `08-test-plan.md` | Test layering & acceptance criteria | Test work, CI setup |
 | 09 | `09-suggestion-engine.md` | AI Margin Suggestion rule engine | Suggestion service/panel |
 | 10 | `10-security-agent-spec.md` | Independent end-of-phase Security Agent | Phase close (Phase 9+) |
-| 11 | `11-production-readiness-spec.md` | Production hardening requirements | Production-readiness work (Phases 12–19) |
+| — | `future-enhancements/` | Production-readiness spec + phased backlog (parked, placeholder numbering) | When the prototype→production hardening track is scheduled |
 
 ## How Claude Code should use these
 

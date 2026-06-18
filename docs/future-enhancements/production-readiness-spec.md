@@ -1,8 +1,14 @@
-# 11 — Production-Readiness Specification
+# Production-Readiness Specification
 
 This document defines the requirements to harden **FX Sales Workstation** from a
 demonstrable prototype into a production-grade, **customer-facing** application. It
-is the spec the Phase 12–19 backlog tickets (FXSW-093…118) reference by section.
+is the spec the production-readiness backlog tickets reference by section (see
+`production-readiness-backlog.md` in this folder).
+
+> **Status: future enhancement.** This spec is not part of the current build
+> scope. It is parked here until the production-readiness track is scheduled.
+> Ticket and phase numbers are deliberately **not** assigned — see the backlog
+> file's numbering banner.
 
 It deliberately covers only the cross-cutting production concerns that live inside
 the **current** codebase — resilience, observability, dev/prod separation, security
@@ -205,7 +211,8 @@ so the sequencing is explicit:
 
 ## 10. Cross-cutting constraints
 
-Every Phase 12–19 ticket inherits these — they are the standing `Done when` gates:
+Every backlog ticket in this track inherits these — they are the standing
+`Done when` gates:
 
 - **Brand-neutrality.** No vendor names in committed source, docs, package
   metadata, comments, UI strings, or build output. Library choices are named

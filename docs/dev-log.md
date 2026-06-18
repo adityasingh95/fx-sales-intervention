@@ -1433,6 +1433,29 @@ only, not specced.
 
 - Gates: docs-only change, no `src/` edits; `lint`/`typecheck` unaffected.
 
+## Production-readiness track relocated to future-enhancements (docs-only, 2026-06-18)
+
+Moved the production-readiness package out of the current spec/backlog so it reads
+as a parked future enhancement and its numbering stays adjustable (side-fix work
+may consume `FXSW-093+` before this track is scheduled).
+
+1. **Relocated the spec.** `docs/11-production-readiness-spec.md` →
+   `docs/future-enhancements/production-readiness-spec.md`; dropped the `11 —`
+   prefix and the hardcoded `FXSW-093…118` preamble reference; added a "future
+   enhancement / placeholder numbering" status note. Content (§0–§10) unchanged.
+2. **Extracted the backlog.** The Phase 12–19 block left `BACKLOG.md` for
+   `docs/future-enhancements/production-readiness-backlog.md`. Phases relabelled
+   `FE-Phase-A … FE-Phase-H` and tickets `FE-A-1 … FE-H-3` (placeholders), with a
+   banner explaining real `FXSW-NNN`/`Phase-N` numbers are assigned at scheduling
+   time. Cross-refs updated to `FE-*` and `prod-readiness-spec §N`. References to
+   already-completed historical tickets (`FXSW-080`, `FXSW-089`, the
+   `FXSW-081-review` finding) are real and kept as-is.
+3. **Housekeeping.** `BACKLOG.md` now carries a short pointer section to the
+   parked track; `README.md` read-order row points at the `future-enhancements/`
+   folder instead of the numbered doc.
+
+- Gates: docs-only change, no `src/` edits; `lint`/`typecheck` unaffected.
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.
