@@ -1,11 +1,12 @@
 ---
-last_updated: 2026-06-17
+last_updated: 2026-06-18
 sources:
   - docs/00-glossary.md
   - docs/phase-summaries/FXSW-046-summary.md
   - docs/phase-summaries/phase-08-v3-summary.md
   - docs/phase-summaries/phase-10-ndf-summary.md
   - docs/phase-summaries/phase-11-swaps-summary.md
+  - docs/dev-log.md
 status: stable
 ---
 
@@ -54,6 +55,10 @@ Domain terms used across this prototype. Prefer the industry-standard term over 
 | **Swap** | Two simultaneous legs: a near leg (often spot) and a far leg (forward), opposite directions, same notional. Spot-forward swap vs forward-forward swap. The v4 instrument is the **forward-forward** swap — see [features/swaps.md](features/swaps.md). |
 | **Forward-forward swap** | An FX swap whose **both** legs are forwards (near + far, far strictly later). The v4 swap instrument; priced on the net forward-points differential. |
 | **Net swap points** | The forward-points differential `net = far − near` (per side) that a [swap](features/swaps.md) is quoted on. Client net + P/L derive from it; a zero-markup quote shows exactly the raw differential. |
+| **All-in vs per-component markup** | The two ways a trader marks up a [swap](features/swaps.md). **All-in (Total)** applies one net-points margin per side. **Per-component** applies a shared spot margin plus an independent forward-points margin on each leg (near + far), which sum into the net. A mutually-exclusive toggle selects the mode; AI Apply switches to All-in. |
+| **Shared-spot markup** | In a swap's per-component mode, a single **spot** margin applied across both legs of a side (rather than a separate spot margin per leg), alongside the per-leg forward-points margins. Folds into the per-component net sum (defaults to zero). |
+| **Two-way (both-sided) request** | A request quoted on **both** bid and ask (`side: 'BOTH'`). The client is shown both prices but deals on exactly one — see *dealt side*. |
+| **Dealt side / Executed side** | The single side (`DealtSide = BID \| ASK`) a deal is actually **traded on** at execution. A one-sided request deals on its only quotable side; a two-way request narrows to one, chosen by a seeded per-deal flip. Captured on `CLIENT_ACCEPT`, persisted on the deal record, and surfaced (with the off side dimmed) in the [historical detail](features/historical-detail.md). See [ADR-0017](decisions/ADR-0017-swap-markup-model-and-executed-side.md). |
 | **Block trade** | A bundled set of related deals netted by tenor; can be priced together. |
 | **Pip** | Smallest standard price increment. For most pairs the 4th decimal (0.0001); for JPY pairs the 2nd decimal (0.01). |
 | **Bid / Ask / Mid** | Bid = the price you can sell at; Ask = the price you can buy at; Mid = arithmetic midpoint. The Ask–Bid difference is the spread. |
