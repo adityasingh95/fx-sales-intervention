@@ -169,4 +169,41 @@ describe('HistoricDetailPanel', () => {
     expect(screen.getByTestId('markup-reason').textContent).toContain('Net 2/3 pips');
     expect(screen.getByTestId('markup-reason').textContent).toContain('Total');
   });
+
+  it('shows the executed side + two-way request note for a both-sided deal (FXSW-092)', () => {
+    useDealsStore.setState({
+      historic: [
+        {
+          ...entry,
+          deal: { ...deal, side: 'BOTH' },
+          executedSide: 'ASK',
+          events: [
+            { phase: 'REQUEST', at: deal.createdAt, channel: 'SI', toState: 'Initial' },
+            {
+              phase: 'PRICE_BACK',
+              at: deal.createdAt + 2000,
+              channel: 'SI',
+              toState: 'QuoteSent',
+              appliedMargin: { kind: 'spot', margin: { bid: 4, ask: 5 } },
+            },
+            { phase: 'RESPONSE', at: deal.createdAt + 3000, channel: 'SI', toState: 'TradeConfirmed' },
+          ],
+        },
+      ],
+    });
+    useUiStore.setState({ openHistoricId: 'd_hist' });
+    render(<HistoricDetailPanel />);
+
+    const banner = screen.getByTestId('execution-side');
+    expect(banner).toHaveAttribute('data-executed-side', 'ASK');
+    // ASK = bank sells base = client buys base (EUR).
+    expect(banner.textContent).toContain('Client buys EUR');
+    expect(screen.getByTestId('execution-request-note')).toBeTruthy();
+  });
+
+  it('omits the executed-side banner when no side was recorded', () => {
+    useUiStore.setState({ openHistoricId: 'd_hist' });
+    render(<HistoricDetailPanel />); // base entry has no executedSide
+    expect(screen.queryByTestId('execution-side')).toBeNull();
+  });
 });

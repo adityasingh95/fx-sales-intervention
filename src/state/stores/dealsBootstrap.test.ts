@@ -42,4 +42,12 @@ describe('wireDealFeedToStore', () => {
     expect(entries[0].deal.clientName).toBe('Halcyon Capital');
     expect(entries[0].deal.pair).toBe('GBPUSD');
   });
+
+  it('records the executed side from CLIENT_ACCEPT onto the entry (FXSW-092)', () => {
+    dealFeed.inject('HAPPY_PATH_ESP'); // BUY/BASE → bank asks
+    const [entry] = [...useDealsStore.getState().deals.values()];
+    expect(entry.executedSide).toBeUndefined();
+    vi.advanceTimersByTime(2000); // CLIENT_ACCEPT fires → records side, confirms
+    expect(useDealsStore.getState().deals.get(entry.deal.dealId)?.executedSide).toBe('ASK');
+  });
 });
