@@ -35,7 +35,8 @@ describe('dealFeed', () => {
     expect(events).toHaveLength(1);
     vi.advanceTimersByTime(1);
     expect(events).toHaveLength(2);
-    expect(events[1]).toEqual({ type: 'CLIENT_ACCEPT', dealId });
+    // HAPPY_PATH_ESP is a BUY/BASE request → bank quotes ASK; the client deals there.
+    expect(events[1]).toEqual({ type: 'CLIENT_ACCEPT', dealId, executedSide: 'ASK' });
   });
 
   it('inject(OFF_HOURS_INTERVENTION) emits NEW_SI_DEAL; CLIENT_ACCEPT fires only after a SEND_STREAM ack', () => {
@@ -54,7 +55,8 @@ describe('dealFeed', () => {
     expect(events).toHaveLength(1);
     vi.advanceTimersByTime(1);
     expect(events).toHaveLength(2);
-    expect(events[1]).toEqual({ type: 'CLIENT_ACCEPT', dealId });
+    // OFF_HOURS_INTERVENTION is a SELL/BASE request → bank quotes BID; client deals there.
+    expect(events[1]).toEqual({ type: 'CLIENT_ACCEPT', dealId, executedSide: 'BID' });
   });
 
   it('reset() mid-scenario cancels pending events; no callbacks fire after', () => {

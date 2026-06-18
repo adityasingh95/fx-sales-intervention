@@ -1,5 +1,6 @@
 import { isNdfPair, NDF_PAIRS, type DealEvent } from '@/services/feed/types';
 import { makeRng, hashSeed } from '@/services/feed/rng';
+import { quoteSideFor, type DealtSide, type QuoteSide } from '@/lib/quoteSide';
 import type { Deal } from '@/types/deal';
 import { FORWARD_TENORS, resolveSwapLegs, defaultInstrumentForTenor, isForwardTenor } from '@/types/deal';
 import type {
@@ -29,14 +30,22 @@ const PLAYER_SEED = 0x504c4159; // 'PLAY'
 const seededAcceptOrReject = (dealId: string): boolean =>
   makeRng(hashSeed(dealId) ^ PLAYER_SEED)() < 0.5;
 
+// FXSW-092: which side a two-way request is dealt on. Seeded by dealId (separate
+// seed from the accept/reject flip) so a given deal's executed side is
+// reproducible across runs and pinnable in tests.
+const EXEC_SIDE_SEED = 0x45584543; // 'EXEC'
+const seededExecutedSide = (dealId: string): DealtSide =>
+  makeRng(hashSeed(dealId) ^ EXEC_SIDE_SEED)() < 0.5 ? 'BID' : 'ASK';
+
 const buildFollowUpEvent = (
   event: FollowUpEvent,
   dealId: string,
   acceptOrReject: (dealId: string) => boolean,
+  resolveExecutedSide: (dealId: string) => DealtSide,
 ): DealEvent => {
   switch (event) {
     case 'CLIENT_ACCEPT':
-      return { type: 'CLIENT_ACCEPT', dealId };
+      return { type: 'CLIENT_ACCEPT', dealId, executedSide: resolveExecutedSide(dealId) };
     case 'CLIENT_REJECT':
       return { type: 'CLIENT_REJECT', dealId };
     case 'CLIENT_CANCEL':
@@ -45,7 +54,7 @@ const buildFollowUpEvent = (
       return { type: 'EXPIRE', dealId };
     case 'CLIENT_ACCEPT_OR_REJECT':
       return acceptOrReject(dealId)
-        ? { type: 'CLIENT_ACCEPT', dealId }
+        ? { type: 'CLIENT_ACCEPT', dealId, executedSide: resolveExecutedSide(dealId) }
         : { type: 'CLIENT_REJECT', dealId };
   }
 };
@@ -83,6 +92,16 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
   // Handle → owning dealId, so a single deal's timers can be cleared selectively.
   const timers = new Map<PendingTimer, string>();
   const gates = new Set<Gate>();
+  // FXSW-092: each deal's quotable side, captured at inject, so the CLIENT_ACCEPT
+  // follow-up (which only has the dealId) can resolve the executed side.
+  const dealSides = new Map<string, QuoteSide>();
+
+  // A one-sided request deals on its only quotable side; a two-way ('BOTH')
+  // request's client picks one, resolved by the seeded per-deal flip.
+  const resolveExecutedSide = (dealId: string): DealtSide => {
+    const qs = dealSides.get(dealId);
+    return qs === 'BID' || qs === 'ASK' ? qs : seededExecutedSide(dealId);
+  };
 
   const scheduleEvent = (event: DealEvent, delayMs: number, dealId: string): void => {
     const handle = setTimeout(() => {
@@ -94,7 +113,11 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
 
   const armFollowUp = (dealId: string, followUp: ScenarioFollowUp): void => {
     if (followUp.trigger.kind === 'delay') {
-      scheduleEvent(buildFollowUpEvent(followUp.event, dealId, acceptOrReject), followUp.trigger.ms, dealId);
+      scheduleEvent(
+        buildFollowUpEvent(followUp.event, dealId, acceptOrReject, resolveExecutedSide),
+        followUp.trigger.ms,
+        dealId,
+      );
     } else {
       gates.add({ dealId, followUp });
     }
@@ -155,6 +178,7 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
       const scenario = SCENARIOS[scenarioId];
       const dealId = generateDealId();
       const deal = buildDeal(scenario, dealId, overrides);
+      dealSides.set(dealId, quoteSideFor(deal.side, deal.dealtCcy));
       const initial: DealEvent =
         scenario.channel === 'ESP'
           ? { type: 'NEW_ESP_DEAL', deal }
@@ -173,7 +197,7 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
         if (gate.followUp.trigger.state !== siState) continue;
         gates.delete(gate);
         scheduleEvent(
-          buildFollowUpEvent(gate.followUp.event, dealId, acceptOrReject),
+          buildFollowUpEvent(gate.followUp.event, dealId, acceptOrReject, resolveExecutedSide),
           gate.followUp.trigger.delayMs,
           dealId,
         );
@@ -189,12 +213,14 @@ export const createScenarioPlayer = (opts: PlayerOptions): ScenarioPlayer => {
       for (const gate of [...gates]) {
         if (gate.dealId === dealId) gates.delete(gate);
       }
+      dealSides.delete(dealId);
     },
 
     reset() {
       for (const handle of timers.keys()) clearTimeout(handle);
       timers.clear();
       gates.clear();
+      dealSides.clear();
     },
   };
 };

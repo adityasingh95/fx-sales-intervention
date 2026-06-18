@@ -224,4 +224,29 @@ describe('createScenarioPlayer', () => {
     vi.advanceTimersByTime(5000);
     expect(emitted.some((e) => e.type === 'CLIENT_ACCEPT' || e.type === 'CLIENT_REJECT')).toBe(false);
   });
+
+  // FXSW-092 — CLIENT_ACCEPT carries the side the client actually dealt on.
+  const acceptFor = (scenarioId: 'OFF_HOURS_INTERVENTION' | 'HAPPY_PATH_ESP' | 'BOTH_SIDED_INQUIRY', dealId: string) => {
+    const emitted: DealEvent[] = [];
+    const player = createScenarioPlayer({ emit: (e) => emitted.push(e), generateDealId: () => dealId });
+    player.inject(scenarioId);
+    player.notifyDealState(dealId, 'Quoted');
+    vi.advanceTimersByTime(2000);
+    return emitted.find((e) => e.type === 'CLIENT_ACCEPT') as
+      | (DealEvent & { type: 'CLIENT_ACCEPT' })
+      | undefined;
+  };
+
+  it('forces the executed side to the only quotable side for a one-sided request (FXSW-092)', () => {
+    // SELL/BASE → bank bids; BUY/BASE → bank asks.
+    expect(acceptFor('OFF_HOURS_INTERVENTION', 'd_one_sell')?.executedSide).toBe('BID');
+    expect(acceptFor('HAPPY_PATH_ESP', 'd_one_buy')?.executedSide).toBe('ASK');
+  });
+
+  it('picks one side for a two-way request, seeded by dealId (reproducible) (FXSW-092)', () => {
+    const first = acceptFor('BOTH_SIDED_INQUIRY', 'd_two');
+    const second = acceptFor('BOTH_SIDED_INQUIRY', 'd_two');
+    expect(first?.executedSide).toBe(second?.executedSide);
+    expect(['BID', 'ASK']).toContain(first?.executedSide);
+  });
 });

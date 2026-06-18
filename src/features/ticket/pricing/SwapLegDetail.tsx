@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { formatSettlementDate, valueDateForTenor } from '@/lib/time';
 import { clientSwapNetPoints } from '@/lib/pips';
 import { swapPointsFeed } from '@/services/feed/swapPoints';
@@ -7,18 +8,25 @@ import SwapAdjustNote from './SwapAdjustNote';
 // Read-only swap leg detail for the historic overlay (FXSW-086). Lists each leg's
 // tenor, two-sided points and value date, the raw net differential, and — when
 // the deal was executed — the net points actually used (raw net marked up by the
-// captured effective net margin).
+// captured effective net margin). For an executed deal the dealt side is
+// emphasized and the off side dimmed (FXSW-092).
 
 const fmtPoints = (n: number): string => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
+
+// Emphasize the dealt side, dim the off side; neutral when no side is given.
+const sideClass = (scope: 'bid' | 'ask', dealtSide?: 'bid' | 'ask'): string =>
+  dealtSide && scope === dealtSide ? 'font-semibold text-text' : dealtSide ? 'text-text-mute' : '';
 
 export interface SwapLegDetailProps {
   deal: Deal;
   // The effective net-points margin captured at execution; absent if no price
   // was sent.
   executedNetMargin?: MarginPair;
+  // The side the client dealt on (lower-cased); highlighted across the rows.
+  dealtSide?: 'bid' | 'ask';
 }
 
-export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetailProps) {
+export default function SwapLegDetail({ deal, executedNetMargin, dealtSide }: SwapLegDetailProps) {
   const legs = deal.legs ?? [];
   const nearTenor = legs[0]?.tenor ?? deal.tenor;
   const farTenor = legs[1]?.tenor ?? deal.tenor;
@@ -71,7 +79,10 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
             {row.id} · {row.tenor} · {row.side}
           </span>
           <span className="font-mono tabular-nums text-text-mute">
-            {fmtPoints(row.bid)} / {fmtPoints(row.ask)} pips
+            <span className={sideClass('bid', dealtSide)}>{fmtPoints(row.bid)}</span>
+            {' / '}
+            <span className={sideClass('ask', dealtSide)}>{fmtPoints(row.ask)}</span>
+            {' pips'}
           </span>
           <span className="font-mono text-[10px] uppercase text-text-mute">{row.date}</span>
         </div>
@@ -79,9 +90,13 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
       <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-xs">
         <span className="uppercase tracking-tight text-text-mute">Net swap points</span>
         <span className="font-mono tabular-nums text-text">
-          <span data-testid="swap-detail-net-bid">{fmtPoints(swap.net.bid)}</span>
+          <span data-testid="swap-detail-net-bid" className={sideClass('bid', dealtSide)}>
+            {fmtPoints(swap.net.bid)}
+          </span>
           {' / '}
-          <span data-testid="swap-detail-net-ask">{fmtPoints(swap.net.ask)}</span>
+          <span data-testid="swap-detail-net-ask" className={sideClass('ask', dealtSide)}>
+            {fmtPoints(swap.net.ask)}
+          </span>
         </span>
       </div>
       {execNet !== null && executedNetMargin && (
@@ -95,9 +110,19 @@ export default function SwapLegDetail({ deal, executedNetMargin }: SwapLegDetail
           <div className="flex items-center justify-between text-xs">
             <span className="uppercase tracking-tight text-text-mute">Net used for execution</span>
             <span className="font-mono tabular-nums text-text">
-              <span data-testid="swap-detail-exec-bid">{fmtPoints(execNet.bid)}</span>
+              <span
+                data-testid="swap-detail-exec-bid"
+                className={clsx('inline-block', sideClass('bid', dealtSide))}
+              >
+                {fmtPoints(execNet.bid)}
+              </span>
               {' / '}
-              <span data-testid="swap-detail-exec-ask">{fmtPoints(execNet.ask)}</span>
+              <span
+                data-testid="swap-detail-exec-ask"
+                className={clsx('inline-block', sideClass('ask', dealtSide))}
+              >
+                {fmtPoints(execNet.ask)}
+              </span>
             </span>
           </div>
         </>

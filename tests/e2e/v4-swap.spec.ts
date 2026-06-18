@@ -156,4 +156,8 @@ test('v4 swap lifecycle — archives to Historic; detail overlay lists per-leg +
   await expect(page.getByTestId('swap-detail-far')).toContainText('6M');
   await expect(page.getByTestId('swap-detail-net-bid')).not.toHaveText('');
   await expect(page.getByTestId('swap-detail-exec-bid')).toBeVisible();
+
+  // FXSW-092: OFF_HOURS_INTERVENTION is a SELL/BASE request → bank deals on the
+  // bid; the executed-side banner reflects the side the client actually dealt on.
+  await expect(page.getByTestId('execution-side')).toHaveAttribute('data-executed-side', 'BID');
 });

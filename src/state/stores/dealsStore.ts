@@ -6,7 +6,7 @@ import type { Deal, RejectionReason } from '@/types/deal';
 import type { DealChannel } from '@/types/scenario';
 import type { DealLifecycleEvent, QuoteContext } from '@/types/lifecycle';
 import { makeRequestId, makeTradeId } from '@/lib/ids';
-import { quoteSideFor } from '@/lib/quoteSide';
+import { quoteSideFor, type DealtSide } from '@/lib/quoteSide';
 import { lifecyclePhaseFor } from './lifecyclePhase';
 
 // Terminal SI states per docs/03-trade-state-model.md §2 §8. The full SI
@@ -34,6 +34,9 @@ export type DealEntry = {
   // Timestamped lifecycle journey (FXSW-049), captured live and carried into
   // the HistoricEntry on archival for the detail-view timeline.
   events: DealLifecycleEvent[];
+  // FXSW-092: the side the client actually dealt on, captured at CLIENT_ACCEPT.
+  // A two-way request is quoted on both sides but executes on exactly one.
+  executedSide?: DealtSide;
 };
 
 // Historic entries no longer have a live actor — they're a snapshot of
@@ -58,6 +61,8 @@ export type HistoricEntry = {
   requestId: string;
   tradeId?: string;
   events: DealLifecycleEvent[];
+  // FXSW-092: the side the client dealt on (only set for executed deals).
+  executedSide?: DealtSide;
 };
 
 const outcomeFromFinalStates = (siState: string, rfsState: string): HistoricOutcome => {
@@ -86,6 +91,9 @@ interface DealsState {
   // recent PRICE_BACK lifecycle event (FXSW-049). Called from the ticket when
   // the trader sends a price / applies an AI suggestion.
   recordQuoteContext: (dealId: string, ctx: QuoteContext) => void;
+  // FXSW-092: records the side the client dealt on, set from the CLIENT_ACCEPT
+  // feed event just before the deal is confirmed, so archival can snapshot it.
+  recordExecutedSide: (dealId: string, side: DealtSide) => void;
 }
 
 // XState's snapshot type doesn't surface the triggering event, but it's
@@ -166,6 +174,8 @@ export const useDealsStore = create<DealsState>((set, get) => ({
           // A Trade ID is only minted for deals that actually executed.
           tradeId: outcome === 'Executed' ? makeTradeId() : undefined,
           events: cur.events,
+          // Carry the dealt side through to the snapshot (only set when executed).
+          executedSide: outcome === 'Executed' ? cur.executedSide : undefined,
         };
         cur.actor.stop();
         // FXSW-090 F-2: release the player's pending timers/gates for this deal
@@ -283,6 +293,13 @@ export const useDealsStore = create<DealsState>((set, get) => ({
     const entry = get().deals.get(dealId);
     if (!entry) return;
     entry.actor.send(event);
+  },
+
+  recordExecutedSide: (dealId, side) => {
+    set((state) => {
+      if (!state.deals.get(dealId)) return state;
+      return { deals: replaceEntry(state.deals, dealId, { executedSide: side }) };
+    });
   },
 
   recordQuoteContext: (dealId, quoteCtx) => {

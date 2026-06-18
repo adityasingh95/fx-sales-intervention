@@ -18,6 +18,10 @@ export const wireDealFeedToStore = (): (() => void) => {
         store.addDeal(event.deal, event.rejectionReasons, 'SI');
         return;
       case 'CLIENT_ACCEPT':
+        // FXSW-092: capture the dealt side (one-sided requests execute on their
+        // only side; two-way requests on the side the client picked) before the
+        // confirm, so the archived record knows which side actually traded.
+        if (event.executedSide) store.recordExecutedSide(event.dealId, event.executedSide);
         store.forwardEvent(event.dealId, { type: 'TradeConfirmed' });
         return;
       case 'CLIENT_REJECT':

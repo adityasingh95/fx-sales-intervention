@@ -106,6 +106,21 @@ describe('dealsStore', () => {
     expect(h.rejectionReasons).toEqual(['OFF_HOURS']);
   });
 
+  it('carries the recorded executed side into the historic snapshot (FXSW-092)', async () => {
+    vi.useFakeTimers();
+    useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_side' }));
+    useDealsStore.getState().forwardEvent('d_side', { type: 'PickUp' });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    useDealsStore.getState().forwardEvent('d_side', { type: 'Quote' });
+    vi.advanceTimersByTime(timings.ackDelayMs);
+    // The client deals on the ask; recorded just before the confirm.
+    useDealsStore.getState().recordExecutedSide('d_side', 'ASK');
+    useDealsStore.getState().forwardEvent('d_side', { type: 'TradeConfirmed' });
+    vi.advanceTimersByTime(timings.removalDelayMs);
+    await Promise.resolve();
+    expect(useDealsStore.getState().historic[0]?.executedSide).toBe('ASK');
+  });
+
   it('captures a lifecycle event log and carries it into historic (FXSW-049)', async () => {
     vi.useFakeTimers();
     useDealsStore.getState().addDeal(makeDeal({ dealId: 'd_log' }), ['OFF_HOURS']);

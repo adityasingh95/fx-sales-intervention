@@ -1351,6 +1351,44 @@ GUI feedback on the swap ticket:
   `tests/e2e/v4-swap`. `wiki/` swap pages remain agent-owned (flagged for ingest).
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (545) · `test:e2e` ✓ (15/15).
 
+## Historic detail: markup-applied row + per-component markup breakdown (2026-06-18)
+
+GUI feedback on the post-execution swap detail:
+
+1. **"Net used for execution" no longer reads as a duplicate.** A `Markup applied`
+   row now sits between the street net and the execution net in `SwapLegDetail`, so
+   at zero markup the identical figures are explained rather than confusing.
+2. **Per-component markup reason shows the breakdown.** The historic markup reason
+   renders a `SwapMarkupDetail` grid (spot / near / far / net, bid+ask columns)
+   for PER_COMPONENT mode, filtered by `quoteSide`; TOTAL keeps the concise
+   `Net X/Y pips · Total` summary. `AppliedMargin`'s swap variant gained optional
+   `components` + `quoteSide`, threaded from `SwapPanel` (`SwapPricingReport`)
+   through `useQuoteContextCapture`.
+
+## Executed side for two-way requests (FXSW-092, 2026-06-18)
+
+A two-way (`side: 'BOTH'`) request is quoted on both sides but the client deals on
+exactly one. That dealt side was previously lost; the historic detail showed both
+sides as if both executed.
+
+1. **Capture the dealt side.** `CLIENT_ACCEPT` now carries `executedSide` (`BID|ASK`,
+   new `DealtSide` type). The scenario player resolves it: a one-sided request deals
+   on its only quotable side; a two-way request's client picks one via a per-deal
+   seeded flip (`EXEC_SIDE_SEED`, reproducible). Threaded `quoteSide` per deal at
+   inject (cleared in `forgetDeal`/`reset`).
+2. **Persist it.** `dealsBootstrap` calls a new `recordExecutedSide` before the
+   confirm; `DealEntry`/`HistoricEntry` gain `executedSide`, copied into the
+   snapshot on archival (only when Executed).
+3. **Surface it (both columns, dealt side highlighted).** New `execution-side`
+   banner shows the client direction + bank side, plus a "two-way request,
+   executed one side" note when applicable. The swap leg detail + per-component
+   markup grid emphasize the dealt column and dim the off side
+   (`clientDirectionForDealtSide` helper).
+- Tests: player (+2), `dealFeed` (updated 2), `dealsStore` (+1), `dealsBootstrap`
+  (+1), `HistoricDetailPanel` (+2), `v4-swap` e2e (+1 assertion). `wiki/`
+  agent-owned (flagged for ingest).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (551).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

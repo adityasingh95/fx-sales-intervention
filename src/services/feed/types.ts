@@ -1,4 +1,5 @@
 import type { Deal, RejectionReason } from '@/types/deal';
+import type { DealtSide } from '@/lib/quoteSide';
 import type { ScenarioId, ScenarioOverrides } from '@/types/scenario';
 
 export type Pair = 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR';
@@ -37,7 +38,10 @@ export interface PricingFeed {
 export type DealEvent =
   | { type: 'NEW_SI_DEAL'; deal: Deal; rejectionReasons: RejectionReason[] }
   | { type: 'NEW_ESP_DEAL'; deal: Deal }
-  | { type: 'CLIENT_ACCEPT'; dealId: string }
+  // FXSW-092: the client deals on exactly one side. For a one-sided request this
+  // is the only quotable side; for a two-way ('BOTH') request the simulated client
+  // picks one (seeded in the player). Absent on legacy/edge emissions.
+  | { type: 'CLIENT_ACCEPT'; dealId: string; executedSide?: DealtSide }
   | { type: 'CLIENT_REJECT'; dealId: string }
   | { type: 'CLIENT_CANCEL'; dealId: string }
   | { type: 'EXPIRE'; dealId: string };

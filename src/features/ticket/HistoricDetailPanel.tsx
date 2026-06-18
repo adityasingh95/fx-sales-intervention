@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Pill from '@/components/Pill';
 import { isV4 } from '@/lib/devVersion';
 import { formatTime } from '@/lib/format';
+import { clientDirectionForDealtSide } from '@/lib/quoteSide';
 import { instrumentOf, type MarginPair } from '@/types/deal';
 import { useHistoricDealById, type HistoricOutcome } from '@/state/stores/dealsStore';
 import { useUiStore } from '@/state/stores/uiStore';
@@ -31,16 +32,31 @@ const formatMargin = (m: Exclude<AppliedMargin, { kind: 'swap' }>): string => {
   return `Spot ${m.spot.bid}/${m.spot.ask} · Fwd ${m.fwd.bid}/${m.fwd.ask} pips`;
 };
 
+// A column value, emphasized when it's the side the client actually dealt on and
+// dimmed when it's the off (quoted-but-not-dealt) side (FXSW-092).
+const colClass = (scope: 'bid' | 'ask', dealtSide?: 'bid' | 'ask'): string =>
+  clsx(
+    'text-right tabular-nums',
+    dealtSide && scope === dealtSide
+      ? 'font-semibold text-text'
+      : dealtSide
+        ? 'text-text-mute'
+        : 'text-text',
+  );
+
 function SwapMarkupDetail({
   mode,
   net,
   components,
   quoteSide = 'BOTH',
+  dealtSide,
 }: {
   mode: 'PER_COMPONENT' | 'TOTAL';
   net: MarginPair;
   components?: { spot: MarginPair; near: MarginPair; far: MarginPair };
   quoteSide?: 'BID' | 'ASK' | 'BOTH';
+  // The side the client dealt on (lower-cased), highlighted among the columns.
+  dealtSide?: 'bid' | 'ask';
 }) {
   if (mode === 'TOTAL' || !components) {
     const modeLabel = mode === 'TOTAL' ? 'Total' : 'Per-component';
@@ -53,25 +69,36 @@ function SwapMarkupDetail({
     { label: 'Near pts', bid: components.near.bid, ask: components.near.ask },
     { label: 'Far pts', bid: components.far.bid, ask: components.far.ask },
   ];
+  const head = (scope: 'bid' | 'ask', label: string) => (
+    <span
+      className={clsx(
+        'w-8 text-right',
+        dealtSide === scope ? 'font-semibold text-text' : 'text-text-mute',
+      )}
+    >
+      {label}
+      {dealtSide === scope ? ' ◂' : ''}
+    </span>
+  );
   return (
     <div className="flex flex-col gap-0.5 font-mono text-xs">
       <div className="flex text-[10px] uppercase tracking-tight text-text-mute">
         <span className="w-16" />
-        {showBid && <span className="w-8 text-right">Bid</span>}
-        {showAsk && <span className="ml-3 w-8 text-right">Ask</span>}
+        {showBid && head('bid', 'Bid')}
+        {showAsk && <span className="ml-3 inline-block">{head('ask', 'Ask')}</span>}
         <span className="ml-2 text-text-mute">pips</span>
       </div>
       {rows.map(({ label, bid, ask }) => (
         <div key={label} className="flex items-baseline">
           <span className="w-16 text-text-mute">{label}</span>
-          {showBid && <span className="w-8 text-right tabular-nums text-text">{bid}</span>}
-          {showAsk && <span className="ml-3 w-8 text-right tabular-nums text-text">{ask}</span>}
+          {showBid && <span className={clsx('w-8', colClass('bid', dealtSide))}>{bid}</span>}
+          {showAsk && <span className={clsx('ml-3 w-8', colClass('ask', dealtSide))}>{ask}</span>}
         </div>
       ))}
       <div className="flex items-baseline border-t border-border pt-0.5">
         <span className="w-16 font-medium text-text-mute">Net</span>
-        {showBid && <span className="w-8 text-right tabular-nums text-text">{net.bid}</span>}
-        {showAsk && <span className="ml-3 w-8 text-right tabular-nums text-text">{net.ask}</span>}
+        {showBid && <span className={clsx('w-8', colClass('bid', dealtSide))}>{net.bid}</span>}
+        {showAsk && <span className={clsx('ml-3 w-8', colClass('ask', dealtSide))}>{net.ask}</span>}
         <span className="ml-2 text-text-mute">pips</span>
       </div>
     </div>
@@ -103,13 +130,18 @@ export default function HistoricDetailPanel() {
 
   if (!openHistoricId || !entry) return null;
 
-  const { deal, rejectionReasons, outcome, archivedAt, events, requestId, tradeId } = entry;
+  const { deal, rejectionReasons, outcome, archivedAt, events, requestId, tradeId, executedSide } =
+    entry;
   const priceBack = [...events].reverse().find((e) => e.phase === 'PRICE_BACK');
   const swapNetMargin =
     priceBack?.appliedMargin?.kind === 'swap' ? priceBack.appliedMargin.net : undefined;
   const isSwap = instrumentOf(deal) === 'SWAP';
   // ESP deals are auto-priced — there's no trader markup to explain (FXSW-070).
   const autoPriced = events.some((e) => e.phase === 'AUTO_PRICE');
+  // FXSW-092: a deal executes on exactly one side. Highlight it across the
+  // pricing breakdowns, and note when the original request was two-way.
+  const dealtScope = executedSide ? (executedSide === 'BID' ? 'bid' : 'ask') : undefined;
+  const wasTwoWay = deal.side === 'BOTH';
 
   return (
     <div
@@ -178,9 +210,33 @@ export default function HistoricDetailPanel() {
             ) : null}
           </div>
 
+          {outcome === 'Executed' && executedSide ? (
+            <section
+              data-testid="execution-side"
+              data-executed-side={executedSide}
+              aria-label="Executed side"
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-sm border border-border bg-bg-elevated/40 px-3 py-2 text-xs"
+            >
+              <span className="uppercase tracking-tight text-text-mute">Dealt</span>
+              <span className="font-medium text-text">
+                {clientDirectionForDealtSide(executedSide, deal.pair)}
+              </span>
+              <span className="rounded-sm bg-bg-elevated px-1.5 py-0.5 font-mono uppercase tracking-tight text-text-dim">
+                bank {executedSide.toLowerCase()}
+              </span>
+              {wasTwoWay ? (
+                <span data-testid="execution-request-note" className="text-text-mute">
+                  · two-way request, executed one side
+                </span>
+              ) : null}
+            </section>
+          ) : null}
+
           <ReasonsPanel reasons={rejectionReasons} />
           <SummaryPanel deal={deal} />
-          {isSwap && <SwapLegDetail deal={deal} executedNetMargin={swapNetMargin} />}
+          {isSwap && (
+            <SwapLegDetail deal={deal} executedNetMargin={swapNetMargin} dealtSide={dealtScope} />
+          )}
 
           <section
             data-testid="markup-reason"
@@ -202,6 +258,7 @@ export default function HistoricDetailPanel() {
                       net={priceBack.appliedMargin.net}
                       components={priceBack.appliedMargin.components}
                       quoteSide={priceBack.appliedMargin.quoteSide}
+                      dealtSide={dealtScope}
                     />
                   ) : (
                     formatMargin(priceBack.appliedMargin)
