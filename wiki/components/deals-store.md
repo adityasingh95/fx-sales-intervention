@@ -1,10 +1,11 @@
 ---
-last_updated: 2026-05-26
+last_updated: 2026-06-18
 sources:
   - docs/06-tech-architecture.md
   - docs/03-trade-state-model.md
+  - docs/dev-log.md
 status: stable
-ticket: FXSW-009
+ticket: FXSW-009, FXSW-092
 ---
 
 # Component — `dealsStore`
@@ -25,6 +26,7 @@ type DealEntry = {
   rfsState: RfsState;
   dealable: boolean;            // derived: siState === 'Initial'
   rejectionReasons: RejectionReason[];
+  executedSide?: DealtSide;     // FXSW-092: the side the client dealt on (executed deals)
 };
 
 type HistoricEntry = {
@@ -34,6 +36,7 @@ type HistoricEntry = {
   finalRfsState: RfsState;
   outcome: Outcome;
   archivedAt: number;
+  executedSide?: DealtSide;     // FXSW-092: snapshotted from the live entry on archival
 };
 
 type State = {
@@ -47,6 +50,7 @@ type State = {
 - `addDeal(deal, rejectionReasons?, channel?)` — creates a `dealMachine` actor with `{ dealId }` input, starts it, pulls the spawned `rfs`/`si` children out of context, subscribes to both, inserts the entry. Idempotent on duplicate `dealId`. For `channel === 'ESP'`, also fires `AutoPrice` on the parent so RFS goes Queued → Executable and SI stays at `Initial`.
 - `removeDeal(dealId)` — stops the actor and removes the entry.
 - `forwardEvent(dealId, event)` — routes the event into that deal's parent dealMachine.
+- `recordExecutedSide(dealId, side)` — **FXSW-092:** records the dealt side on the live `DealEntry`, set from the `CLIENT_ACCEPT` feed event just before the confirm so archival can snapshot it. Archival copies `executedSide` into the `HistoricEntry` **only when `outcome === 'Executed'`**. See [data-models/deal.md](../data-models/deal.md#dealt-side--dealtside-fxsw-092).
 - `useActiveDeals()`, `useHistoricDeals()`, `useDealById(id)` — React selector hooks.
 
 ## Why subscribe to children, not the parent

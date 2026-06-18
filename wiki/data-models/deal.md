@@ -1,12 +1,14 @@
 ---
-last_updated: 2026-06-17
+last_updated: 2026-06-18
 sources:
   - docs/04-dummy-feed-spec.md
   - docs/03-trade-state-model.md
   - docs/02-functional-spec.md
   - docs/phase-summaries/phase-10-ndf-summary.md
   - docs/phase-summaries/phase-11-swaps-summary.md
+  - docs/dev-log.md
 status: stable
+ticket: FXSW-092
 ---
 
 # Data model — `Deal`
@@ -19,7 +21,7 @@ type Deal = {
   clientName: string;          // e.g. "Acme Corp"
   accountCode: string;         // e.g. "ACME-EUR-1"
   pair: Pair;                  // 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'USDINR'
-  side: 'BUY' | 'SELL';
+  side: 'BUY' | 'SELL' | 'BOTH';  // BOTH = two-way request, quoted both sides
   notional: number;            // in base CCY units
   tenor: Tenor;                // 'SPOT' | '1W' | '2W' | '1M' | '2M' | '3M' | '6M' | '9M' | '1Y'
   defaultMarginPips: number;   // typically 3
@@ -44,10 +46,19 @@ type Deal = {
 | `legs` | **v4 swap** legs: `DealLeg = { kind: 'NEAR' \| 'FAR'; tenor: Tenor }`, far strictly later than near. Built by `buildSwapLegs(near, far?)` / `resolveSwapLegs`, which coerce a missing/out-of-order far to the shortest valid far (last-tenor near steps back). Absent for spot/outright/NDF. See [features/swaps.md](../features/swaps.md). |
 | `swapRequested` | The originally requested `{ near, far? }`, recorded **only when the legs were coerced** (`resolveSwapLegs` reported `adjusted`). Drives the "legs adjusted" note so the coercion is auditable (FXSW-091 F-1). |
 
+## Dealt side — `DealtSide` (FXSW-092)
+
+`DealtSide = 'BID' | 'ASK'` (in `src/lib/quoteSide.ts`) is the single side a deal is actually **dealt on** at execution. A two-way (`side: 'BOTH'`) request is quoted on both sides but the client trades on exactly one, so the executed side narrows to `BID` or `ASK`:
+
+- The [`CLIENT_ACCEPT`](deal-event.md) feed event carries an optional `executedSide: DealtSide`, resolved by the [scenario player](../components/scenario-player.md#executed-side-for-two-way-requests-fxsw-092) (one-sided → its only quotable side; two-way → a per-deal seeded flip).
+- It is **persisted** on the store: `DealEntry` / `HistoricEntry` gain `executedSide` (set via `recordExecutedSide` just before the confirm), and the archival snapshot copies it **only when the outcome is Executed**. See [dealsStore](../components/deals-store.md).
+- Helper labels in `quoteSide.ts`: `clientDirectionForDealtSide(side, pair)` (single-leg only — `Client buys/sells {base}`) and `clientSideLabelForDealtSide(side)` (bank BID → `Client Ask`, bank ASK → `Client Bid`). Both drive the [historical detail](../features/historical-detail.md) executed-side banner. See [ADR-0017](../decisions/ADR-0017-swap-markup-model-and-executed-side.md).
+
 ## Related fields stored elsewhere
 
 These are part of the deal's runtime state but not on the `Deal` payload itself:
 
+- `executedSide?: DealtSide` — the dealt side, stored on the `DealEntry` / `HistoricEntry` in [dealsStore](../components/deals-store.md) (above).
 - `rejectionReasons: RejectionReason[]` — stored on the `DealEntry` in [dealsStore](../components/deals-store.md). Read from the blotter's Reasons cell and from the ticket's Reasons panel.
 - `marginPips: number` — current trader margin. **Interim:** owned by `TicketPanel` local state in Phase 3 (sourced from `entry.deal.defaultMarginPips`). FXSW-025 (Phase 4) will lift this onto the [dealMachine](../components/deal-machine.md) context so the AI suggestion Apply action and the Pricing Panel +/- controls mutate a single source of truth. The `docs/03-trade-state-model.md` §6 `DealContext` already includes the field; the machine actions that mutate it land with FXSW-025.
 - `isFixedMode`, `capturedRate`, `finalRate` — pricing-mode state; also TicketPanel-owned in v1 (as `pricingMode`, `fixedSide`, `frozenTick`). Same lift planned with FXSW-025.

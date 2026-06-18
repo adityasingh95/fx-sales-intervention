@@ -1,13 +1,14 @@
 ---
-last_updated: 2026-06-17
+last_updated: 2026-06-18
 sources:
   - docs/04-dummy-feed-spec.md
   - docs/07-scenario-pack.md
   - docs/phase-summaries/FXSW-042-followup-summary.md
   - docs/phase-summaries/phase-10-ndf-summary.md
   - docs/phase-summaries/phase-11-swaps-summary.md
+  - docs/dev-log.md
 status: stable
-ticket: FXSW-008, FXSW-078, FXSW-082, FXSW-090
+ticket: FXSW-008, FXSW-078, FXSW-082, FXSW-090, FXSW-092
 ---
 
 # Component — Scenario player
@@ -40,7 +41,7 @@ Factory-with-injectable-seams pattern: `emit`, `now`, `generateDealId`, and `acc
 
 `inject(scenarioId, overrides)` constructs the deal via `buildDeal`, which sets `instrumentType` (from the override, the scenario default, or `defaultInstrumentForTenor(tenor)`) and handles instrument-specific tenor shaping in one place:
 
-- **NDF** — must carry a forward tenor; a SPOT request is coerced to the shortest forward (`FORWARD_TENORS[0]`). See [features/ndf.md](../features/ndf.md).
+- **NDF** — must carry a forward tenor; a SPOT request is coerced to the shortest forward (`FORWARD_TENORS[0]`). It must also be struck on a **non-deliverable pair**: if the scenario's pair is deliverable (EURUSD/GBPUSD/USDJPY), `buildDeal` coerces it to an NDF pair (`NDF_PAIRS[0]`, currently `USDINR`) rather than quoting an NDF on a deliverable currency. `isNdfPair` / `NDF_PAIRS` live in `src/services/feed/types.ts`. See [features/ndf.md](../features/ndf.md).
 - **SWAP** — calls `resolveSwapLegs(near, far?)` (in `src/types/deal.ts`) to build `[NEAR, FAR]` with far strictly later, coercing a missing/out-of-order far to the shortest valid far (last-tenor near steps back). `Deal.tenor` mirrors the NEAR leg; when the legs were coerced, the original request is recorded on `Deal.swapRequested` for the "legs adjusted" note. See [features/swaps.md](../features/swaps.md).
 
 Single source of coercion: the player owns it, so every entry point gets identical behaviour.
@@ -62,9 +63,22 @@ So a single declarative follow-up entry fans out to either a `CLIENT_ACCEPT` or 
 
 **Seeded + injectable (FXSW-090).** The coin-flip is **no longer `Math.random()`** — it is resolved by `acceptOrReject(dealId)`, which defaults to a **seeded PRNG keyed off the deal id** (`makeRng(hashSeed(dealId) ^ PLAYER_SEED)`, reusing `services/feed/rng`). A given deal's outcome is therefore reproducible, and tests can pin it via the injectable `acceptOrReject` dep (and `generateDealId`). See [ADR-0016](../decisions/ADR-0016-ga-core-determinism.md). *(This supersedes the earlier "no injectable random seam / Math.random direct" behaviour.)*
 
+## Executed side for two-way requests (FXSW-092)
+
+A two-way request (`side: 'BOTH'`) is quoted on both sides but the client deals on exactly **one**. The player resolves which, so the `CLIENT_ACCEPT` event can carry an `executedSide` (`BID|ASK`, the `DealtSide` type in `src/lib/quoteSide.ts`):
+
+- **At inject**, the player records each deal's quotable side in a `dealSides` map: `dealSides.set(dealId, quoteSideFor(deal.side, deal.dealtCcy))`.
+- **`resolveExecutedSide(dealId)`** then decides the dealt side when the accept fires:
+  - a **one-sided** request (`dealSides` is `BID` or `ASK`) deals on its only quotable side;
+  - a **two-way** request's client **picks one via a per-deal seeded flip** — `makeRng(hashSeed(dealId) ^ EXEC_SIDE_SEED)() < 0.5 ? 'BID' : 'ASK'`. `EXEC_SIDE_SEED` is a **separate seed** from the accept/reject coin-flip (`PLAYER_SEED`), so a given deal's executed side is reproducible across runs and pinnable in tests — same determinism pattern as the [accept/reject flip](#randomized-outcome-event--client_accept_or_reject-phase-61) (FXSW-090).
+- `buildFollowUpEvent` threads `resolveExecutedSide` into the `CLIENT_ACCEPT` and `CLIENT_ACCEPT_OR_REJECT` events, so the dealt side rides the existing follow-up triggers (no new trigger kind).
+- The `dealSides` entry is **cleared in `forgetDeal`** (on archival / removeDeal) and wiped wholesale in `reset()`, mirroring the timer/gate cleanup below.
+
+Downstream, `dealsBootstrap` records the side via `recordExecutedSide` just before confirming, and the [deals store](deals-store.md) snapshots it onto the archived entry (only when Executed) so the [historical detail](../features/historical-detail.md) banner can surface it. See [ADR-0017](../decisions/ADR-0017-swap-markup-model-and-executed-side.md).
+
 ## `forgetDeal` + reset cleanup (FXSW-090)
 
-`forgetDeal(dealId)` clears every pending `setTimeout` handle **and** every unarmed state-gate owned by that deal, so an archived deal can't fire a stale follow-up and the internal `gates` Set can't grow unbounded. `reset()` clears all timers and gates wholesale (the session wipe). Both keep the simulation leak-free across long demo sessions.
+`forgetDeal(dealId)` clears every pending `setTimeout` handle, every unarmed state-gate, **and** the deal's `dealSides` entry, so an archived deal can't fire a stale follow-up and neither the internal `gates` Set nor the `dealSides` map can grow unbounded. `reset()` clears all timers, gates, and recorded sides wholesale (the session wipe). Both keep the simulation leak-free across long demo sessions.
 
 ## Reset semantics
 

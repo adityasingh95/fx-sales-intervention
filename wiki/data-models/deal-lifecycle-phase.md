@@ -1,11 +1,11 @@
 ---
-last_updated: 2026-06-16
+last_updated: 2026-06-18
 sources:
   - docs/03-trade-state-model.md
   - docs/phase-summaries/phase-08-v3-summary.md
   - docs/dev-log.md
 status: in-progress
-ticket: FXSW-049
+ticket: FXSW-049, FXSW-086, FXSW-092
 ---
 
 # Data Model — Deal Lifecycle Phase
@@ -84,15 +84,24 @@ type DealLifecycleEvent = {
 
 ```typescript
 type QuoteContext = {
-  appliedMargin?: AppliedMargin;   // spot pair, or spot+fwd pairs for a forward
+  appliedMargin?: AppliedMargin;   // spot pair, spot+fwd pairs (forward), or net+components (swap)
   aiSuggested?: boolean;
   rationale?: string;
 };
 
 type AppliedMargin =
   | { kind: 'spot'; margin: MarginPair }
-  | { kind: 'forward'; spot: MarginPair; fwd: MarginPair };
+  | { kind: 'forward'; spot: MarginPair; fwd: MarginPair }
+  | {
+      kind: 'swap';
+      mode: 'PER_COMPONENT' | 'TOTAL';
+      net: MarginPair;                                       // effective net-points margin
+      components?: { spot: MarginPair; near: MarginPair; far: MarginPair };  // PER_COMPONENT only
+      quoteSide?: 'BID' | 'ASK' | 'BOTH';                    // which direction(s) were priced
+    };
 ```
+
+The **swap variant** (FXSW-086, extended FXSW-092) carries the effective `net` margin plus, in `PER_COMPONENT` mode, the individual `components` (shared spot + per-leg forward margins) and the `quoteSide` that was priced. `components` + `quoteSide` drive the [historical detail](../features/historical-detail.md)'s `SwapMarkupDetail` breakdown grid (filtered by `quoteSide`); `TOTAL` keeps the concise net summary. The report is threaded from `SwapPanel` (`SwapPricingReport`) through `useQuoteContextCapture`. See [features/swaps.md](../features/swaps.md).
 
 The log is **captured live** during the deal's life (it cannot be reconstructed after archival — FXSW-049) and travels with the archived entry into Historic.
 

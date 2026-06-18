@@ -9,6 +9,7 @@ sources:
   - docs/phase-summaries/phase-08-v3-summary.md
   - docs/phase-summaries/phase-10-ndf-summary.md
   - docs/phase-summaries/phase-11-swaps-summary.md
+  - docs/dev-log.md
 status: stable
 ticket: FXSW-014..FXSW-020
 ---
@@ -112,8 +113,8 @@ The same auto-priced framing surfaces later in the [historical detail](historica
 
 Under `?dev=v4`, `TicketPanel` branches on `instrumentOf(deal)` (`data-instrument` on the panel reflects it):
 
-- **NDF** (points-only) — renders the [forward points panel](forward-pricing.md) **minus** the spot-margin control and the markup-mode toggle, plus an `ndf-note`. The spot margin is structurally zeroed (`spotMarginFor`), in the manual *and* auto-priced views and in the capture. Full detail: [features/ndf.md](ndf.md).
-- **SWAP** (two-leg) — renders the two-leg `SwapPanel` (NEAR/FAR blocks, raw net row, `swap-markup-mode` Per-component/Total toggle, client net + P/L) instead of the spot/forward panels, with the one-sided lock across both legs + net and a `readOnly` auto-priced variant. Full detail: [features/swaps.md](swaps.md).
+- **NDF** (points-only) — renders the [forward points panel](forward-pricing.md) **minus** the spot-margin control and the markup-mode toggle, plus an `ndf-note`. The spot margin is structurally zeroed (`spotMarginFor`), in the manual *and* auto-priced views and in the capture. An NDF can only be struck on a **non-deliverable pair** — the scenario player coerces a deliverable scenario pair to one (`NDF_PAIRS`, currently `USDINR`) at injection so the ticket never quotes an NDF on a deliverable currency. Full detail: [features/ndf.md](ndf.md).
+- **SWAP** (two-leg) — renders the **side-first** `SwapPanel` (`swap-panel`) instead of the spot/forward panels: two per-direction tiles — Bid `Buy/Sell {CCY}` (`swap-side-bid`) and Ask `Sell/Buy {CCY}` (`swap-side-ask`) — each carrying its shared spot, per-leg forward points, marked-up client net + P/L. A `swap-markup-mode` **Per-component / All-in** toggle switches each tile between a shared-spot + per-leg-forward markup and a single net markup. The one-sided lock dims the non-quotable tile and disables every stepper in it across both modes; a `readOnly` variant serves auto-priced swaps. Full detail: [features/swaps.md](swaps.md).
 
 Both reuse the existing lifecycle — **no new states/machines** ([deal-machine.md](../components/deal-machine.md)). Spot/outright keep the panels documented above. GA and `?dev=v3` are unaffected.
 
@@ -217,4 +218,4 @@ Panel shell, all sub-panels (including the [AI Margin Suggestion](ai-margin-sugg
 - `docs/03-trade-state-model.md` §2, §3, §7 — SI states, RFS↔SI relationships, side-effect timers
 - `docs/05-ui-ux-spec.md` §2, §4, §5 — overlay layout, pricing-panel detail, animation budget
 - `docs/phase-summaries/FXSW-021-summary.md` — Phase 3 hand-off summary
-- `docs/dev-log.md` FXSW-014 → FXSW-020 — per-ticket implementation notes
+- `docs/dev-log.md` FXSW-014 → FXSW-020 — per-ticket implementation notes; the 2026-06-17/18 swap-panel redesign + NDF pair-coercion rounds
