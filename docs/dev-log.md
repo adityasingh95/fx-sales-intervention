@@ -1327,6 +1327,30 @@ Two GUI feedback items:
   (10 tests), `player.test.ts` (+2), `tests/e2e/v4-swap`.
 - Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (543) · `test:e2e` ✓ (15/15).
 
+## Swap panel: per-side tiles with shared-spot + per-leg-fwd component markup (2026-06-18)
+
+GUI feedback on the swap ticket:
+
+1. **Removed the redundant "Net swap points" row** — it duplicated the client net
+   already shown in the side tiles. The marked-up client net lives in each tile
+   (`client-net-{bid,ask}`).
+2. **Restructured to per-direction tiles** matching a real swap pod. Each side is a
+   full tile (new `SwapSideTile.tsx`): Bid = `Buy/Sell {CCY}` (buy near / sell far),
+   Ask = `Sell/Buy {CCY}` (sell near / far buy). Each tile carries its shared spot
+   rate (`swap-spot-{bid,ask}`), its directional near/far forward points, and the
+   marked-up client net + P/L. The separate top legs section (`SwapLegsSection`)
+   was removed.
+3. **Markup model — shared spot + per-leg forward (per side).** Per-component mode
+   exposes, per side, a shared **spot** margin plus a **forward-points** margin on
+   each leg (`margin-input-spot/near/far-{bid,ask}`) with a per-tile Zero; All-in
+   exposes one net margin per side (`margin-input-net-{bid,ask}`). `effectiveSwapMargin`
+   now folds an optional `spot` margin into the per-component sum (defaults to 0 so
+   existing callers/tests are unaffected). The one-sided lock disables the
+   non-quotable side across both modes.
+- Updated `docs/05 §18.4`, `SwapPanel.test.tsx` (11), `pips.test.ts` (+1 spot case),
+  `tests/e2e/v4-swap`. `wiki/` swap pages remain agent-owned (flagged for ingest).
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (545) · `test:e2e` ✓ (15/15).
+
 ## Notes
 
 This file is intentionally summarized after the vendor-reference cleanup. Detailed historical references remain recoverable from Git history, but current documentation is kept brand-neutral.

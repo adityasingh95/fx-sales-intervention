@@ -5,7 +5,6 @@ import {
   clientSwapNetPoints,
   effectiveSwapMargin,
   estimatedProfitUsd,
-  gateMarginToSide,
   type SwapMarkupMode,
 } from '@/lib/pips';
 import type { QuoteSide } from '@/lib/quoteSide';
@@ -13,30 +12,20 @@ import { swapPointsFeed } from '@/services/feed/swapPoints';
 import type { PriceTick } from '@/services/feed/types';
 import type { MarginSuggestion } from '@/services/suggestion/types';
 import { type Deal, type MarginPair } from '@/types/deal';
-import { BalanceZeroRow, MarginRow } from './MarginControls';
-import SwapLegsSection from './SwapLegsSection';
+import SwapSideTile from './SwapSideTile';
 import SuggestionPanel from '../SuggestionPanel';
 import SwapAdjustNote from './SwapAdjustNote';
 
-// Swap pricing panel (docs/05 §18.4). A markup-mode toggle switches between:
-//
-//   • Per-component — an independent bid/ask margin on each leg (near + far),
-//     shown as steppers in the legs section; the marked-up net flows to the tiles.
-//   • All-in (Total) — a single bid/ask net-points margin per side tile, applied
-//     to the raw net; the legs section shows points read-only.
-//
-// Side-first layout: Bid tile ("Buy/Sell {CCY}") and Ask tile ("Sell/Buy {CCY}")
-// represent the two possible swap directions. A one-sided request dims the whole
-// non-quotable tile. AI suggestion targets the all-in layer (switches to Total).
+// Swap pricing panel (docs/05 §18.4). A swap quotes two directions, each shown as
+// its own tile (Bid = "Buy/Sell {CCY}" = buy near / sell far; Ask = "Sell/Buy
+// {CCY}" = sell near / far buy). Each tile carries the shared spot, its near/far
+// forward points, the marked-up client net + P/L, and per-side markup controls. A
+// markup-mode toggle switches between:
+//   • Per-component — a shared spot margin + a forward-points margin on each leg
+//   • All-in        — one net-points margin per side
+// AI suggestion targets the all-in layer (switches to All-in).
 
 const ZERO: MarginPair = { bid: 0, ask: 0 };
-const fmtPoints = (n: number): string => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
-
-const PROFIT_FMT = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
 
 function ModeButton({
   mode,
@@ -62,89 +51,6 @@ function ModeButton({
     >
       {label}
     </button>
-  );
-}
-
-interface SideTileProps {
-  scope: 'bid' | 'ask';
-  directionLabel: string;
-  quotable: boolean;
-  locked: boolean;
-  showMargin: boolean;
-  marginValue: number;
-  onMarginChange: (next: number) => void;
-  clientNet: number;
-  pnl: number;
-}
-
-function SideTile({
-  scope,
-  directionLabel,
-  quotable,
-  locked,
-  showMargin,
-  marginValue,
-  onMarginChange,
-  clientNet,
-  pnl,
-}: SideTileProps) {
-  return (
-    <section
-      data-testid={`swap-side-${scope}`}
-      data-quotable={quotable}
-      aria-label={`Client ${scope}`}
-      className={clsx(
-        'flex flex-1 flex-col gap-2 rounded-sm border p-3',
-        quotable
-          ? 'border-border-focus/40 bg-bg-elevated/60'
-          : 'border-border bg-bg-elevated/30 opacity-40',
-      )}
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <span
-          data-testid={`swap-side-${scope}-direction`}
-          className={clsx(
-            'rounded-sm px-1.5 py-0.5 text-[10px] font-semibold',
-            scope === 'bid' ? 'bg-red/15 text-red' : 'bg-blue/15 text-blue',
-          )}
-        >
-          {directionLabel}
-        </span>
-        <span className="text-[10px] uppercase tracking-tight text-text-mute">Client {scope}</span>
-      </div>
-
-      {/* Final client net (after the active markup). Non-quotable → dash. */}
-      <div className="text-center">
-        <div
-          data-testid={`client-net-${scope}`}
-          className="font-mono text-xl tabular-nums text-text"
-        >
-          {quotable ? fmtPoints(clientNet) : '—'}
-        </div>
-        <div
-          data-testid={`swap-pnl-${scope}`}
-          className="text-[10px] uppercase tracking-tight text-text-mute"
-        >
-          {quotable ? PROFIT_FMT.format(pnl) : '—'}
-        </div>
-      </div>
-
-      {/* All-in net markup — only in Total mode. */}
-      {showMargin && (
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] uppercase tracking-tight text-text-mute">All-in markup</span>
-          <MarginRow
-            testIdSuffix={scope}
-            idPrefix="net-"
-            labelPrefix="net "
-            value={marginValue}
-            onChange={(n) => onMarginChange(Math.max(0, Math.floor(n)))}
-            glow={false}
-            disabled={locked}
-          />
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -178,19 +84,21 @@ export default function SwapPanel({
   onAiAppliedChange,
 }: SwapPanelProps) {
   const [mode, setMode] = useState<SwapMarkupMode>('PER_COMPONENT');
-  // Per-component margins (per leg, per side)
+  // Per-component: shared spot margin + per-leg forward-points margins (per side).
+  const [spotMargin, setSpotMargin] = useState<MarginPair>(ZERO);
   const [nearMargin, setNearMargin] = useState<MarginPair>(ZERO);
   const [farMargin, setFarMargin] = useState<MarginPair>(ZERO);
-  // All-in net margin (per side)
-  const [totalMargin, setTotalMargin] = useState<MarginPair>(ZERO);
-  const [savedTotalForUndo, setSavedTotalForUndo] = useState<MarginPair | null>(null);
+  // All-in: one net-points margin per side.
+  const [allInMargin, setAllInMargin] = useState<MarginPair>(ZERO);
+  const [savedAllInForUndo, setSavedAllInForUndo] = useState<MarginPair | null>(null);
 
   useEffect(() => {
     setMode('PER_COMPONENT');
+    setSpotMargin(ZERO);
     setNearMargin(ZERO);
     setFarMargin(ZERO);
-    setTotalMargin(ZERO);
-    setSavedTotalForUndo(null);
+    setAllInMargin(ZERO);
+    setSavedAllInForUndo(null);
   }, [deal.dealId]);
 
   const legs = deal.legs ?? [];
@@ -206,22 +114,14 @@ export default function SwapPanel({
   const askQuotable = !(restrictMarginSides && quoteSide === 'BID');
   const bidLocked = readOnly || !bidQuotable;
   const askLocked = readOnly || !askQuotable;
-  const perComponent = mode === 'PER_COMPONENT';
-  const showBalanceZero = !readOnly && !(restrictMarginSides && quoteSide !== 'BOTH');
-  // Per-leg steppers show only in per-component mode (and when editable).
-  const legsReadOnly = readOnly || !perComponent;
 
-  // Effective margin under the active mode, gated to the quotable side.
+  // Effective net-points margin per side under the active mode (gated for one-sided).
   const effMargin = effectiveSwapMargin(
     mode,
-    { total: totalMargin, near: nearMargin, far: farMargin },
+    { total: allInMargin, near: nearMargin, far: farMargin, spot: spotMargin },
     quoteSide,
   );
   const clientNet = clientSwapNetPoints(swap.net, effMargin);
-  // Net shown in the legs section: the marked-up net in per-component mode, the raw
-  // net in all-in mode (the all-in markup happens at the tile level).
-  const rawNet = clientSwapNetPoints(swap.net, gateMarginToSide(ZERO, quoteSide));
-  const sectionNet = perComponent ? clientNet : rawNet;
 
   useEffect(() => {
     onPricingChange?.({ mode, net: effMargin });
@@ -233,8 +133,14 @@ export default function SwapPanel({
   const plAsk = estimatedProfitUsd(effMargin.ask, deal.notional, deal.pair, midRate);
 
   const base = deal.pair.slice(0, 3);
-  const directionLabel = (scope: 'bid' | 'ask'): string =>
-    scope === 'bid' ? `Buy/Sell ${base}` : `Sell/Buy ${base}`;
+
+  const zeroSide = (scope: 'bid' | 'ask'): void => {
+    const clear = (m: MarginPair): MarginPair =>
+      scope === 'bid' ? { bid: 0, ask: m.ask } : { bid: m.bid, ask: 0 };
+    setSpotMargin(clear);
+    setNearMargin(clear);
+    setFarMargin(clear);
+  };
 
   return (
     <section
@@ -246,17 +152,17 @@ export default function SwapPanel({
       {!readOnly && (
         <SuggestionPanel
           suggestion={suggestion}
-          currentMargin={totalMargin.bid}
+          currentMargin={allInMargin.bid}
           onApply={(pips) => {
-            setSavedTotalForUndo(totalMargin);
+            setSavedAllInForUndo(allInMargin);
             setMode('TOTAL');
-            setTotalMargin({ bid: pips, ask: pips });
+            setAllInMargin({ bid: pips, ask: pips });
             onAiAppliedChange?.(true, suggestion?.kind === 'ready' ? suggestion.rationale : null);
           }}
           onUndo={() => {
-            if (savedTotalForUndo) {
-              setTotalMargin(savedTotalForUndo);
-              setSavedTotalForUndo(null);
+            if (savedAllInForUndo) {
+              setAllInMargin(savedAllInForUndo);
+              setSavedAllInForUndo(null);
             }
             onAiAppliedChange?.(false, null);
           }}
@@ -267,75 +173,82 @@ export default function SwapPanel({
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
-          Swap · {nearTenor} → {farTenor}
-        </h2>
+        <div className="flex flex-col">
+          <h2 className="text-xs font-medium uppercase tracking-tight text-text-mute">
+            Swap · {nearTenor} → {farTenor}
+          </h2>
+          <span className="flex gap-2 font-mono text-[10px] uppercase tracking-tight text-text-mute">
+            <span data-testid="leg-near-value-date">{nearDate}</span>
+            <span aria-hidden>→</span>
+            <span data-testid="leg-far-value-date">{farDate}</span>
+          </span>
+        </div>
         {!readOnly && (
           <div data-testid="swap-markup-mode" className="flex gap-1">
             <ModeButton
               mode="PER_COMPONENT"
               label="Per-component"
-              active={perComponent}
+              active={mode === 'PER_COMPONENT'}
               onSelect={setMode}
             />
-            <ModeButton mode="TOTAL" label="All-in" active={!perComponent} onSelect={setMode} />
+            <ModeButton mode="TOTAL" label="All-in" active={mode === 'TOTAL'} onSelect={setMode} />
           </div>
         )}
       </div>
 
-      {/* Legs section: per-leg points + (per-component) per-leg markup steppers. */}
-      <SwapLegsSection
-        nearTenor={nearTenor}
-        farTenor={farTenor}
-        nearDate={nearDate}
-        farDate={farDate}
-        nearPoints={swap.near}
-        farPoints={swap.far}
-        componentNet={sectionNet}
-        nearMargin={nearMargin}
-        farMargin={farMargin}
-        onNearMarginChange={setNearMargin}
-        onFarMarginChange={setFarMargin}
-        bidLocked={bidLocked}
-        askLocked={askLocked}
-        showBalanceZero={showBalanceZero && perComponent}
-        readOnly={legsReadOnly}
-      />
-
-      {/* Side-first tiles: client price + (all-in mode) net markup. */}
+      {/* Two dealing directions, each a full side tile. */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <SideTile
+        <SwapSideTile
           scope="bid"
-          directionLabel={directionLabel('bid')}
-          quotable={bidQuotable}
-          locked={bidLocked}
-          showMargin={!readOnly && !perComponent}
-          marginValue={totalMargin.bid}
-          onMarginChange={(n) => setTotalMargin({ bid: n, ask: totalMargin.ask })}
+          directionLabel={`Buy/Sell ${base}`}
+          pair={deal.pair}
+          spotRate={tick?.bid ?? null}
+          nearTenor={nearTenor}
+          farTenor={farTenor}
+          nearPoint={swap.near.bid}
+          farPoint={swap.far.bid}
           clientNet={clientNet.bid}
           pnl={plBid}
+          quotable={bidQuotable}
+          locked={bidLocked}
+          readOnly={readOnly}
+          mode={mode}
+          allIn={allInMargin.bid}
+          onAllIn={(n) => setAllInMargin({ bid: n, ask: allInMargin.ask })}
+          spot={spotMargin.bid}
+          onSpot={(n) => setSpotMargin({ bid: n, ask: spotMargin.ask })}
+          nearMargin={nearMargin.bid}
+          onNear={(n) => setNearMargin({ bid: n, ask: nearMargin.ask })}
+          farMargin={farMargin.bid}
+          onFar={(n) => setFarMargin({ bid: n, ask: farMargin.ask })}
+          onZero={() => zeroSide('bid')}
         />
-        <SideTile
+        <SwapSideTile
           scope="ask"
-          directionLabel={directionLabel('ask')}
-          quotable={askQuotable}
-          locked={askLocked}
-          showMargin={!readOnly && !perComponent}
-          marginValue={totalMargin.ask}
-          onMarginChange={(n) => setTotalMargin({ bid: totalMargin.bid, ask: n })}
+          directionLabel={`Sell/Buy ${base}`}
+          pair={deal.pair}
+          spotRate={tick?.ask ?? null}
+          nearTenor={nearTenor}
+          farTenor={farTenor}
+          nearPoint={swap.near.ask}
+          farPoint={swap.far.ask}
           clientNet={clientNet.ask}
           pnl={plAsk}
+          quotable={askQuotable}
+          locked={askLocked}
+          readOnly={readOnly}
+          mode={mode}
+          allIn={allInMargin.ask}
+          onAllIn={(n) => setAllInMargin({ bid: allInMargin.bid, ask: n })}
+          spot={spotMargin.ask}
+          onSpot={(n) => setSpotMargin({ bid: spotMargin.bid, ask: n })}
+          nearMargin={nearMargin.ask}
+          onNear={(n) => setNearMargin({ bid: nearMargin.bid, ask: n })}
+          farMargin={farMargin.ask}
+          onFar={(n) => setFarMargin({ bid: farMargin.bid, ask: n })}
+          onZero={() => zeroSide('ask')}
         />
       </div>
-
-      {showBalanceZero && !perComponent && (
-        <BalanceZeroRow
-          marginPair={totalMargin}
-          onMarginPairChange={setTotalMargin}
-          idPrefix="net"
-          minMargin={0}
-        />
-      )}
     </section>
   );
 }

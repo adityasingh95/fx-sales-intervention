@@ -669,40 +669,36 @@ a non-deliverable one so the ticket never quotes an NDF on a deliverable currenc
 
 ### 18.4 Swap ticket
 
-A swap ticket (`data-instrument="SWAP"`) uses a **side-first pricing panel**
-(`swap-panel`) with a **markup-mode toggle** (`swap-markup-mode`) switching between
-*Per-component* (`swap-markup-mode-per-component`, default) and *All-in*
-(`swap-markup-mode-total`). Layout, top to bottom:
+A swap quotes two directions, each shown as its own **side tile**, with a
+**markup-mode toggle** (`swap-markup-mode`) switching between *Per-component*
+(`swap-markup-mode-per-component`, default) and *All-in* (`swap-markup-mode-total`).
+A swap ticket (`data-instrument="SWAP"`, `swap-panel`) has a header with the
+tenors and both leg value dates (`leg-near-value-date` / `leg-far-value-date`),
+then two tiles:
 
-**Legs section (`swap-legs-section`):** A two-column section (near leg left, far
-leg right, separated by a divider). Each leg column shows its tenor + value date
-(`leg-{near,far}-value-date`) and the raw bid/ask forward points
-(`leg-{near,far}-points-{bid,ask}`). In **Per-component** mode each column also
-shows independent bid/ask margin steppers (`margin-input-{near,far}-{bid,ask}`,
-stacked vertically) with per-leg Balance/Zero (`margin-balance-{near,far}` /
-`margin-zero-{near,far}`); in **All-in** mode those steppers are hidden. The net
-swap points appear prominently at the bottom (`swap-net-bid` / `swap-net-ask`) —
-marked-up by the per-leg margins in Per-component mode, raw in All-in mode.
+**Side tiles** — **Bid** (`swap-side-bid`, red) = `Buy/Sell {CCY}` (buy near, sell
+far) and **Ask** (`swap-side-ask`, blue) = `Sell/Buy {CCY}` (sell near, buy far);
+labels fixed regardless of deal.side (`swap-side-{bid,ask}-direction`). Each tile
+shows the side's shared **spot** rate (`swap-spot-{bid,ask}`), its directional
+near/far **forward points** (`leg-{near,far}-points-{bid,ask}`), and the marked-up
+**client net** (`client-net-{bid,ask}`) + estimated P/L (`swap-pnl-{bid,ask}`).
 
-**Side tiles:** Two tiles, **Bid** (`swap-side-bid`, red) and **Ask**
-(`swap-side-ask`, blue), represent the two possible swap directions: Bid =
-`Buy/Sell {CCY}` (buy near, sell far); Ask = `Sell/Buy {CCY}` (sell near, buy far)
-— labels fixed regardless of deal.side (`swap-side-{bid,ask}-direction`). Each tile
-shows the final **client net** (`client-net-{bid,ask}`) and estimated P/L
-(`swap-pnl-{bid,ask}`). In **All-in** mode each tile also shows a single net-points
-markup stepper (`margin-input-net-{bid,ask}`); Balance/Zero for the all-in pair
-(`margin-balance-net` / `margin-zero-net`) sit below the tiles.
+**Markup, per side** —
+- *Per-component*: a shared **spot** margin (`margin-input-spot-{bid,ask}`) plus a
+  **forward-points** margin on each leg (`margin-input-near-{bid,ask}` /
+  `margin-input-far-{bid,ask}`); a per-tile **Zero** (`swap-zero-{bid,ask}`) clears
+  that side's three components. The effective net margin is their sum.
+- *All-in*: a single net-points margin per side (`margin-input-net-{bid,ask}`).
 
-**Markup modes** — *Per-component* exposes an independent bid/ask margin on each
-leg (the sum widens the net); *All-in* exposes one bid/ask margin applied to the
-net. The two are mutually exclusive (effective margin per `effectiveSwapMargin`).
-Applying the AI suggestion switches to All-in.
+The two modes are mutually exclusive (effective margin per `effectiveSwapMargin`,
+which sums spot + near + far in per-component). Applying the AI suggestion switches
+to All-in.
 
 **Side gating** — a one-sided swap (`restrictMarginSides` / `quoteSide`, §17.1)
-locks the non-quotable side's steppers in the active mode, marks the non-quotable
-tile `data-quotable="false"` (dimmed at `opacity-40`), suppresses its client net +
-P/L (dash, not the raw net; FXSW-091 F-2), and hides Balance/Zero. Two-sided swaps
-show both tiles and all steppers live.
+disables the non-quotable side's steppers (both modes), marks that tile
+`data-quotable="false"` (dimmed at `opacity-40`), suppresses its client net + P/L
+(dash, not the raw net; FXSW-091 F-2), and hides its Zero. Two-sided swaps show
+both tiles and all steppers live.
 
 ### 18.5 Blotters and detail overlay
 

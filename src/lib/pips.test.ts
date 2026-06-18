@@ -163,6 +163,21 @@ describe('swap pricing (FXSW-084)', () => {
     expect(m).toEqual({ bid: 5, ask: 8 });
   });
 
+  it('effectiveSwapMargin PER_COMPONENT adds the shared spot margin to the legs', () => {
+    const m = effectiveSwapMargin(
+      'PER_COMPONENT',
+      {
+        total: { bid: 99, ask: 99 },
+        near: { bid: 1, ask: 2 },
+        far: { bid: 4, ask: 6 },
+        spot: { bid: 3, ask: 5 },
+      },
+      'BOTH',
+    );
+    // bid: 1 + 4 + 3 = 8; ask: 2 + 6 + 5 = 13
+    expect(m).toEqual({ bid: 8, ask: 13 });
+  });
+
   it('clientSwapNetPoints widens the net (bid down, ask up) by the margin', () => {
     expect(clientSwapNetPoints(net, { bid: 3, ask: 5 })).toEqual({ bid: 127, ask: 145 });
   });
