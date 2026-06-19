@@ -36,8 +36,8 @@ export default function Cell({
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled || undefined}
       className={clsx(
-        'flex flex-1 flex-col items-center rounded-sm border bg-bg-elevated px-3 py-2 transition-colors duration-[80ms]',
-        focused && 'border-border-focus shadow-[0_0_0_1px_rgba(99,102,241,0.5)]',
+        'flex flex-1 flex-col items-center rounded-sm border bg-bg-elevated/70 px-3 py-2 transition-colors duration-[80ms] backdrop-blur-sm',
+        focused && 'border-border-focus shadow-[0_0_0_1px_rgba(74,222,128,0.4),inset_0_1px_0_rgba(74,222,128,0.25)]',
         !focused && flash === 'up' && 'border-green',
         !focused && flash === 'down' && 'border-red',
         !focused && !flash && 'border-border',

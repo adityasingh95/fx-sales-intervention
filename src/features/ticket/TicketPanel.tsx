@@ -201,7 +201,7 @@ export default function TicketPanel() {
         role="dialog"
         aria-label={autoView ? 'Auto-priced deal' : 'Sales Intervention ticket'}
         className={clsx(
-          'absolute right-0 top-0 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-glass shadow-2xl backdrop-blur-xl backdrop-saturate-150 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[640px]',
+          'absolute right-0 top-0 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-glass shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8),inset_1px_0_0_rgba(210,255,228,0.09)] backdrop-blur-xl backdrop-saturate-150 transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[640px]',
           slidIn ? 'translate-x-0' : 'translate-x-full',
         )}
       >
