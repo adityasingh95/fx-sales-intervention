@@ -201,11 +201,11 @@ export default function TicketPanel() {
         role="dialog"
         aria-label={autoView ? 'Auto-priced deal' : 'Sales Intervention ticket'}
         className={clsx(
-          'absolute right-0 top-0 flex h-full w-full max-w-full flex-col border-l border-border bg-bg-glass backdrop-blur-xl backdrop-saturate-[180%] shadow-[0_8px_40px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.08),inset_1px_0_0_rgba(255,255,255,0.85),inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[640px]',
+          'absolute right-0 top-0 flex h-full w-full max-w-full flex-col border-l border-white/40 bg-white/25 backdrop-blur-2xl backdrop-saturate-[220%] shadow-[var(--shadow-ticket)] transition-transform duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-[640px]',
           slidIn ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <header className="flex items-center justify-between border-b border-white/10 px-5 py-3 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
+        <header className="flex items-center justify-between border-b border-black/8 bg-white/20 px-5 py-3 shadow-[0_1px_0_rgba(255,255,255,0.9),inset_0_1px_0_rgba(255,255,255,0.7)]">
           <div className="flex items-center gap-3">
             <span className="font-sans text-sm font-medium text-text">
               {autoView ? 'Auto-priced' : 'Sales Intervention'}

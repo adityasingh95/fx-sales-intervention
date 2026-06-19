@@ -72,8 +72,23 @@ input[type='number'] {
   }
 }
 
-/* Liquid Glass light theme -- subtle warm-to-cool gradient base. */
+/* Liquid Glass light theme -- vivid multi-hue base so glass panels have
+   something colorful to pick up through backdrop-blur. */
 [data-theme='light'] body {
-  background: linear-gradient(160deg, #eef1f7 0%, #f5f7fa 50%, #edf2f8 100%);
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(130, 180, 255, 0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 50% at 85% 20%, rgba(180, 140, 255, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 75% 80%, rgba(255, 160, 200, 0.40) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 20% 80%, rgba(120, 220, 200, 0.35) 0%, transparent 60%),
+    linear-gradient(160deg, #e8f0ff 0%, #f3eeff 40%, #fff0f8 70%, #e8f8f5 100%);
   min-height: 100vh;
+}
+
+[data-theme='light'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.30);
+  pointer-events: none;
+  z-index: 0;
 }

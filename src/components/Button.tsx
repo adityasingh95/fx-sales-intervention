@@ -13,7 +13,7 @@ type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-[rgb(0,122,255)] text-white border-transparent hover:bg-[rgba(0,122,255,0.88)] shadow-[0_2px_8px_rgba(0,122,255,0.35),inset_0_1px_0_rgba(255,255,255,0.25)]',
+    'bg-[rgb(0,122,255)] text-white border-transparent hover:bg-[rgba(0,100,235,0.95)] shadow-[0_4px_16px_rgba(0,100,255,0.45),0_1px_4px_rgba(0,100,255,0.30),inset_0_1px_0_rgba(255,255,255,0.35)]',
   secondary:
     'bg-white/60 text-text border-black/10 hover:bg-white/75 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
   danger:

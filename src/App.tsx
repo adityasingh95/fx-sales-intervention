@@ -73,12 +73,12 @@ export default function App() {
       <main
         ref={mainRef}
         className={clsx(
-          'flex flex-1 flex-col overflow-hidden transition-opacity duration-[240ms]',
-          ticketOpen && 'opacity-[0.88]',
+          'flex flex-1 flex-col overflow-hidden transition-[opacity,filter] duration-[280ms]',
+          ticketOpen && 'opacity-60 blur-[1px]',
         )}
       >
         <section
-          className="m-2 mb-1 min-h-0 overflow-hidden rounded-xl bg-bg-glass shadow-panel backdrop-blur-xl backdrop-saturate-[180%]"
+          className="m-2 mb-1 min-h-0 overflow-hidden rounded-2xl bg-bg-glass shadow-panel backdrop-blur-2xl backdrop-saturate-[200%]"
           style={{ flex: `${blotterSplit} 1 0` }}
         >
           <ActiveBlotter />
@@ -89,7 +89,7 @@ export default function App() {
           containerRef={mainRef}
         />
         <section
-          className="m-2 mt-1 min-h-0 overflow-hidden rounded-xl bg-bg-glass shadow-panel backdrop-blur-xl backdrop-saturate-[180%]"
+          className="m-2 mt-1 min-h-0 overflow-hidden rounded-2xl bg-bg-glass shadow-panel backdrop-blur-2xl backdrop-saturate-[200%]"
           style={{ flex: `${100 - blotterSplit} 1 0` }}
         >
           <HistoricBlotter />

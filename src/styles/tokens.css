@@ -104,14 +104,15 @@
 /* Liquid Glass light theme -- translucent frosted surfaces, iOS system colours,
    specular rim highlights, backdrop vibrancy, and generous border radii. */
 [data-theme='light'] {
-  /* Backgrounds -- cool near-white base */
-  --color-bg-app: 242 244 247;
-  --color-bg-panel: 248 249 251;
-  --color-bg-panel-2: 240 242 246;
-  --color-bg-elevated: 255 255 255;
-  --color-bg-row-hover: 245 247 250;
-  --color-bg-overlay: rgba(242, 244, 247, 0.85);
-  --color-bg-glass: rgba(255, 255, 255, 0.68);
+  /* Backgrounds -- let the body gradient bleed through glass at all times */
+  --color-bg-app: 240 244 255;
+  --color-bg-panel: 245 248 255;
+  --color-bg-panel-2: 238 242 252;
+  --color-bg-elevated: rgba(255, 255, 255, 0.75);
+  --color-bg-row-hover: rgba(255, 255, 255, 0.45);
+  --color-bg-overlay: rgba(235, 240, 255, 0.80);
+  /* Core glass token: genuinely transparent so backdrop-blur picks up colour */
+  --color-bg-glass: rgba(255, 255, 255, 0.28);
 
   /* Borders & dividers */
   --color-border: 224 227 234;
@@ -146,21 +147,22 @@
   --color-focus-ring: 0 122 255;
   --color-row-flash: rgba(200, 116, 0, 0.14);
 
-  /* Liquid Glass depth system -- every surface gets a specular top-edge rim */
+  /* Liquid Glass depth system -- strong specular rim on more transparent surfaces */
   --shadow-panel:
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.60);
+    0 4px 16px rgba(80, 100, 180, 0.10),
+    0 12px 40px rgba(80, 100, 180, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1.00),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.50);
   --shadow-ticket:
-    0 8px 40px rgba(0, 0, 0, 0.14),
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 1px 0 0 rgba(255, 255, 255, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90);
-  --shadow-ai:
-    0 2px 12px rgba(0, 122, 255, 0.10),
+    -8px 0 32px rgba(80, 100, 180, 0.12),
+    -2px 0 8px rgba(80, 100, 180, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 1.00),
     inset 0 1px 0 rgba(255, 255, 255, 0.90),
-    inset 0 0 0 0.5px rgba(0, 122, 255, 0.15);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.40);
+  --shadow-ai:
+    0 4px 20px rgba(0, 122, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1.00),
+    inset 0 0 0 1px rgba(0, 122, 255, 0.18);
 
   /* Typography */
   --leading-base: 1.5;
