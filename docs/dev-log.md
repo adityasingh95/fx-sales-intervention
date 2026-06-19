@@ -16,6 +16,22 @@ The prototype story is brand-neutral: a sales-trader workstation for FX manual p
 
 ---
 
+## 2026-06-19 -- Liquid Glass Light Theme (claude/theme-liquid-glass)
+
+New theme branch implementing Apple Liquid Glass aesthetic as a light-mode variant:
+- `[data-theme='light']` tokens: translucent white glass base (`rgba(255,255,255,0.68)`), iOS system colour palette (blue `0 122 255`, green `40 168 68`, red `220 48 38`, amber `200 116 0`)
+- Generous border radii (8/12/16/22px) vs Phosphor's 2px -- updated in `tailwind.config.ts` and `tokens.css`
+- Every glass surface gets specular top-edge highlight `inset 0 1px 0 rgba(255,255,255,0.9)` via `--shadow-panel`, `--shadow-ticket`, `--shadow-ai`
+- `backdrop-blur-xl backdrop-saturate-[180%]` on header, ticket panel, blotter section headers, toasts, and AI suggestion panel
+- Pills: `rounded-full` glass capsules with per-colour specular inset shadow replacing square-cornered badges
+- Price cells: frosted white glass (`bg-white/70 backdrop-blur-sm`) with iOS-style focus ring
+- Body: `linear-gradient(160deg, #eef1f7 0%, #f5f7fa 50%, #edf2f8 100%)` base
+- Top accent bar: iOS blue `from-blue to-blue/20` in light mode
+- Main content: `opacity-[0.88]` when ticket open (was 0.75) so glass bleed-through is visible
+- Unit tests in `tests/unit/tokens.test.ts` and `tests/unit/tailwind.config.test.ts` updated to reflect new values
+
+---
+
 ## FXSW-067 · v3 feedback-fix docs
 
 - Documented the v3 feedback fixes across the spec pack and this log (see entries

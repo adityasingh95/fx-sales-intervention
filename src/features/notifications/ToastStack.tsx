@@ -42,7 +42,7 @@ function ToastCard({ toast }: { toast: Toast }) {
         openTicket(toast.dealId);
         dismiss(toast.id);
       }}
-      className="pointer-events-auto flex w-80 items-start gap-2 rounded-md border border-ai-border bg-bg-glass px-3 py-2.5 text-left text-sm text-text shadow-ai backdrop-blur-xl hover:border-ai-accent"
+      className="pointer-events-auto flex w-80 items-start gap-2 rounded-lg border border-black/10 bg-bg-glass px-3 py-2.5 text-left text-sm text-text backdrop-blur-xl backdrop-saturate-[180%] shadow-[0_4px_20px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-black/20"
     >
       <span className="flex-1 leading-base">{toast.message}</span>
       <span

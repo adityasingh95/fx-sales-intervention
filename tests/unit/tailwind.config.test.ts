@@ -72,10 +72,10 @@ describe('tailwind config — spacing', () => {
 
 describe('tailwind config — border radius', () => {
   it.each([
-    ['sm', '4px'],
-    ['md', '6px'],
-    ['lg', '10px'],
-    ['xl', '14px'],
+    ['sm', '8px'],
+    ['md', '12px'],
+    ['lg', '16px'],
+    ['xl', '22px'],
   ])('maps borderRadius.%s to %s', (key, value) => {
     expect(radius[key]).toBe(value);
   });

@@ -36,11 +36,12 @@ export default function Cell({
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled || undefined}
       className={clsx(
-        'flex flex-1 flex-col items-center rounded-sm border bg-bg-elevated px-3 py-2 transition-colors duration-[80ms]',
-        focused && 'border-border-focus shadow-[0_0_0_1px_rgba(99,102,241,0.5)]',
+        'flex flex-1 flex-col items-center rounded-md border bg-white/70 px-3 py-2 backdrop-blur-sm transition-colors duration-[80ms]',
+        focused &&
+          'border-blue shadow-[0_0_0_3px_rgba(0,122,255,0.20),inset_0_1px_0_rgba(255,255,255,0.9)]',
         !focused && flash === 'up' && 'border-green',
         !focused && flash === 'down' && 'border-red',
-        !focused && !flash && 'border-border',
+        !focused && !flash && 'border-black/8',
         dimmed && !disabled && 'opacity-50',
         disabled && 'cursor-not-allowed opacity-[0.35]',
       )}

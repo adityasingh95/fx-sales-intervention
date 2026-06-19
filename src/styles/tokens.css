@@ -5,12 +5,11 @@
  * `rgb(var(--color-X) / <alpha-value>)` pattern can inject alpha values
  * from utility modifiers (e.g. `bg-blue/85`). Alpha-baked tokens
  * (overlays, glass, AI panel wash, row-flash) keep their full `rgba(...)`
- * form — they're never used with the opacity modifier.
+ * form -- they're never used with the opacity modifier.
  *
  * `[data-theme='light']` (set by themeStore at runtime) overrides every
- * token to the light-surface palette. AI indigo is preserved as the
- * suggestion-panel identifier across both modes (hue stays the same,
- * value shifts slightly).
+ * token to the light-surface palette. AI blue is preserved as the
+ * suggestion-panel identifier across both modes.
  */
 :root {
   /* Backgrounds */
@@ -43,7 +42,7 @@
   --color-grey-500: 98 98 111;
   --color-grey-700: 62 62 77;
 
-  /* AI panel — indigo-violet family */
+  /* AI panel -- indigo-violet family */
   --color-ai-accent: 129 140 248;
   --color-ai-accent-2: 167 139 250;
   --color-ai-bg: rgba(99, 102, 241, 0.08);
@@ -102,58 +101,73 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* FXSW-044 — Light theme overrides. Status pills + tick colours darkened for
-   light-surface legibility. AI indigo preserved as the suggestion-panel
-   identifier across modes (hue stays the same, value shifts slightly). */
+/* Liquid Glass light theme -- translucent frosted surfaces, iOS system colours,
+   specular rim highlights, backdrop vibrancy, and generous border radii. */
 [data-theme='light'] {
-  /* Backgrounds — soft warm-cool neutral, not bleached white */
-  --color-bg-app: 246 246 248;
-  --color-bg-panel: 255 255 255;
-  --color-bg-panel-2: 241 241 244;
+  /* Backgrounds -- cool near-white base */
+  --color-bg-app: 242 244 247;
+  --color-bg-panel: 248 249 251;
+  --color-bg-panel-2: 240 242 246;
   --color-bg-elevated: 255 255 255;
-  --color-bg-row-hover: 236 236 240;
-  --color-bg-overlay: rgba(20, 20, 25, 0.42);
-  --color-bg-glass: rgba(255, 255, 255, 0.78);
+  --color-bg-row-hover: 245 247 250;
+  --color-bg-overlay: rgba(242, 244, 247, 0.85);
+  --color-bg-glass: rgba(255, 255, 255, 0.68);
 
   /* Borders & dividers */
-  --color-border: 227 227 232;
-  --color-border-strong: 204 205 212;
-  --color-border-focus: 79 70 229;
+  --color-border: 224 227 234;
+  --color-border-strong: 200 204 214;
+  --color-border-focus: 0 122 255;
 
-  /* Text — high-contrast on light, with proper hierarchy */
-  --color-text: 21 21 28;
-  --color-text-dim: 77 77 90;
-  --color-text-mute: 142 142 156;
+  /* Text */
+  --color-text: 15 18 25;
+  --color-text-dim: 72 80 96;
+  --color-text-mute: 140 148 164;
 
-  /* Status colours — same hues, darkened for light-surface legibility */
-  --color-amber: 180 83 9;
-  --color-blue-soft: 37 99 235;
-  --color-blue: 29 78 216;
-  --color-teal: 14 138 120;
-  --color-teal-dim: 74 138 131;
-  --color-green: 21 128 61;
-  --color-red: 185 28 28;
-  --color-grey-500: 107 107 120;
-  --color-grey-700: 161 161 171;
+  /* iOS system colours */
+  --color-amber: 200 116 0;
+  --color-blue-soft: 0 100 220;
+  --color-blue: 0 122 255;
+  --color-teal: 0 167 158;
+  --color-teal-dim: 0 138 130;
+  --color-green: 40 168 68;
+  --color-red: 220 48 38;
+  --color-grey-500: 120 128 144;
+  --color-grey-700: 174 180 190;
 
-  /* AI panel — indigo retained as the AI identifier */
-  --color-ai-accent: 79 70 229;
-  --color-ai-accent-2: 124 58 237;
-  --color-ai-bg: rgba(99, 102, 241, 0.08);
-  --color-ai-border: rgba(99, 102, 241, 0.28);
+  /* AI accent -- iOS blue for the suggestion panel */
+  --color-ai-accent: 0 122 255;
+  --color-ai-accent-2: 88 86 214;
+  --color-ai-bg: rgba(0, 122, 255, 0.07);
+  --color-ai-border: rgba(0, 122, 255, 0.20);
 
   /* Functional */
-  --color-tick-up: 21 128 61;
-  --color-tick-down: 185 28 28;
-  --color-focus-ring: 79 70 229;
-  --color-row-flash: rgba(180, 83, 9, 0.18);
+  --color-tick-up: 40 168 68;
+  --color-tick-down: 220 48 38;
+  --color-focus-ring: 0 122 255;
+  --color-row-flash: rgba(200, 116, 0, 0.14);
 
-  /* Shadows — soft drop-shadow on white surfaces */
-  --shadow-panel: 0 0 0 1px rgb(var(--color-border));
+  /* Liquid Glass depth system -- every surface gets a specular top-edge rim */
+  --shadow-panel:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.60);
   --shadow-ticket:
-    0 0 0 1px rgb(var(--color-border-strong)),
-    -16px 0 48px -8px rgba(15, 15, 25, 0.12);
+    0 8px 40px rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
   --shadow-ai:
-    0 0 0 1px var(--color-ai-border),
-    0 1px 24px -4px rgba(99, 102, 241, 0.18);
+    0 2px 12px rgba(0, 122, 255, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 0 0 0.5px rgba(0, 122, 255, 0.15);
+
+  /* Typography */
+  --leading-base: 1.5;
+
+  /* Radii -- generous iOS tiers (override dark defaults) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
 }

@@ -116,7 +116,7 @@ export default function SuggestionPanel({
         data-testid="suggestion-panel"
         data-suggestion-state="credit-decline"
         aria-label="AI Recommendation"
-        className="flex flex-col gap-3 rounded-lg border border-ai-border bg-ai-bg p-4 shadow-ai"
+        className="flex flex-col gap-3 rounded-xl border border-ai-border bg-ai-bg p-4 backdrop-blur-md backdrop-saturate-[180%] shadow-[0_2px_12px_rgba(0,122,255,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
       >
         <header className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function SuggestionPanel({
       <section
         data-testid="suggestion-panel"
         data-suggestion-state="applied"
-        className="flex items-center justify-between gap-3 rounded-lg border border-ai-border bg-ai-bg px-4 py-2.5 shadow-ai"
+        className="flex items-center justify-between gap-3 rounded-xl border border-ai-border bg-ai-bg px-4 py-2.5 backdrop-blur-md backdrop-saturate-[180%] shadow-[0_2px_12px_rgba(0,122,255,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
       >
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-ai-accent" aria-hidden />
@@ -196,7 +196,7 @@ export default function SuggestionPanel({
       data-suggestion-state={recomputing ? 'computing' : 'ready'}
       aria-label="AI Margin Suggestion"
       aria-busy={recomputing || undefined}
-      className="flex flex-col gap-3 rounded-lg border border-ai-border bg-ai-bg p-4 shadow-ai"
+      className="flex flex-col gap-3 rounded-xl border border-ai-border bg-ai-bg p-4 backdrop-blur-md backdrop-saturate-[180%] shadow-[0_2px_12px_rgba(0,122,255,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]"
     >
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">

@@ -167,13 +167,13 @@ describe('design tokens — light theme block', () => {
   });
 
   it.each([
-    ['--color-bg-app', '246 246 248'],
-    ['--color-bg-panel', '255 255 255'],
-    ['--color-text', '21 21 28'],
-    ['--color-amber', '180 83 9'],
-    ['--color-green', '21 128 61'],
-    ['--color-red', '185 28 28'],
-    ['--color-ai-accent', '79 70 229'],
+    ['--color-bg-app', '242 244 247'],
+    ['--color-bg-panel', '248 249 251'],
+    ['--color-text', '15 18 25'],
+    ['--color-amber', '200 116 0'],
+    ['--color-green', '40 168 68'],
+    ['--color-red', '220 48 38'],
+    ['--color-ai-accent', '0 122 255'],
   ])('declares light %s as %s', (name, value) => {
     // Light override appears AFTER the dark default, so the last match wins.
     const matches = [...tokens.matchAll(new RegExp(`${name}\\s*:\\s*([\\d\\s]+);`, 'g'))];
@@ -182,6 +182,6 @@ describe('design tokens — light theme block', () => {
   });
 
   it('declares light row-flash with lower alpha', () => {
-    expect(tokens).toContain('rgba(180, 83, 9, 0.18)');
+    expect(tokens).toContain('rgba(200, 116, 0, 0.14)');
   });
 });

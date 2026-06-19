@@ -143,7 +143,7 @@ export function ActiveBlotter() {
   const useCards = isMobile;
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
+      <div className="flex shrink-0 items-center border-b border-border bg-bg-glass px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute backdrop-blur-md backdrop-saturate-[180%] shadow-[inset_0_-1px_0_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.8)]">
         <span className="mr-3 font-sans">Active Deals</span>
       </div>
       <div className="flex-1 overflow-auto">
@@ -162,7 +162,7 @@ export function ActiveBlotter() {
           </div>
         ) : (
           <div className={v4Cols ? 'min-w-[1410px]' : v3Cols ? 'min-w-[1320px]' : 'min-w-[1100px]'}>
-            <div className="sticky top-0 z-10 flex border-b border-border bg-bg-panel px-4 py-2 text-xs uppercase tracking-tight text-text-mute">
+            <div className="sticky top-0 z-10 flex border-b border-border bg-bg-glass px-4 py-2 text-xs uppercase tracking-tight text-text-mute backdrop-blur-md backdrop-saturate-[180%] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
               {columns.map((col) => (
                 <div key={col.key} className={col.width}>
                   {col.label}

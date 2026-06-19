@@ -59,8 +59,8 @@ input[type='number'] {
   }
 }
 
-/* FXSW-028 — new-SI-deal row flash. Source colour comes from the
-   --color-row-flash token (FXSW-046): amber 30% on dark, amber 18% on
+/* FXSW-028 -- new-SI-deal row flash. Source colour comes from the
+   --color-row-flash token (FXSW-046): amber 30% on dark, amber 14% on
    light surfaces. Plays once on mount via the `animate-row-flash`
    Tailwind utility wired in tailwind.config.ts. */
 @keyframes row-flash {
@@ -70,4 +70,10 @@ input[type='number'] {
   to {
     background-color: transparent;
   }
+}
+
+/* Liquid Glass light theme -- subtle warm-to-cool gradient base. */
+[data-theme='light'] body {
+  background: linear-gradient(160deg, #eef1f7 0%, #f5f7fa 50%, #edf2f8 100%);
+  min-height: 100vh;
 }
