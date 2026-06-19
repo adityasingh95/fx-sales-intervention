@@ -47,7 +47,7 @@ export default function TicketFooter({
   return (
     <footer
       data-testid="ticket-footer"
-      className="flex flex-wrap items-center justify-end gap-1 border-t border-border px-2 py-3 sm:gap-2 sm:px-5"
+      className="flex flex-wrap items-center justify-end gap-1 border-t border-white/10 px-2 py-3 shadow-[0_-1px_0_rgba(255,255,255,0.06)] sm:gap-2 sm:px-5"
     >
       {showReturnToStream && (
         <ActionButton

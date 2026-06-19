@@ -78,7 +78,7 @@ export default function App() {
         )}
       >
         <section
-          className="min-h-0 overflow-hidden"
+          className="m-2 mb-1 min-h-0 overflow-hidden rounded-xl bg-bg-glass shadow-panel backdrop-blur-xl backdrop-saturate-[180%]"
           style={{ flex: `${blotterSplit} 1 0` }}
         >
           <ActiveBlotter />
@@ -89,7 +89,7 @@ export default function App() {
           containerRef={mainRef}
         />
         <section
-          className="min-h-0 overflow-hidden"
+          className="m-2 mt-1 min-h-0 overflow-hidden rounded-xl bg-bg-glass shadow-panel backdrop-blur-xl backdrop-saturate-[180%]"
           style={{ flex: `${100 - blotterSplit} 1 0` }}
         >
           <HistoricBlotter />

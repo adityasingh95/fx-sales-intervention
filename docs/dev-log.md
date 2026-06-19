@@ -30,6 +30,16 @@ New theme branch implementing Apple Liquid Glass aesthetic as a light-mode varia
 - Main content: `opacity-[0.88]` when ticket open (was 0.75) so glass bleed-through is visible
 - Unit tests in `tests/unit/tokens.test.ts` and `tests/unit/tailwind.config.test.ts` updated to reflect new values
 
+**Second pass (2026-06-19 session):** Applied Liquid Glass spec to remaining surfaces:
+- `Button.tsx`: all variants now `rounded-full` pill shape; primary uses iOS blue `rgb(0,122,255)` with specular shadow; ghost/secondary/danger are translucent glass pills with `backdrop-blur-sm`
+- `Pill.tsx`: already updated to `rounded-full` glass capsules with per-colour specular inner shadow and `backdrop-blur-sm`
+- `App.tsx`: blotter sections wrapped in `rounded-xl bg-bg-glass backdrop-blur-xl` glass cards with `shadow-panel`; header uses `bg-bg-glass backdrop-blur-xl` with specular highlight
+- `ActiveBlotter.tsx` + `HistoricBlotter.tsx`: data rows use `bg-white/35 border-black/5` glass; mobile cards are `rounded-xl` glass panels; column header rows are `bg-bg-glass backdrop-blur-md`
+- `TicketPanel.tsx`: panel uses `bg-bg-glass backdrop-blur-xl` with specular ticket shadow; header and footer borders use `border-white/10` for glass seam effect; close button is `rounded-full`
+- `TicketFooter.tsx`: border-top uses `border-white/10` glass seam
+- `ToastStack.tsx`: toast cards are `rounded-lg bg-bg-glass backdrop-blur-xl` with specular shadow
+- Gates: typecheck ✓ · lint ✓ · `test:run` ✓ (554 tests)
+
 ---
 
 ## FXSW-067 · v3 feedback-fix docs

@@ -205,7 +205,7 @@ export default function TicketPanel() {
           slidIn ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <header className="flex items-center justify-between border-b border-border px-5 py-3">
+        <header className="flex items-center justify-between border-b border-white/10 px-5 py-3 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
           <div className="flex items-center gap-3">
             <span className="font-sans text-sm font-medium text-text">
               {autoView ? 'Auto-priced' : 'Sales Intervention'}
@@ -216,7 +216,7 @@ export default function TicketPanel() {
             type="button"
             aria-label="Close ticket"
             onClick={() => useUiStore.getState().closeTicket()}
-            className="rounded-sm p-1 text-text-dim transition-colors hover:bg-bg-row-hover hover:text-text"
+            className="rounded-full p-1.5 text-text-dim transition-colors hover:bg-white/20 hover:text-text"
           >
             <X size={18} aria-hidden />
           </button>

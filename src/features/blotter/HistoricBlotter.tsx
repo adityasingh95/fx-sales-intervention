@@ -50,8 +50,8 @@ function Row({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => void }) {
       data-outcome={entry.outcome}
       onClick={onOpen}
       className={clsx(
-        'flex w-full items-center border-b border-border bg-bg-app px-4 py-2 text-left text-sm text-text-dim',
-        onOpen && 'transition-colors hover:bg-bg-row-hover',
+        'flex w-full items-center border-b border-black/5 bg-white/25 px-4 py-2 text-left text-sm text-text-dim',
+        onOpen && 'transition-all hover:bg-white/50',
       )}
     >
       <div className="w-[80px] font-mono text-xs tabular-nums">{formatTime(entry.archivedAt)}</div>
@@ -106,8 +106,8 @@ function HistoricCard({ entry, onOpen }: { entry: HistoricEntry; onOpen?: () => 
       data-outcome={entry.outcome}
       onClick={onOpen}
       className={clsx(
-        'flex w-full flex-col gap-1.5 rounded-md border border-border bg-bg-panel px-3 py-2 text-left text-sm text-text-dim',
-        onOpen && 'transition-colors hover:bg-bg-row-hover',
+        'flex w-full flex-col gap-1.5 rounded-xl border border-black/5 bg-white/35 px-3 py-2 text-left text-sm text-text-dim shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-sm',
+        onOpen && 'transition-all hover:bg-white/55',
       )}
     >
       <div className="flex items-center justify-between gap-2">

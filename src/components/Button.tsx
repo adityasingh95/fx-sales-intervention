@@ -12,11 +12,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-blue text-white hover:bg-blue/85 border-blue',
-  secondary: 'bg-bg-elevated text-text border-border hover:border-blue/60',
-  danger: 'bg-red/15 text-red border-red/40 hover:bg-red/25',
+  primary:
+    'bg-[rgb(0,122,255)] text-white border-transparent hover:bg-[rgba(0,122,255,0.88)] shadow-[0_2px_8px_rgba(0,122,255,0.35),inset_0_1px_0_rgba(255,255,255,0.25)]',
+  secondary:
+    'bg-white/60 text-text border-black/10 hover:bg-white/75 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
+  danger:
+    'bg-red/10 text-red border-red/25 hover:bg-red/20 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
   ghost:
-    'bg-transparent text-text-dim border-border hover:border-blue/60 hover:text-text',
+    'bg-white/50 text-text-dim border-black/10 hover:bg-white/70 hover:text-text backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
 };
 
 interface CommonProps {
@@ -45,7 +48,7 @@ export function Button({
       disabled={inFlight}
       onClick={onClick}
       className={clsx(
-        'inline-flex h-9 items-center justify-center gap-2 rounded-sm border px-2 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm',
+        'inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:text-sm',
         VARIANT_CLASSES[variant],
       )}
     >
@@ -110,7 +113,7 @@ export function HoldButton({
       onPointerLeave={cancel}
       onDoubleClick={onDoubleClick}
       className={clsx(
-        'relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-sm border px-2 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm',
+        'relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-full border px-3 text-xs font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:text-sm',
         VARIANT_CLASSES[variant],
       )}
     >

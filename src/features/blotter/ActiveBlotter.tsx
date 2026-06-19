@@ -72,7 +72,7 @@ function Row({ entry }: { entry: DealEntry }) {
       data-removing={removing ? 'true' : 'false'}
       data-row-flash={flashOnMount ? 'new' : undefined}
       className={clsx(
-        'group flex w-full items-center border-b border-l-4 border-border bg-bg-app px-4 py-2 text-left text-sm transition-opacity duration-200 hover:bg-bg-row-hover',
+        'group flex w-full items-center border-b border-l-4 border-black/5 bg-white/35 px-4 py-2 text-left text-sm transition-all duration-200 hover:bg-white/60',
         BAR_FOR[status],
         flashOnMount && 'animate-row-flash',
         removing && 'opacity-60',
