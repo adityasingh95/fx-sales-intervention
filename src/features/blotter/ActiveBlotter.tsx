@@ -143,8 +143,8 @@ export function ActiveBlotter() {
   const useCards = isMobile;
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium uppercase tracking-tight text-text-mute">
-        <span className="mr-3 font-sans">Active Deals</span>
+      <div className="flex shrink-0 items-center border-b border-border bg-bg-panel-2 px-4 py-2 text-xs font-medium tracking-widest text-text-mute">
+        <span className="mr-3 font-mono"><span className="text-text-dim">$</span> ACTIVE_DEALS</span>
       </div>
       <div className="flex-1 overflow-auto">
         {useCards ? (

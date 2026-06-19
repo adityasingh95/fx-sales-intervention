@@ -71,3 +71,19 @@ input[type='number'] {
     background-color: transparent;
   }
 }
+
+/* Phosphor CRT scanlines — subtle horizontal line texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.07) 2px,
+    rgba(0, 0, 0, 0.07) 4px
+  );
+}

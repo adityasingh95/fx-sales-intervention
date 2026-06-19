@@ -45,7 +45,12 @@ export default function Cell({
         disabled && 'cursor-not-allowed opacity-[0.35]',
       )}
     >
-      <span className="font-mono text-2xl tabular-nums text-text">{value}</span>
+      <span
+        className="font-mono text-2xl tabular-nums text-text"
+        style={{ textShadow: '0 0 14px rgba(210, 255, 228, 0.45)' }}
+      >
+        {value}
+      </span>
       <span className="text-[10px] font-medium uppercase tracking-tight text-text-mute">
         {label}
       </span>

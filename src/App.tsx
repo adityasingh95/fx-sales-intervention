@@ -47,8 +47,8 @@ export default function App() {
         className="h-[2px] bg-gradient-to-r from-teal to-teal/20"
       />
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-bg-panel px-3 sm:px-4">
-        <h1 className="shrink-0 whitespace-nowrap font-sans text-sm font-medium tracking-tight text-text sm:text-md">
-          FX Sales Workstation
+        <h1 className="shrink-0 whitespace-nowrap font-mono text-sm font-medium tracking-tight text-text sm:text-md">
+          <span className="text-text-dim mr-1">▸</span>FX Sales Workstation
         </h1>
         <div
           data-testid="dev-injector-slot"
